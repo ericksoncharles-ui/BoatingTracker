@@ -1,0 +1,310 @@
+:root {
+  --navy: #1B2A4A;
+  --navy-light: #243660;
+  --slate: #4A5568;
+  --white: #FFFFFF;
+  --cream: #F7F5F0;
+  --sea: #2B6CB0;
+  --sea-hover: #2558a0;
+  --warning: #C53030;
+  --warning-bg: #FFF5F5;
+  --gold: #D69E2E;
+  --border: #2D3E5E;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--slate);
+  background: var(--cream);
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ── Sidebar ──────────────────────────────────────────── */
+
+.sidebar {
+  width: 380px;
+  min-width: 380px;
+  background: var(--navy);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-header h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-header .subtitle {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #90A4C4;
+  font-style: italic;
+}
+
+.sidebar-form {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-form label {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #90A4C4;
+}
+
+.sidebar-form select,
+.sidebar-form input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  color: var(--navy);
+  background: var(--cream);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.sidebar-form select:focus,
+.sidebar-form input:focus {
+  border-color: var(--sea);
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-row label {
+  flex: 1;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-plan {
+  flex: 1;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--white);
+  background: var(--sea);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-plan:hover:not(:disabled) {
+  background: var(--sea-hover);
+}
+
+.btn-plan:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-reset {
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #90A4C4;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-reset:hover {
+  background: var(--navy-light);
+}
+
+.form-error {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #FC8181;
+}
+
+/* ── Results ──────────────────────────────────────────── */
+
+.sidebar-results {
+  padding: 20px 24px;
+  flex: 1;
+}
+
+.sidebar-results h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-results h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #90A4C4;
+  margin: 18px 0 10px;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.result-item {
+  background: var(--navy-light);
+  border-radius: 8px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--sea);
+}
+
+.result-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #90A4C4;
+  margin-bottom: 4px;
+}
+
+.result-value {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.fuel-warning {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--warning);
+  color: var(--white);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.poi-list {
+  list-style: none;
+}
+
+.poi-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.poi-list li:last-child {
+  border-bottom: none;
+}
+
+.poi-list li strong {
+  display: block;
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+
+.poi-list li span {
+  color: #B0BEC5;
+  font-size: 0.8rem;
+}
+
+/* ── Trip Briefing ────────────────────────────────────── */
+
+.trip-briefing {
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: var(--navy-light);
+  border-radius: 8px;
+  border-left: 3px solid var(--gold);
+}
+
+.trip-briefing h3 {
+  margin: 0 0 8px;
+  color: var(--gold);
+}
+
+.ai-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  background: var(--sea);
+  color: var(--white);
+  padding: 2px 6px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.briefing-loading {
+  font-style: italic;
+  color: #90A4C4;
+  font-size: 0.85rem;
+}
+
+.briefing-text {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #CBD5E0;
+}
+
+/* ── Map ──────────────────────────────────────────────── */
+
+.map-container {
+  flex: 1;
+  position: relative;
+}
+
+.leaflet-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom marker colors via CSS filter */
+.marker-start {
+  filter: hue-rotate(120deg);
+}
+
+.marker-dest {
+  filter: hue-rotate(0deg) saturate(3);
+}
