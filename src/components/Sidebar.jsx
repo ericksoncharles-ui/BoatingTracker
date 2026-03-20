@@ -263,7 +263,7 @@ export default function Sidebar({
         </div>
       )}
       <div className="sidebar-footer">
-        Built by Charles Erickson
+        Built by Charles Erickson | SoundMind AI
       </div>
     </aside>
   )
