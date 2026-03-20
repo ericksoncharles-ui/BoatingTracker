@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -75,11 +75,23 @@ export default function TripMap({ marinas, tripResult, focusPOI }) {
     <div className="map-container">
       <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map">
         <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="Street Map">
+          <LayersControl.BaseLayer name="Street Map">
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer checked name="Ocean (Depths)">
+            <LayerGroup>
+              <TileLayer
+                attribution='&copy; Esri, GEBCO, NOAA, National Geographic, DeLorme'
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
+              />
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}"
+              />
+            </LayerGroup>
           </LayersControl.BaseLayer>
 
           <LayersControl.BaseLayer name="Satellite">
@@ -88,14 +100,6 @@ export default function TripMap({ marinas, tripResult, focusPOI }) {
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             />
           </LayersControl.BaseLayer>
-
-          <LayersControl.Overlay checked name="NOAA Charts (Depths)">
-            <TileLayer
-              url="https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png"
-              opacity={0.7}
-              attribution='&copy; <a href="https://www.noaa.gov">NOAA</a>'
-            />
-          </LayersControl.Overlay>
 
           <LayersControl.Overlay checked name="OpenSeaMap (Buoys & Marks)">
             <TileLayer
