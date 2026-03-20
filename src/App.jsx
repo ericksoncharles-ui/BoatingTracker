@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { marinas } from './data'
 import { useTripCalculator } from './hooks/useTripCalculator'
 import Sidebar from './components/Sidebar'
@@ -5,6 +6,7 @@ import TripMap from './components/TripMap'
 
 export default function App() {
   const trip = useTripCalculator()
+  const [focusPOI, setFocusPOI] = useState(null)
 
   return (
     <div className="app">
@@ -22,8 +24,9 @@ export default function App() {
         tripResult={trip.tripResult}
         onCalculate={trip.calculateTrip}
         onReset={trip.resetTrip}
+        onFocusPOI={setFocusPOI}
       />
-      <TripMap marinas={marinas} tripResult={trip.tripResult} />
+      <TripMap marinas={marinas} tripResult={trip.tripResult} focusPOI={focusPOI} />
     </div>
   )
 }

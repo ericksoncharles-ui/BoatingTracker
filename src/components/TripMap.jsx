@@ -36,6 +36,18 @@ function FitBounds({ tripResult }) {
   return null
 }
 
+function FlyToPOI({ focusPOI }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (focusPOI) {
+      map.flyTo([focusPOI.lat, focusPOI.lng], 13, { duration: 1.2 })
+    }
+  }, [focusPOI, map])
+
+  return null
+}
+
 const startIcon = new L.Icon({
   iconUrl: markerIcon,
   iconRetinaUrl: markerIcon2x,
@@ -58,7 +70,7 @@ const destIcon = new L.Icon({
   className: 'marker-dest',
 })
 
-export default function TripMap({ marinas, tripResult }) {
+export default function TripMap({ marinas, tripResult, focusPOI }) {
   return (
     <div className="map-container">
       <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map">
@@ -95,6 +107,7 @@ export default function TripMap({ marinas, tripResult }) {
         </LayersControl>
 
         <FitBounds tripResult={tripResult} />
+        <FlyToPOI focusPOI={focusPOI} />
 
         {/* Marina markers */}
         {marinas.map((marina) => (

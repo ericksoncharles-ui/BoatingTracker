@@ -10,6 +10,7 @@ export default function Sidebar({
   tripResult,
   onCalculate,
   onReset,
+  onFocusPOI,
 }) {
   const canCalculate = startId && destId && startId !== destId
 
@@ -174,7 +175,29 @@ export default function Sidebar({
           <ul className="poi-list">
             {tripResult.nearbyPOIs.map((poi) => (
               <li key={poi.id}>
-                <strong>{poi.name}</strong>
+                <div className="poi-header">
+                  <strong>{poi.name}</strong>
+                  <div className="poi-actions">
+                    <button
+                      className="poi-btn"
+                      title="View on map"
+                      onClick={() => onFocusPOI(poi)}
+                    >
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                      Map
+                    </button>
+                    <a
+                      className="poi-btn"
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poi.name + ' ' + poi.description.split('—')[0].trim())}&center=${poi.lat},${poi.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open in Google Maps"
+                    >
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      Google
+                    </a>
+                  </div>
+                </div>
                 <span>{poi.description}</span>
               </li>
             ))}

@@ -435,8 +435,44 @@ body {
   border-bottom: none;
 }
 
+.poi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.poi-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.poi-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #90A4C4;
+  background: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+
+.poi-btn:hover {
+  background: var(--sea);
+  color: var(--white);
+  border-color: var(--sea);
+}
+
 .poi-list li strong {
-  display: block;
   color: var(--gold);
   font-size: 0.85rem;
 }
