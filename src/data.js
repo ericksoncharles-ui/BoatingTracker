@@ -42,9 +42,9 @@ export const navigationSpine = [
   { id: 'sp-00', lat: 40.830, lng: -73.785 },  // Western entrance off Throgs Neck
   { id: 'sp-01', lat: 40.878, lng: -73.737 },  // Execution Rocks
   { id: 'sp-02', lat: 40.895, lng: -73.660 },  // Off Matinecock Point
-  { id: 'sp-03', lat: 40.910, lng: -73.540 },  // Off Centre Island / Oyster Bay
-  { id: 'sp-04', lat: 40.935, lng: -73.430 },  // Off Lloyd Neck
-  { id: 'sp-05', lat: 40.960, lng: -73.330 },  // Off Eaton's Neck
+  { id: 'sp-03', lat: 41.010, lng: -73.600 },  // Connecticut coast channel
+  { id: 'sp-04', lat: 41.050, lng: -73.500 },  // Off Stamford / Darien
+  { id: 'sp-05', lat: 41.070, lng: -73.350 },  // Mid-Sound off Westport
   { id: 'sp-06', lat: 41.000, lng: -73.200 },  // Off Stratford Shoal
   { id: 'sp-07', lat: 41.050, lng: -73.060 },  // Mid-Sound off Bridgeport
   { id: 'sp-08', lat: 41.110, lng: -72.920 },  // Off New Haven breakwater
