@@ -1,8 +1,38 @@
 export const marinas = [
+  // Connecticut
   { id: 'norwalk', name: 'Norwalk Cove Marina, CT', lat: 41.0965, lng: -73.4150 },
   { id: 'bridgeport', name: 'Bridgeport Harbor Marina, CT', lat: 41.1735, lng: -73.1815 },
   { id: 'stamford', name: 'Stamford Landing Marina, CT', lat: 41.0430, lng: -73.5435 },
+  { id: 'greenwich', name: 'Greenwich Harbor, CT', lat: 41.0210, lng: -73.6240 },
+  { id: 'westport', name: 'Cedar Point Yacht Club, Westport, CT', lat: 41.1070, lng: -73.3580 },
+  { id: 'milford', name: 'Milford Harbor, CT', lat: 41.2070, lng: -73.0540 },
+  { id: 'new-haven', name: 'New Haven Harbor, CT', lat: 41.2830, lng: -72.9080 },
+  { id: 'branford', name: 'Branford River Marina, CT', lat: 41.2630, lng: -72.8140 },
+  { id: 'guilford', name: 'Guilford Harbor, CT', lat: 41.2640, lng: -72.6730 },
+  { id: 'clinton', name: 'Clinton Harbor, CT', lat: 41.2630, lng: -72.5280 },
+  { id: 'old-saybrook', name: 'Old Saybrook Marina, CT', lat: 41.2820, lng: -72.3430 },
+  { id: 'essex', name: 'Essex Island Marina, CT', lat: 41.3510, lng: -72.3890 },
+  { id: 'mystic', name: 'Mystic Seaport Marina, CT', lat: 41.3590, lng: -71.9660 },
+  { id: 'stonington', name: 'Stonington Harbor, CT', lat: 41.3310, lng: -71.9050 },
+  { id: 'niantic', name: 'Niantic Bay Marina, CT', lat: 41.3180, lng: -72.1950 },
+  { id: 'new-london', name: 'New London City Pier, CT', lat: 41.3520, lng: -72.0890 },
+
+  // New York — Long Island Sound
   { id: 'port-jefferson', name: 'Port Jefferson Harbor, NY', lat: 40.9465, lng: -73.0690 },
+  { id: 'oyster-bay-marina', name: 'Oyster Bay Marine Center, NY', lat: 40.8730, lng: -73.5300 },
+  { id: 'northport', name: 'Northport Harbor, NY', lat: 40.9010, lng: -73.3430 },
+  { id: 'cold-spring', name: 'Cold Spring Harbor, NY', lat: 40.8710, lng: -73.4560 },
+  { id: 'huntington', name: 'Huntington Harbor, NY', lat: 40.8990, lng: -73.4200 },
+  { id: 'manhasset', name: 'Manhasset Bay Marina, NY', lat: 40.8310, lng: -73.7130 },
+  { id: 'mamaroneck', name: 'Mamaroneck Harbor, NY', lat: 40.9420, lng: -73.7370 },
+  { id: 'new-rochelle', name: 'New Rochelle Municipal Marina, NY', lat: 40.8940, lng: -73.7730 },
+  { id: 'city-island', name: 'City Island Marina, NY', lat: 40.8470, lng: -73.7870 },
+  { id: 'glen-cove', name: 'Glen Cove Marina, NY', lat: 40.8650, lng: -73.6290 },
+  { id: 'mattituck', name: 'Mattituck Inlet Marina, NY', lat: 41.0120, lng: -72.5590 },
+  { id: 'greenport', name: 'Greenport Yacht Club, NY', lat: 41.1030, lng: -72.3590 },
+
+  // Rhode Island (eastern Sound access)
+  { id: 'watch-hill', name: 'Watch Hill Docks, RI', lat: 41.3060, lng: -71.8600 },
 ]
 
 export const pointsOfInterest = [
@@ -40,5 +70,54 @@ export const pointsOfInterest = [
     lat: 41.0680,
     lng: -72.3350,
     description: 'Quiet island between the North and South Forks with protected harbors.',
+  },
+  {
+    id: 'sheffield-island',
+    name: 'Sheffield Island Lighthouse',
+    lat: 41.0480,
+    lng: -73.4180,
+    description: 'Historic lighthouse on a Norwalk island — tours and scenic anchorage.',
+  },
+  {
+    id: 'captain-islands',
+    name: 'Captain Islands',
+    lat: 41.0010,
+    lng: -73.6300,
+    description: 'Three small islands off Greenwich with beaches and a lighthouse.',
+  },
+  {
+    id: 'execution-rocks',
+    name: 'Execution Rocks Lighthouse',
+    lat: 40.8780,
+    lng: -73.7370,
+    description: 'Iconic lighthouse in western Sound — a popular photo-op waypoint.',
+  },
+  {
+    id: 'plum-island',
+    name: 'Plum Island',
+    lat: 41.1750,
+    lng: -72.1640,
+    description: 'Mysterious island near Orient Point with restricted access and rich history.',
+  },
+  {
+    id: 'charles-island',
+    name: 'Charles Island',
+    lat: 41.2000,
+    lng: -73.0630,
+    description: 'Tidal island off Milford with legends of buried treasure.',
+  },
+  {
+    id: 'falkner-island',
+    name: 'Falkner Island Light',
+    lat: 41.2120,
+    lng: -72.6550,
+    description: 'Remote lighthouse and tern sanctuary in the middle of the Sound.',
+  },
+  {
+    id: 'sag-harbor',
+    name: 'Sag Harbor',
+    lat: 40.9990,
+    lng: -72.2960,
+    description: 'Charming former whaling village with boutiques and fine dining.',
   },
 ]

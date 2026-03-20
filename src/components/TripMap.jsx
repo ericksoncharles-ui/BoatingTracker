@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -62,10 +62,38 @@ export default function TripMap({ marinas, tripResult }) {
   return (
     <div className="map-container">
       <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map">
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="Street Map">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer name="Satellite">
+            <TileLayer
+              attribution='&copy; Esri'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.Overlay name="NOAA Nautical Charts">
+            <TileLayer
+              url="https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png"
+              opacity={0.7}
+              attribution='&copy; <a href="https://www.noaa.gov">NOAA</a>'
+            />
+          </LayersControl.Overlay>
+
+          <LayersControl.Overlay name="OpenSeaMap (Buoys & Marks)">
+            <TileLayer
+              url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
+              opacity={0.8}
+              attribution='&copy; <a href="https://www.openseamap.org">OpenSeaMap</a>'
+            />
+          </LayersControl.Overlay>
+        </LayersControl>
+
         <FitBounds tripResult={tripResult} />
 
         {/* Marina markers */}

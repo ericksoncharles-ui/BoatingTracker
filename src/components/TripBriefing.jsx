@@ -32,7 +32,7 @@ export default function TripBriefing({ tripResult }) {
     setLoading(true)
 
     const poiNames = tripResult.nearbyPOIs.map((p) => p.name).join(', ')
-    const prompt = `You are a friendly harbor master. Give a 2-3 sentence trip briefing for a boating trip from ${tripResult.start.name} to ${tripResult.dest.name}, ${tripResult.distanceNM} nautical miles across Long Island Sound on a 23-foot Cobia center console. Travel time is about ${tripResult.travelTimeFormatted} at cruising speed. Fuel usage is ${tripResult.fuelPercentUsed}% of tank. Nearby points of interest: ${poiNames}. Recommend one anchorage, mention fuel confidence, and keep it nautical and friendly.`
+    const prompt = `You are a friendly harbor master. Give a 2-3 sentence trip briefing for a boating trip from ${tripResult.start.name} to ${tripResult.dest.name}, ${tripResult.distanceNM} nautical miles across Long Island Sound. Travel time is about ${tripResult.travelTimeFormatted} at cruising speed. Fuel usage is ${tripResult.fuelPercentUsed}% of tank. Nearby points of interest: ${poiNames}. Recommend one anchorage, mention fuel confidence, and keep it nautical and friendly.`
 
     const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
 
