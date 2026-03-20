@@ -3,7 +3,7 @@ import { marinas, pointsOfInterest, noWakeZones, navigationSpine } from '../data
 import { calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, buildRouteWaypoints, findNearbyPOIs } from '../utils'
 
 export function useTripCalculator() {
-  const [startId, setStartId] = useState('')
+  const [startId, setStartId] = useState('stamford')
   const [destId, setDestId] = useState('')
   const [tankSize, setTankSize] = useState(90)
   const [cruisingSpeed, setCruisingSpeed] = useState(22)
