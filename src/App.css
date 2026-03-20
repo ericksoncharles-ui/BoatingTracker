@@ -528,6 +528,17 @@ body {
   color: #90A4C4;
 }
 
+/* ── Footer ─────────────────────────────────────────── */
+
+.sidebar-footer {
+  padding: 12px 24px;
+  font-size: 0.72rem;
+  color: #3d5070;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  letter-spacing: 0.04em;
+}
+
 /* ── Map ──────────────────────────────────────────────── */
 
 .map-container {

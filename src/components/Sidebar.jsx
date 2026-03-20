@@ -199,6 +199,9 @@ export default function Sidebar({
           <p className="welcome-text">Choose your departure marina and destination above, then hit <strong>Plan Trip</strong> to chart your course across the Sound.</p>
         </div>
       )}
+      <div className="sidebar-footer">
+        Built by Charles Erickson
+      </div>
     </aside>
   )
 }
