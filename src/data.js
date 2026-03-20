@@ -1,38 +1,61 @@
 export const marinas = [
-  // Connecticut — approachDepthFt is controlling depth at MLW (mean low water) in feet
-  { id: 'norwalk', name: 'Norwalk Cove Marina, CT', lat: 41.0965, lng: -73.4150, approachDepthFt: 6 },
-  { id: 'bridgeport', name: 'Bridgeport Harbor Marina, CT', lat: 41.1735, lng: -73.1815, approachDepthFt: 16 },
-  { id: 'stamford', name: 'Stamford Landing Marina, CT', lat: 41.0430, lng: -73.5435, approachDepthFt: 8 },
-  { id: 'greenwich', name: 'Greenwich Harbor, CT', lat: 41.0210, lng: -73.6240, approachDepthFt: 7 },
-  { id: 'westport', name: 'Cedar Point Yacht Club, Westport, CT', lat: 41.1070, lng: -73.3580, approachDepthFt: 5 },
-  { id: 'milford', name: 'Milford Harbor, CT', lat: 41.2070, lng: -73.0540, approachDepthFt: 6 },
-  { id: 'new-haven', name: 'New Haven Harbor, CT', lat: 41.2830, lng: -72.9080, approachDepthFt: 18 },
-  { id: 'branford', name: 'Branford River Marina, CT', lat: 41.2630, lng: -72.8140, approachDepthFt: 5 },
-  { id: 'guilford', name: 'Guilford Harbor, CT', lat: 41.2640, lng: -72.6730, approachDepthFt: 4 },
-  { id: 'clinton', name: 'Clinton Harbor, CT', lat: 41.2630, lng: -72.5280, approachDepthFt: 5 },
-  { id: 'old-saybrook', name: 'Old Saybrook Marina, CT', lat: 41.2820, lng: -72.3430, approachDepthFt: 6 },
-  { id: 'essex', name: 'Essex Island Marina, CT', lat: 41.3510, lng: -72.3890, approachDepthFt: 6 },
-  { id: 'mystic', name: 'Mystic Seaport Marina, CT', lat: 41.3590, lng: -71.9660, approachDepthFt: 8 },
-  { id: 'stonington', name: 'Stonington Harbor, CT', lat: 41.3310, lng: -71.9050, approachDepthFt: 7 },
-  { id: 'niantic', name: 'Niantic Bay Marina, CT', lat: 41.3180, lng: -72.1950, approachDepthFt: 6 },
-  { id: 'new-london', name: 'New London City Pier, CT', lat: 41.3520, lng: -72.0890, approachDepthFt: 20 },
+  // Connecticut — approachDepthFt is controlling depth at MLW in feet
+  // approach: open-water waypoint just outside the harbor entrance
+  { id: 'norwalk', name: 'Norwalk Cove Marina, CT', lat: 41.0965, lng: -73.4150, approachDepthFt: 6, approach: { lat: 41.070, lng: -73.415 } },
+  { id: 'bridgeport', name: 'Bridgeport Harbor Marina, CT', lat: 41.1735, lng: -73.1815, approachDepthFt: 16, approach: { lat: 41.150, lng: -73.180 } },
+  { id: 'stamford', name: 'Stamford Landing Marina, CT', lat: 41.0430, lng: -73.5435, approachDepthFt: 8, approach: { lat: 41.030, lng: -73.540 } },
+  { id: 'greenwich', name: 'Greenwich Harbor, CT', lat: 41.0210, lng: -73.6240, approachDepthFt: 7, approach: { lat: 41.000, lng: -73.620 } },
+  { id: 'westport', name: 'Cedar Point Yacht Club, Westport, CT', lat: 41.1070, lng: -73.3580, approachDepthFt: 5, approach: { lat: 41.085, lng: -73.358 } },
+  { id: 'milford', name: 'Milford Harbor, CT', lat: 41.2070, lng: -73.0540, approachDepthFt: 6, approach: { lat: 41.185, lng: -73.055 } },
+  { id: 'new-haven', name: 'New Haven Harbor, CT', lat: 41.2830, lng: -72.9080, approachDepthFt: 18, approach: { lat: 41.220, lng: -72.910 } },
+  { id: 'branford', name: 'Branford River Marina, CT', lat: 41.2630, lng: -72.8140, approachDepthFt: 5, approach: { lat: 41.240, lng: -72.815 } },
+  { id: 'guilford', name: 'Guilford Harbor, CT', lat: 41.2640, lng: -72.6730, approachDepthFt: 4, approach: { lat: 41.240, lng: -72.675 } },
+  { id: 'clinton', name: 'Clinton Harbor, CT', lat: 41.2630, lng: -72.5280, approachDepthFt: 5, approach: { lat: 41.240, lng: -72.530 } },
+  { id: 'old-saybrook', name: 'Old Saybrook Marina, CT', lat: 41.2820, lng: -72.3430, approachDepthFt: 6, approach: { lat: 41.255, lng: -72.343 } },
+  { id: 'essex', name: 'Essex Island Marina, CT', lat: 41.3510, lng: -72.3890, approachDepthFt: 6, approach: { lat: 41.265, lng: -72.375 } },
+  { id: 'mystic', name: 'Mystic Seaport Marina, CT', lat: 41.3590, lng: -71.9660, approachDepthFt: 8, approach: { lat: 41.320, lng: -71.970 } },
+  { id: 'stonington', name: 'Stonington Harbor, CT', lat: 41.3310, lng: -71.9050, approachDepthFt: 7, approach: { lat: 41.310, lng: -71.905 } },
+  { id: 'niantic', name: 'Niantic Bay Marina, CT', lat: 41.3180, lng: -72.1950, approachDepthFt: 6, approach: { lat: 41.290, lng: -72.195 } },
+  { id: 'new-london', name: 'New London City Pier, CT', lat: 41.3520, lng: -72.0890, approachDepthFt: 20, approach: { lat: 41.310, lng: -72.090 } },
 
   // New York — Long Island Sound
-  { id: 'port-jefferson', name: 'Port Jefferson Harbor, NY', lat: 40.9465, lng: -73.0690, approachDepthFt: 10 },
-  { id: 'oyster-bay-marina', name: 'Oyster Bay Marine Center, NY', lat: 40.8730, lng: -73.5300, approachDepthFt: 7 },
-  { id: 'northport', name: 'Northport Harbor, NY', lat: 40.9010, lng: -73.3430, approachDepthFt: 8 },
-  { id: 'cold-spring', name: 'Cold Spring Harbor, NY', lat: 40.8710, lng: -73.4560, approachDepthFt: 5 },
-  { id: 'huntington', name: 'Huntington Harbor, NY', lat: 40.8990, lng: -73.4200, approachDepthFt: 7 },
-  { id: 'manhasset', name: 'Manhasset Bay Marina, NY', lat: 40.8310, lng: -73.7130, approachDepthFt: 8 },
-  { id: 'mamaroneck', name: 'Mamaroneck Harbor, NY', lat: 40.9420, lng: -73.7370, approachDepthFt: 6 },
-  { id: 'new-rochelle', name: 'New Rochelle Municipal Marina, NY', lat: 40.8940, lng: -73.7730, approachDepthFt: 6 },
-  { id: 'city-island', name: 'City Island Marina, NY', lat: 40.8470, lng: -73.7870, approachDepthFt: 7 },
-  { id: 'glen-cove', name: 'Glen Cove Marina, NY', lat: 40.8650, lng: -73.6290, approachDepthFt: 7 },
-  { id: 'mattituck', name: 'Mattituck Inlet Marina, NY', lat: 41.0120, lng: -72.5590, approachDepthFt: 5 },
-  { id: 'greenport', name: 'Greenport Yacht Club, NY', lat: 41.1030, lng: -72.3590, approachDepthFt: 8 },
+  { id: 'port-jefferson', name: 'Port Jefferson Harbor, NY', lat: 40.9465, lng: -73.0690, approachDepthFt: 10, approach: { lat: 40.975, lng: -73.070 } },
+  { id: 'oyster-bay-marina', name: 'Oyster Bay Marine Center, NY', lat: 40.8730, lng: -73.5300, approachDepthFt: 7, approach: { lat: 40.900, lng: -73.525 } },
+  { id: 'northport', name: 'Northport Harbor, NY', lat: 40.9010, lng: -73.3430, approachDepthFt: 8, approach: { lat: 40.925, lng: -73.340 } },
+  { id: 'cold-spring', name: 'Cold Spring Harbor, NY', lat: 40.8710, lng: -73.4560, approachDepthFt: 5, approach: { lat: 40.905, lng: -73.455 } },
+  { id: 'huntington', name: 'Huntington Harbor, NY', lat: 40.8990, lng: -73.4200, approachDepthFt: 7, approach: { lat: 40.920, lng: -73.415 } },
+  { id: 'manhasset', name: 'Manhasset Bay Marina, NY', lat: 40.8310, lng: -73.7130, approachDepthFt: 8, approach: { lat: 40.845, lng: -73.710 } },
+  { id: 'mamaroneck', name: 'Mamaroneck Harbor, NY', lat: 40.9420, lng: -73.7370, approachDepthFt: 6, approach: { lat: 40.930, lng: -73.730 } },
+  { id: 'new-rochelle', name: 'New Rochelle Municipal Marina, NY', lat: 40.8940, lng: -73.7730, approachDepthFt: 6, approach: { lat: 40.880, lng: -73.770 } },
+  { id: 'city-island', name: 'City Island Marina, NY', lat: 40.8470, lng: -73.7870, approachDepthFt: 7, approach: { lat: 40.840, lng: -73.775 } },
+  { id: 'glen-cove', name: 'Glen Cove Marina, NY', lat: 40.8650, lng: -73.6290, approachDepthFt: 7, approach: { lat: 40.880, lng: -73.620 } },
+  { id: 'mattituck', name: 'Mattituck Inlet Marina, NY', lat: 41.0120, lng: -72.5590, approachDepthFt: 5, approach: { lat: 41.030, lng: -72.555 } },
+  { id: 'greenport', name: 'Greenport Yacht Club, NY', lat: 41.1030, lng: -72.3590, approachDepthFt: 8, approach: { lat: 41.115, lng: -72.355 } },
 
   // Rhode Island (eastern Sound access)
-  { id: 'watch-hill', name: 'Watch Hill Docks, RI', lat: 41.3060, lng: -71.8600, approachDepthFt: 8 },
+  { id: 'watch-hill', name: 'Watch Hill Docks, RI', lat: 41.3060, lng: -71.8600, approachDepthFt: 8, approach: { lat: 41.305, lng: -71.862 } },
+]
+
+// Main navigation channel waypoints through Long Island Sound (west to east).
+// Boats transit along this spine and branch off to individual marinas.
+export const navigationSpine = [
+  { id: 'sp-00', lat: 40.830, lng: -73.785 },  // Western entrance off Throgs Neck
+  { id: 'sp-01', lat: 40.878, lng: -73.737 },  // Execution Rocks
+  { id: 'sp-02', lat: 40.895, lng: -73.660 },  // Off Matinecock Point
+  { id: 'sp-03', lat: 40.910, lng: -73.540 },  // Off Centre Island / Oyster Bay
+  { id: 'sp-04', lat: 40.935, lng: -73.430 },  // Off Lloyd Neck
+  { id: 'sp-05', lat: 40.960, lng: -73.330 },  // Off Eaton's Neck
+  { id: 'sp-06', lat: 41.000, lng: -73.200 },  // Off Stratford Shoal
+  { id: 'sp-07', lat: 41.050, lng: -73.060 },  // Mid-Sound off Bridgeport
+  { id: 'sp-08', lat: 41.110, lng: -72.920 },  // Off New Haven breakwater
+  { id: 'sp-09', lat: 41.160, lng: -72.790 },  // Off Branford / Thimble Islands
+  { id: 'sp-10', lat: 41.180, lng: -72.660 },  // Off Falkner Island
+  { id: 'sp-11', lat: 41.180, lng: -72.530 },  // Off Westbrook / Clinton
+  { id: 'sp-12', lat: 41.200, lng: -72.370 },  // Off Connecticut River mouth
+  { id: 'sp-13', lat: 41.185, lng: -72.210 },  // Off Plum Gut
+  { id: 'sp-14', lat: 41.250, lng: -72.090 },  // Off New London / The Race
+  { id: 'sp-15', lat: 41.290, lng: -71.950 },  // Off Fishers Island
+  { id: 'sp-16', lat: 41.308, lng: -71.865 },  // Watch Hill Passage
 ]
 
 export const pointsOfInterest = [

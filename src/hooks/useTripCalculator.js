@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import { marinas, pointsOfInterest, noWakeZones } from '../data'
-import { calcDistanceNM, calcTripDetails, calcNoWakeDelay, buildRouteWaypoints, findNearbyPOIs } from '../utils'
+import { marinas, pointsOfInterest, noWakeZones, navigationSpine } from '../data'
+import { calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, buildRouteWaypoints, findNearbyPOIs } from '../utils'
 
 export function useTripCalculator() {
   const [startId, setStartId] = useState('')
@@ -16,8 +16,9 @@ export function useTripCalculator() {
     const dest = marinas.find((m) => m.id === destId)
     if (!start || !dest || start.id === dest.id) return null
 
-    const distanceNM = calcDistanceNM(start.lat, start.lng, dest.lat, dest.lng)
-    const noWakeResult = calcNoWakeDelay(start, dest, noWakeZones, cruisingSpeed)
+    const routeWaypoints = buildRouteWaypoints(start, dest, navigationSpine)
+    const distanceNM = calcRouteDistanceNM(routeWaypoints)
+    const noWakeResult = calcNoWakeDelay(routeWaypoints, noWakeZones, cruisingSpeed)
     const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize, noWakeResult.totalDelayHours)
     const nearbyPOIs = findNearbyPOIs(start, dest, pointsOfInterest, 5)
 
@@ -31,8 +32,6 @@ export function useTripCalculator() {
         draftWarnings.push({ marina: dest.name, depth: dest.approachDepthFt, type: 'destination' })
       }
     }
-
-    const routeWaypoints = buildRouteWaypoints(start, dest, noWakeResult.affectedZones)
 
     const result = {
       start,

@@ -36,27 +36,26 @@ function distanceFromRoute(pointLat, pointLng, startLat, startLng, endLat, endLn
 }
 
 /**
- * Find no-wake zones that affect a given route and calculate the time penalty.
- * A zone affects the route if it's near the start, end, or along the path.
+ * Find no-wake zones that affect a multi-segment route and calculate the time penalty.
  */
-export function calcNoWakeDelay(start, dest, noWakeZones, cruisingSpeed) {
+export function calcNoWakeDelay(routeWaypoints, noWakeZones, cruisingSpeed) {
   const affectedZones = []
   let totalDelayHours = 0
 
   for (const zone of noWakeZones) {
-    // Check if zone is near the route
-    const { distance: dist, t } = distanceFromRoute(
-      zone.lat, zone.lng,
-      start.lat, start.lng,
-      dest.lat, dest.lng
-    )
+    // Check zone against each segment of the route
+    let minDist = Infinity
+    for (let i = 0; i < routeWaypoints.length - 1; i++) {
+      const { distance } = distanceFromRoute(
+        zone.lat, zone.lng,
+        routeWaypoints[i][0], routeWaypoints[i][1],
+        routeWaypoints[i + 1][0], routeWaypoints[i + 1][1]
+      )
+      if (distance < minDist) minDist = distance
+    }
 
-    // Zone affects route if the route passes within its radius
-    if (dist <= zone.radiusNM) {
-      // Distance traveled through the zone (approximate as diameter or radius)
-      const distInZone = Math.min(zone.radiusNM * 2, zone.radiusNM + Math.max(0, zone.radiusNM - dist))
-
-      // Time at cruising speed vs time at no-wake speed
+    if (minDist <= zone.radiusNM) {
+      const distInZone = Math.min(zone.radiusNM * 2, zone.radiusNM + Math.max(0, zone.radiusNM - minDist))
       const timeAtCruise = distInZone / cruisingSpeed
       const timeAtNoWake = distInZone / zone.speedLimit
       const delay = timeAtNoWake - timeAtCruise
@@ -65,7 +64,6 @@ export function calcNoWakeDelay(start, dest, noWakeZones, cruisingSpeed) {
         totalDelayHours += delay
         affectedZones.push({
           ...zone,
-          t,
           distInZone: Math.round(distInZone * 100) / 100,
           delayMinutes: Math.round(delay * 60 * 10) / 10,
         })
@@ -74,6 +72,17 @@ export function calcNoWakeDelay(start, dest, noWakeZones, cruisingSpeed) {
   }
 
   return { totalDelayHours, affectedZones }
+}
+
+/**
+ * Calculate total distance along a multi-segment route in nautical miles.
+ */
+export function calcRouteDistanceNM(waypoints) {
+  let total = 0
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    total += calcDistanceNM(waypoints[i][0], waypoints[i][1], waypoints[i + 1][0], waypoints[i + 1][1])
+  }
+  return total
 }
 
 /**
@@ -104,15 +113,57 @@ export function calcTripDetails(distanceNM, speedKnots, fuelBurnGPH, tankGallons
 }
 
 /**
- * Build an ordered list of route coordinates: start → no-wake zones (sorted along route) → destination.
+ * Find the index of the nearest spine waypoint to a given point.
  */
-export function buildRouteWaypoints(start, dest, affectedZones) {
-  const sorted = [...affectedZones].sort((a, b) => a.t - b.t)
-  return [
-    [start.lat, start.lng],
-    ...sorted.map((z) => [z.lat, z.lng]),
-    [dest.lat, dest.lng],
-  ]
+function nearestSpineIndex(lat, lng, spine) {
+  let bestIdx = 0
+  let bestDist = Infinity
+  for (let i = 0; i < spine.length; i++) {
+    const d = calcDistanceNM(lat, lng, spine[i].lat, spine[i].lng)
+    if (d < bestDist) {
+      bestDist = d
+      bestIdx = i
+    }
+  }
+  return bestIdx
+}
+
+/**
+ * Build a realistic route through the navigation spine.
+ * Path: marina → approach waypoint → spine segment → approach waypoint → marina
+ */
+export function buildRouteWaypoints(start, dest, spine) {
+  const startApproach = start.approach || { lat: start.lat, lng: start.lng }
+  const destApproach = dest.approach || { lat: dest.lat, lng: dest.lng }
+
+  const startSpineIdx = nearestSpineIndex(startApproach.lat, startApproach.lng, spine)
+  const destSpineIdx = nearestSpineIndex(destApproach.lat, destApproach.lng, spine)
+
+  // Build spine segment between the two indices
+  const spinePoints = []
+  if (startSpineIdx <= destSpineIdx) {
+    for (let i = startSpineIdx; i <= destSpineIdx; i++) {
+      spinePoints.push([spine[i].lat, spine[i].lng])
+    }
+  } else {
+    for (let i = startSpineIdx; i >= destSpineIdx; i--) {
+      spinePoints.push([spine[i].lat, spine[i].lng])
+    }
+  }
+
+  // Skip spine if both marinas share the same nearest spine point
+  // (they're close together, just route approach-to-approach)
+  const route = [[start.lat, start.lng]]
+  route.push([startApproach.lat, startApproach.lng])
+
+  if (startSpineIdx !== destSpineIdx) {
+    route.push(...spinePoints)
+  }
+
+  route.push([destApproach.lat, destApproach.lng])
+  route.push([dest.lat, dest.lng])
+
+  return route
 }
 
 /**
