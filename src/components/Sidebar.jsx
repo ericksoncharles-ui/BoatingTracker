@@ -137,6 +137,26 @@ export default function Sidebar({
             </div>
           )}
 
+          {tripResult.noWakeZones && tripResult.noWakeZones.length > 0 && (
+            <div className="no-wake-info">
+              <h3>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                No-Wake Zones ({tripResult.noWakeZones.length})
+              </h3>
+              <p className="no-wake-summary">
+                +{tripResult.noWakeDelayMinutes} min added for {tripResult.noWakeZones.length} no-wake zone{tripResult.noWakeZones.length > 1 ? 's' : ''} (5 kt limit)
+              </p>
+              <ul className="no-wake-list">
+                {tripResult.noWakeZones.map((zone) => (
+                  <li key={zone.id}>
+                    <span className="no-wake-name">{zone.name}</span>
+                    <span className="no-wake-delay">+{zone.delayMinutes} min</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="fuel-gauge">
             <div className="fuel-gauge-label">
               <span>Fuel Usage</span>

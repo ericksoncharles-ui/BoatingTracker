@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import { marinas, pointsOfInterest } from '../data'
-import { calcDistanceNM, calcTripDetails, findNearbyPOIs } from '../utils'
+import { marinas, pointsOfInterest, noWakeZones } from '../data'
+import { calcDistanceNM, calcTripDetails, calcNoWakeDelay, findNearbyPOIs } from '../utils'
 
 export function useTripCalculator() {
   const [startId, setStartId] = useState('')
@@ -16,14 +16,17 @@ export function useTripCalculator() {
     if (!start || !dest || start.id === dest.id) return null
 
     const distanceNM = calcDistanceNM(start.lat, start.lng, dest.lat, dest.lng)
-    const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize)
+    const noWakeResult = calcNoWakeDelay(start, dest, noWakeZones, cruisingSpeed)
+    const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize, noWakeResult.totalDelayHours)
     const nearbyPOIs = findNearbyPOIs(start, dest, pointsOfInterest, 5)
 
     const result = {
       start,
       dest,
       distanceNM: Math.round(distanceNM * 10) / 10,
+      cruisingSpeed,
       ...details,
+      noWakeZones: noWakeResult.affectedZones,
       nearbyPOIs,
     }
 

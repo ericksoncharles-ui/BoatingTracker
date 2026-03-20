@@ -344,6 +344,57 @@ body {
   background: linear-gradient(90deg, var(--gold), var(--warning));
 }
 
+/* ── No-Wake Zones ──────────────────────────────────── */
+
+.no-wake-info {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--navy-light);
+  border-radius: 10px;
+  border-left: 3px solid #ED8936;
+}
+
+.no-wake-info h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ED8936;
+  margin: 0 0 6px;
+}
+
+.no-wake-summary {
+  font-size: 0.82rem;
+  color: #CBD5E0;
+  margin-bottom: 8px;
+}
+
+.no-wake-list {
+  list-style: none;
+}
+
+.no-wake-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(45, 62, 94, 0.5);
+}
+
+.no-wake-list li:last-child {
+  border-bottom: none;
+}
+
+.no-wake-name {
+  color: #90A4C4;
+}
+
+.no-wake-delay {
+  color: #ED8936;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
 /* ── Fuel Warning ───────────────────────────────────── */
 
 .fuel-warning {

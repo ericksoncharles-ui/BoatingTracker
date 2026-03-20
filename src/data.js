@@ -121,3 +121,31 @@ export const pointsOfInterest = [
     description: 'Charming former whaling village with boutiques and fine dining.',
   },
 ]
+
+// No-wake zones near marinas and harbors on Long Island Sound.
+// Each zone has a center point and a radius (in NM) where speed is restricted,
+// plus the enforced speed limit in knots.
+export const noWakeZones = [
+  { id: 'nwz-norwalk', name: 'Norwalk Harbor', lat: 41.0965, lng: -73.4150, radiusNM: 0.3, speedLimit: 5, marinaId: 'norwalk' },
+  { id: 'nwz-bridgeport', name: 'Bridgeport Harbor', lat: 41.1735, lng: -73.1815, radiusNM: 0.4, speedLimit: 5, marinaId: 'bridgeport' },
+  { id: 'nwz-stamford', name: 'Stamford Harbor', lat: 41.0430, lng: -73.5435, radiusNM: 0.3, speedLimit: 5, marinaId: 'stamford' },
+  { id: 'nwz-greenwich', name: 'Greenwich Harbor', lat: 41.0210, lng: -73.6240, radiusNM: 0.25, speedLimit: 5, marinaId: 'greenwich' },
+  { id: 'nwz-milford', name: 'Milford Harbor', lat: 41.2070, lng: -73.0540, radiusNM: 0.3, speedLimit: 5, marinaId: 'milford' },
+  { id: 'nwz-new-haven', name: 'New Haven Harbor', lat: 41.2830, lng: -72.9080, radiusNM: 0.5, speedLimit: 5, marinaId: 'new-haven' },
+  { id: 'nwz-branford', name: 'Branford River', lat: 41.2630, lng: -72.8140, radiusNM: 0.2, speedLimit: 5, marinaId: 'branford' },
+  { id: 'nwz-essex', name: 'Connecticut River (Essex)', lat: 41.3510, lng: -72.3890, radiusNM: 0.5, speedLimit: 5, marinaId: 'essex' },
+  { id: 'nwz-mystic', name: 'Mystic River', lat: 41.3590, lng: -71.9660, radiusNM: 0.4, speedLimit: 5, marinaId: 'mystic' },
+  { id: 'nwz-stonington', name: 'Stonington Harbor', lat: 41.3310, lng: -71.9050, radiusNM: 0.2, speedLimit: 5, marinaId: 'stonington' },
+  { id: 'nwz-new-london', name: 'New London Harbor', lat: 41.3520, lng: -72.0890, radiusNM: 0.4, speedLimit: 5, marinaId: 'new-london' },
+  { id: 'nwz-port-jefferson', name: 'Port Jefferson Harbor', lat: 40.9465, lng: -73.0690, radiusNM: 0.35, speedLimit: 5, marinaId: 'port-jefferson' },
+  { id: 'nwz-oyster-bay', name: 'Oyster Bay', lat: 40.8730, lng: -73.5300, radiusNM: 0.3, speedLimit: 5, marinaId: 'oyster-bay-marina' },
+  { id: 'nwz-northport', name: 'Northport Harbor', lat: 40.9010, lng: -73.3430, radiusNM: 0.25, speedLimit: 5, marinaId: 'northport' },
+  { id: 'nwz-huntington', name: 'Huntington Harbor', lat: 40.8990, lng: -73.4200, radiusNM: 0.3, speedLimit: 5, marinaId: 'huntington' },
+  { id: 'nwz-cold-spring', name: 'Cold Spring Harbor', lat: 40.8710, lng: -73.4560, radiusNM: 0.25, speedLimit: 5, marinaId: 'cold-spring' },
+  { id: 'nwz-manhasset', name: 'Manhasset Bay', lat: 40.8310, lng: -73.7130, radiusNM: 0.3, speedLimit: 5, marinaId: 'manhasset' },
+  { id: 'nwz-mamaroneck', name: 'Mamaroneck Harbor', lat: 40.9420, lng: -73.7370, radiusNM: 0.25, speedLimit: 5, marinaId: 'mamaroneck' },
+  { id: 'nwz-city-island', name: 'City Island', lat: 40.8470, lng: -73.7870, radiusNM: 0.2, speedLimit: 5, marinaId: 'city-island' },
+  { id: 'nwz-greenport', name: 'Greenport Harbor', lat: 41.1030, lng: -72.3590, radiusNM: 0.2, speedLimit: 5, marinaId: 'greenport' },
+  { id: 'nwz-old-saybrook', name: 'Connecticut River Mouth', lat: 41.2700, lng: -72.3430, radiusNM: 0.5, speedLimit: 5, marinaId: 'old-saybrook' },
+  { id: 'nwz-thimble', name: 'Thimble Islands', lat: 41.2420, lng: -72.7740, radiusNM: 0.3, speedLimit: 5 },
+]
