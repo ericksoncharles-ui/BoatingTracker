@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { marinas, pointsOfInterest, noWakeZones } from '../data'
-import { calcDistanceNM, calcTripDetails, calcNoWakeDelay, findNearbyPOIs } from '../utils'
+import { calcDistanceNM, calcTripDetails, calcNoWakeDelay, buildRouteWaypoints, findNearbyPOIs } from '../utils'
 
 export function useTripCalculator() {
   const [startId, setStartId] = useState('')
@@ -32,6 +32,8 @@ export function useTripCalculator() {
       }
     }
 
+    const routeWaypoints = buildRouteWaypoints(start, dest, noWakeResult.affectedZones)
+
     const result = {
       start,
       dest,
@@ -40,6 +42,7 @@ export function useTripCalculator() {
       draft,
       ...details,
       noWakeZones: noWakeResult.affectedZones,
+      routeWaypoints,
       nearbyPOIs,
       draftWarnings,
     }

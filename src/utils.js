@@ -24,7 +24,7 @@ function distanceFromRoute(pointLat, pointLng, startLat, startLng, endLat, endLn
   const dy = endLat - startLat
   const lenSq = dx * dx + dy * dy
 
-  if (lenSq === 0) return calcDistanceNM(pointLat, pointLng, startLat, startLng)
+  if (lenSq === 0) return { distance: calcDistanceNM(pointLat, pointLng, startLat, startLng), t: 0 }
 
   let t = ((pointLng - startLng) * dx + (pointLat - startLat) * dy) / lenSq
   t = Math.max(0, Math.min(1, t))
@@ -32,7 +32,7 @@ function distanceFromRoute(pointLat, pointLng, startLat, startLng, endLat, endLn
   const closestLat = startLat + t * dy
   const closestLng = startLng + t * dx
 
-  return calcDistanceNM(pointLat, pointLng, closestLat, closestLng)
+  return { distance: calcDistanceNM(pointLat, pointLng, closestLat, closestLng), t }
 }
 
 /**
@@ -45,16 +45,16 @@ export function calcNoWakeDelay(start, dest, noWakeZones, cruisingSpeed) {
 
   for (const zone of noWakeZones) {
     // Check if zone is near the route
-    const distFromRoute = distanceFromRoute(
+    const { distance: dist, t } = distanceFromRoute(
       zone.lat, zone.lng,
       start.lat, start.lng,
       dest.lat, dest.lng
     )
 
     // Zone affects route if the route passes within its radius
-    if (distFromRoute <= zone.radiusNM) {
+    if (dist <= zone.radiusNM) {
       // Distance traveled through the zone (approximate as diameter or radius)
-      const distInZone = Math.min(zone.radiusNM * 2, zone.radiusNM + Math.max(0, zone.radiusNM - distFromRoute))
+      const distInZone = Math.min(zone.radiusNM * 2, zone.radiusNM + Math.max(0, zone.radiusNM - dist))
 
       // Time at cruising speed vs time at no-wake speed
       const timeAtCruise = distInZone / cruisingSpeed
@@ -65,6 +65,7 @@ export function calcNoWakeDelay(start, dest, noWakeZones, cruisingSpeed) {
         totalDelayHours += delay
         affectedZones.push({
           ...zone,
+          t,
           distInZone: Math.round(distInZone * 100) / 100,
           delayMinutes: Math.round(delay * 60 * 10) / 10,
         })
@@ -100,6 +101,18 @@ export function calcTripDetails(distanceNM, speedKnots, fuelBurnGPH, tankGallons
     needsFuelWarning: fuelPercentUsed > 70,
     noWakeDelayMinutes: Math.round(noWakeDelayHours * 60),
   }
+}
+
+/**
+ * Build an ordered list of route coordinates: start → no-wake zones (sorted along route) → destination.
+ */
+export function buildRouteWaypoints(start, dest, affectedZones) {
+  const sorted = [...affectedZones].sort((a, b) => a.t - b.t)
+  return [
+    [start.lat, start.lng],
+    ...sorted.map((z) => [z.lat, z.lng]),
+    [dest.lat, dest.lng],
+  ]
 }
 
 /**

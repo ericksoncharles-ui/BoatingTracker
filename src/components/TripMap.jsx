@@ -118,10 +118,7 @@ export default function TripMap({ marinas, tripResult, focusPOI }) {
               <Popup><strong>Destination:</strong> {tripResult.dest.name}</Popup>
             </Marker>
             <Polyline
-              positions={[
-                [tripResult.start.lat, tripResult.start.lng],
-                [tripResult.dest.lat, tripResult.dest.lng],
-              ]}
+              positions={tripResult.routeWaypoints}
               color="#1B2A4A"
               weight={3}
               dashArray="10 6"
