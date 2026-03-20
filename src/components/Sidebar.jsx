@@ -19,33 +19,25 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="header-icon">
-          {/* New England lighthouse */}
-          <svg viewBox="0 0 38 48" width="38" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Light rays */}
-            <line x1="19" y1="8" x2="19" y2="2" stroke="#ECC94B" strokeWidth="1.6" strokeLinecap="round"/>
-            <line x1="19" y1="8" x2="28" y2="4" stroke="#ECC94B" strokeWidth="1.6" strokeLinecap="round"/>
-            <line x1="19" y1="8" x2="10" y2="4" stroke="#ECC94B" strokeWidth="1.6" strokeLinecap="round"/>
-            <line x1="19" y1="8" x2="33" y2="9" stroke="#ECC94B" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/>
-            <line x1="19" y1="8" x2="5"  y2="9" stroke="#ECC94B" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/>
-            {/* Lantern cap */}
-            <path d="M14 8 L19 2 L24 8 Z" fill="#ECC94B" opacity="0.9"/>
-            {/* Lantern room */}
-            <rect x="13" y="8" width="12" height="7" rx="1" fill="#1B2A4A" stroke="#90A4C4" strokeWidth="1.4"/>
-            {/* Lantern window glow */}
-            <rect x="15.5" y="9.5" width="7" height="4" rx="0.5" fill="#ECC94B" opacity="0.5"/>
-            {/* Tower body — tapered */}
-            <path d="M13 15 L9 34 L29 34 L25 15 Z" fill="#243660" stroke="#90A4C4" strokeWidth="1.4" strokeLinejoin="round"/>
-            {/* Red/white stripe band */}
-            <path d="M10.5 23.5 L9.8 26.5 L28.2 26.5 L27.5 23.5 Z" fill="#C53030" opacity="0.85"/>
-            {/* Door arch */}
-            <path d="M16.5 34 L16.5 29.5 A2.5 2.5 0 0 1 21.5 29.5 L21.5 34" fill="#1B2A4A" stroke="#90A4C4" strokeWidth="1.2" strokeLinejoin="round"/>
-            {/* Base platform */}
-            <rect x="7" y="34" width="24" height="2.5" rx="0.5" fill="#2D3E5E" stroke="#90A4C4" strokeWidth="1.2"/>
-            {/* Rocky base */}
-            <path d="M4 38 Q8 35.5 12 37.5 Q15.5 39 19 37.5 Q22.5 36 26 37.5 Q30 39.5 34 38" stroke="#90A4C4" strokeWidth="1.3" strokeLinecap="round" fill="none"/>
-            {/* Waves */}
-            <path d="M1 43 Q5.5 40 10 43 Q14.5 46 19 43 Q23.5 40 28 43 Q31 44.5 37 43" stroke="#4A90C4" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.8"/>
-            <path d="M1 46.5 Q7 44.5 13 46.5 Q19 48.5 25 46.5 Q30 44.5 37 46.5" stroke="#4A90C4" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.45"/>
+          {/* Classic compass rose */}
+          <svg viewBox="0 0 44 44" width="42" height="42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Outer ring */}
+            <circle cx="22" cy="22" r="20" stroke="#90A4C4" strokeWidth="1.2" opacity="0.5"/>
+            <circle cx="22" cy="22" r="17" stroke="#90A4C4" strokeWidth="0.6" opacity="0.3"/>
+            {/* Cardinal points — N/S/E/W */}
+            <polygon points="22,2 25,18 22,16 19,18" fill="#C8D6E5" opacity="0.9"/>
+            <polygon points="22,42 25,26 22,28 19,26" fill="#90A4C4" opacity="0.5"/>
+            <polygon points="42,22 26,19 28,22 26,25" fill="#90A4C4" opacity="0.5"/>
+            <polygon points="2,22 18,19 16,22 18,25" fill="#90A4C4" opacity="0.5"/>
+            {/* Intercardinal points — NE/SE/SW/NW */}
+            <polygon points="35.7,8.3 27,18 26,17 27,16" fill="#90A4C4" opacity="0.35"/>
+            <polygon points="35.7,35.7 27,26 26,27 27,28" fill="#90A4C4" opacity="0.35"/>
+            <polygon points="8.3,35.7 17,26 18,27 17,28" fill="#90A4C4" opacity="0.35"/>
+            <polygon points="8.3,8.3 17,18 18,17 17,16" fill="#90A4C4" opacity="0.35"/>
+            {/* Center */}
+            <circle cx="22" cy="22" r="2.5" fill="#1B2A4A" stroke="#C8D6E5" strokeWidth="1"/>
+            {/* N label */}
+            <text x="22" y="10" textAnchor="middle" fill="#C8D6E5" fontSize="5" fontWeight="700" fontFamily="serif">N</text>
           </svg>
         </div>
         <div>
