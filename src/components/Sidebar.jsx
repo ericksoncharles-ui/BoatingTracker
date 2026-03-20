@@ -18,10 +18,33 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="header-icon">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 2v20M2 12h20" />
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          {/* New England lighthouse */}
+          <svg viewBox="0 0 38 48" width="38" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Light rays */}
+            <line x1="19" y1="8" x2="19" y2="2" stroke="#ECC94B" strokeWidth="1.6" strokeLinecap="round"/>
+            <line x1="19" y1="8" x2="28" y2="4" stroke="#ECC94B" strokeWidth="1.6" strokeLinecap="round"/>
+            <line x1="19" y1="8" x2="10" y2="4" stroke="#ECC94B" strokeWidth="1.6" strokeLinecap="round"/>
+            <line x1="19" y1="8" x2="33" y2="9" stroke="#ECC94B" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/>
+            <line x1="19" y1="8" x2="5"  y2="9" stroke="#ECC94B" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/>
+            {/* Lantern cap */}
+            <path d="M14 8 L19 2 L24 8 Z" fill="#ECC94B" opacity="0.9"/>
+            {/* Lantern room */}
+            <rect x="13" y="8" width="12" height="7" rx="1" fill="#1B2A4A" stroke="#90A4C4" strokeWidth="1.4"/>
+            {/* Lantern window glow */}
+            <rect x="15.5" y="9.5" width="7" height="4" rx="0.5" fill="#ECC94B" opacity="0.5"/>
+            {/* Tower body — tapered */}
+            <path d="M13 15 L9 34 L29 34 L25 15 Z" fill="#243660" stroke="#90A4C4" strokeWidth="1.4" strokeLinejoin="round"/>
+            {/* Red/white stripe band */}
+            <path d="M10.5 23.5 L9.8 26.5 L28.2 26.5 L27.5 23.5 Z" fill="#C53030" opacity="0.85"/>
+            {/* Door arch */}
+            <path d="M16.5 34 L16.5 29.5 A2.5 2.5 0 0 1 21.5 29.5 L21.5 34" fill="#1B2A4A" stroke="#90A4C4" strokeWidth="1.2" strokeLinejoin="round"/>
+            {/* Base platform */}
+            <rect x="7" y="34" width="24" height="2.5" rx="0.5" fill="#2D3E5E" stroke="#90A4C4" strokeWidth="1.2"/>
+            {/* Rocky base */}
+            <path d="M4 38 Q8 35.5 12 37.5 Q15.5 39 19 37.5 Q22.5 36 26 37.5 Q30 39.5 34 38" stroke="#90A4C4" strokeWidth="1.3" strokeLinecap="round" fill="none"/>
+            {/* Waves */}
+            <path d="M1 43 Q5.5 40 10 43 Q14.5 46 19 43 Q23.5 40 28 43 Q31 44.5 37 43" stroke="#4A90C4" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.8"/>
+            <path d="M1 46.5 Q7 44.5 13 46.5 Q19 48.5 25 46.5 Q30 44.5 37 46.5" stroke="#4A90C4" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.45"/>
           </svg>
         </div>
         <div>
