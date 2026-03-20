@@ -97,7 +97,7 @@ export default function TripMap({ marinas, tripResult, focusPOI }) {
             />
           </LayersControl.Overlay>
 
-          <LayersControl.Overlay name="OpenSeaMap (Buoys & Marks)">
+          <LayersControl.Overlay checked name="OpenSeaMap (Buoys & Marks)">
             <TileLayer
               url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
               opacity={0.8}
