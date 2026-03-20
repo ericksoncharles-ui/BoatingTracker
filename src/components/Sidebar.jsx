@@ -7,6 +7,7 @@ export default function Sidebar({
   tankSize, setTankSize,
   cruisingSpeed, setCruisingSpeed,
   fuelBurn, setFuelBurn,
+  draft, setDraft,
   tripResult,
   onCalculate,
   onReset,
@@ -112,6 +113,16 @@ export default function Sidebar({
               onChange={(e) => setFuelBurn(Number(e.target.value))}
             />
           </label>
+          <label>
+            Draft (ft)
+            <input
+              type="number"
+              value={draft}
+              min={0}
+              step={0.5}
+              onChange={(e) => setDraft(Number(e.target.value))}
+            />
+          </label>
         </div>
 
         <div className="button-row">
@@ -158,6 +169,20 @@ export default function Sidebar({
             <div className="fuel-warning">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               Fuel Stop Recommended — usage exceeds 70% of tank capacity ({tripResult.fuelPercentUsed}%)
+            </div>
+          )}
+
+          {tripResult.draftWarnings && tripResult.draftWarnings.length > 0 && (
+            <div className="draft-warning">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <strong>Draft Warning</strong> — Your {tripResult.draft} ft draft may exceed available depth:
+                <ul className="draft-warning-list">
+                  {tripResult.draftWarnings.map((w) => (
+                    <li key={w.marina}>{w.marina} — approach depth {w.depth} ft (MLW)</li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
 

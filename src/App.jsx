@@ -21,6 +21,8 @@ export default function App() {
         setCruisingSpeed={trip.setCruisingSpeed}
         fuelBurn={trip.fuelBurn}
         setFuelBurn={trip.setFuelBurn}
+        draft={trip.draft}
+        setDraft={trip.setDraft}
         tripResult={trip.tripResult}
         onCalculate={trip.calculateTrip}
         onReset={trip.resetTrip}

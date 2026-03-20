@@ -417,6 +417,32 @@ body {
   margin-top: 1px;
 }
 
+.draft-warning {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #C05621, #9C4221);
+  color: var(--white);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.draft-warning svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.draft-warning-list {
+  margin: 4px 0 0 0;
+  padding-left: 16px;
+  font-weight: 500;
+  list-style: disc;
+}
+
 .poi-list {
   list-style: none;
 }
