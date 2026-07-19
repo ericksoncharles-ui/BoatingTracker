@@ -729,6 +729,54 @@ body {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
+/* ── Route Editing ──────────────────────────────────── */
+
+.route-handle {
+  background: var(--white);
+  border: 3px solid #E53E3E;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+}
+
+.route-handle:active {
+  cursor: grabbing;
+}
+
+.route-handle-ghost {
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(229, 62, 62, 0.45);
+  cursor: copy;
+}
+
+.route-edit-hint {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: #5a6e8f;
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.shoal-avoided-info {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--navy-light);
+  border-radius: 8px;
+  border-left: 3px solid var(--green);
+  font-size: 0.8rem;
+  color: #CBD5E0;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.shoal-avoided-info svg {
+  flex-shrink: 0;
+  color: var(--green);
+  margin-top: 1px;
+}
+
 /* ── Live Location ──────────────────────────────────── */
 
 .locate-control {

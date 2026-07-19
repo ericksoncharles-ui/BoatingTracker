@@ -145,6 +145,26 @@ export const pointsOfInterest = [
   },
 ]
 
+// Known shoals, reefs, and rocks on Long Island Sound with charted minimum
+// depths (feet at MLW). The router detours around any area shallower than the
+// boat's draft plus a safety clearance. Radii approximate the hazard extent.
+export const shoalAreas = [
+  { id: 'sh-penfield', name: 'Penfield Reef', lat: 41.1170, lng: -73.2220, radiusNM: 0.8, minDepthFt: 1 },
+  { id: 'sh-stratford-shoal', name: 'Stratford Shoal (Middle Ground)', lat: 41.0590, lng: -73.1010, radiusNM: 0.9, minDepthFt: 5 },
+  { id: 'sh-cockenoe', name: 'Cockenoe Island Shoal', lat: 41.0880, lng: -73.3430, radiusNM: 0.7, minDepthFt: 2 },
+  { id: 'sh-greens-ledge', name: 'Greens Ledge', lat: 41.0418, lng: -73.4440, radiusNM: 0.4, minDepthFt: 3 },
+  { id: 'sh-the-cows', name: 'The Cows (off Shippan Point)', lat: 41.0060, lng: -73.5170, radiusNM: 0.4, minDepthFt: 2 },
+  { id: 'sh-execution', name: 'Execution Rocks', lat: 40.8790, lng: -73.7380, radiusNM: 0.35, minDepthFt: 1 },
+  { id: 'sh-stepping-stones', name: 'Stepping Stones', lat: 40.8490, lng: -73.7730, radiusNM: 0.3, minDepthFt: 2 },
+  { id: 'sh-eatons-shoal', name: 'Eatons Neck Shoal', lat: 40.9680, lng: -73.4000, radiusNM: 0.6, minDepthFt: 5 },
+  { id: 'sh-falkner', name: 'Falkner Island Shoals', lat: 41.2120, lng: -72.6530, radiusNM: 0.5, minDepthFt: 3 },
+  { id: 'sh-six-mile', name: 'Six Mile Reef', lat: 41.1630, lng: -72.4850, radiusNM: 0.7, minDepthFt: 6 },
+  { id: 'sh-long-sand-w', name: 'Long Sand Shoal (west)', lat: 41.2480, lng: -72.4450, radiusNM: 1.2, minDepthFt: 5 },
+  { id: 'sh-long-sand-e', name: 'Long Sand Shoal (east)', lat: 41.2500, lng: -72.3700, radiusNM: 1.2, minDepthFt: 5 },
+  { id: 'sh-bartlett', name: 'Bartlett Reef', lat: 41.2740, lng: -72.1350, radiusNM: 0.5, minDepthFt: 2 },
+  { id: 'sh-valiant', name: 'Valiant Rock (The Race)', lat: 41.2350, lng: -72.0530, radiusNM: 0.3, minDepthFt: 4 },
+]
+
 // No-wake zones near marinas and harbors on Long Island Sound.
 // Each zone has a center point and a radius (in NM) where speed is restricted,
 // plus the enforced speed limit in knots.

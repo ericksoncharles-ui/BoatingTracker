@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { marinas } from './data'
+import { marinas, shoalAreas } from './data'
 import { useTripCalculator } from './hooks/useTripCalculator'
 import Sidebar from './components/Sidebar'
 import TripMap from './components/TripMap'
@@ -48,13 +48,13 @@ export default function App() {
             onReset={trip.resetTrip}
             onFocusPOI={setFocusPOI}
           />
-          <TripMap marinas={marinas} tripResult={trip.tripResult} focusPOI={focusPOI} />
+          <TripMap marinas={marinas} tripResult={trip.tripResult} focusPOI={focusPOI} shoalAreas={shoalAreas} routeEditors={trip.routeEditors} />
         </div>
       )}
 
       {activeTab === 'chart' && (
         <div className="chart-layout">
-          <TripMap marinas={marinas} tripResult={trip.tripResult} focusPOI={focusPOI} fullscreen />
+          <TripMap marinas={marinas} tripResult={trip.tripResult} focusPOI={focusPOI} fullscreen shoalAreas={shoalAreas} routeEditors={trip.routeEditors} />
           {trip.tripResult && (
             <div className="chart-overlay">
               <div className="chart-overlay-stats">

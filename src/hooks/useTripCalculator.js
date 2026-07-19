@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react'
-import { marinas, pointsOfInterest, noWakeZones, navigationSpine } from '../data'
-import { calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, buildRouteWaypoints, findNearbyPOIs } from '../utils'
+import { marinas, pointsOfInterest, noWakeZones, navigationSpine, shoalAreas } from '../data'
+import {
+  calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, buildRouteWaypoints,
+  findNearbyPOIs, applyShoalAvoidance, findShoalCrossings,
+} from '../utils'
 
 export function useTripCalculator() {
   const [startId, setStartId] = useState('stamford')
@@ -16,11 +19,13 @@ export function useTripCalculator() {
     const dest = marinas.find((m) => m.id === destId)
     if (!start || !dest || start.id === dest.id) return null
 
-    const routeWaypoints = buildRouteWaypoints(start, dest, navigationSpine)
+    const baseWaypoints = buildRouteWaypoints(start, dest, navigationSpine)
+    const { waypoints: routeWaypoints, avoided } = applyShoalAvoidance(baseWaypoints, shoalAreas, draft)
     const distanceNM = calcRouteDistanceNM(routeWaypoints)
     const noWakeResult = calcNoWakeDelay(routeWaypoints, noWakeZones, cruisingSpeed)
     const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize, noWakeResult.totalDelayHours)
     const nearbyPOIs = findNearbyPOIs(start, dest, pointsOfInterest, 5)
+    const shoalWarnings = findShoalCrossings(routeWaypoints, shoalAreas, draft)
 
     // Check draft clearance at start and destination
     const draftWarnings = []
@@ -44,11 +49,37 @@ export function useTripCalculator() {
       routeWaypoints,
       nearbyPOIs,
       draftWarnings,
+      shoalsAvoided: avoided,
+      shoalWarnings,
+      edited: false,
     }
 
     setTripResult(result)
     return result
   }, [startId, destId, tankSize, cruisingSpeed, fuelBurn, draft])
+
+  // Apply a transform to the current waypoints, then recompute all
+  // route-derived stats (distance, time, fuel, no-wake, shallow warnings)
+  const recalcFromEdit = useCallback((transform) => {
+    setTripResult((prev) => {
+      if (!prev) return prev
+      const routeWaypoints = transform(prev.routeWaypoints)
+      if (routeWaypoints === prev.routeWaypoints) return prev
+      const distanceNM = calcRouteDistanceNM(routeWaypoints)
+      const noWakeResult = calcNoWakeDelay(routeWaypoints, noWakeZones, cruisingSpeed)
+      const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize, noWakeResult.totalDelayHours)
+      const shoalWarnings = findShoalCrossings(routeWaypoints, shoalAreas, draft)
+      return {
+        ...prev,
+        routeWaypoints,
+        distanceNM: Math.round(distanceNM * 10) / 10,
+        ...details,
+        noWakeZones: noWakeResult.affectedZones,
+        shoalWarnings,
+        edited: true,
+      }
+    })
+  }, [cruisingSpeed, fuelBurn, tankSize, draft])
 
   const resetTrip = useCallback(() => {
     setTripResult(null)
@@ -64,5 +95,25 @@ export function useTripCalculator() {
     tripResult,
     calculateTrip,
     resetTrip,
+    routeEditors: {
+      move: (index, lat, lng) =>
+        recalcFromEdit((wps) =>
+          index > 0 && index < wps.length - 1
+            ? wps.map((p, i) => (i === index ? [lat, lng] : p))
+            : wps
+        ),
+      insert: (afterIndex, lat, lng) =>
+        recalcFromEdit((wps) => {
+          const next = wps.slice()
+          next.splice(afterIndex + 1, 0, [lat, lng])
+          return next
+        }),
+      remove: (index) =>
+        recalcFromEdit((wps) =>
+          index > 0 && index < wps.length - 1 && wps.length > 3
+            ? wps.filter((_, i) => i !== index)
+            : wps
+        ),
+    },
   }
 }
