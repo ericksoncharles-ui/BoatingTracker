@@ -136,20 +136,27 @@ export function buildRouteWaypoints(start, dest, spine) {
   const spineDist = (i, j) => Math.abs(cum[j] - cum[i])
 
   // A straight segment is considered safe open water when every point along it
-  // stays within this distance of the spine (the Sound's mid-water corridor).
-  // Headlands like Eatons Neck lie farther from the spine than this.
-  const CORRIDOR_NM = 5
+  // stays within CORRIDOR_NM of the spine (the Sound's deep mid-water channel).
+  // Headlands like Eatons Neck lie farther from the spine than this. Points
+  // within APPROACH_NM of either segment endpoint are exempt — endpoints are
+  // curated approach waypoints, so the water immediately around them is known
+  // navigable.
+  const CORRIDOR_NM = 6
+  const APPROACH_NM = 2
   const inCorridor = (a, b) => {
     const legNM = dist(a, b)
     const samples = Math.max(2, Math.ceil(legNM))
     for (let s = 0; s <= samples; s++) {
       const t = s / samples
-      const lat = a.lat + (b.lat - a.lat) * t
-      const lng = a.lng + (b.lng - a.lng) * t
+      const p = {
+        lat: a.lat + (b.lat - a.lat) * t,
+        lng: a.lng + (b.lng - a.lng) * t,
+      }
+      if (dist(p, a) <= APPROACH_NM || dist(p, b) <= APPROACH_NM) continue
       let minDist = Infinity
       for (let i = 0; i < spine.length - 1; i++) {
         const { distance } = distanceFromRoute(
-          lat, lng,
+          p.lat, p.lng,
           spine[i].lat, spine[i].lng,
           spine[i + 1].lat, spine[i + 1].lng
         )
