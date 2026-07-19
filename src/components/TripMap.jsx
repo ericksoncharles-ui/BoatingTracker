@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, WMSTileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -83,20 +83,9 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
           </LayersControl.BaseLayer>
 
           <LayersControl.BaseLayer checked name="NOAA Nautical Chart">
-            <WMSTileLayer
-              attribution='NOAA Office of Coast Survey'
-              url="https://gis.charttools.noaa.gov/arcgis/services/MCS/NOAAChartDisplay/MapServer/WMSServer"
-              layers="0,1,2,3,4,5,6,7"
-              format="image/png"
-              transparent={false}
-              maxZoom={18}
-            />
-          </LayersControl.BaseLayer>
-
-          <LayersControl.BaseLayer name="NOAA Raster Chart">
             <TileLayer
-              attribution='NOAA Seamless RNC'
-              url="https://seamlessrnc.nauticalcharts.noaa.gov/arcgis/rest/services/RNC/NOAA_RNC/MapServer/tile/{z}/{y}/{x}"
+              attribution='NOAA Office of Coast Survey'
+              url="https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/WMTS/tile/1.0.0/MarineChart_Services_NOAACharts/default/GoogleMapsCompatible/{z}/{y}/{x}.png"
               maxZoom={18}
             />
           </LayersControl.BaseLayer>
@@ -113,15 +102,6 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
               url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
               opacity={0.9}
               attribution='&copy; <a href="https://www.openseamap.org">OpenSeaMap</a>'
-            />
-          </LayersControl.Overlay>
-
-          <LayersControl.Overlay checked name="NOAA ENCs (Depths & Channels)">
-            <TileLayer
-              url="https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/tile/{z}/{y}/{x}"
-              opacity={0.7}
-              attribution='NOAA ENC'
-              maxZoom={18}
             />
           </LayersControl.Overlay>
         </LayersControl>
