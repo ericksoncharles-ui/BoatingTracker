@@ -178,6 +178,32 @@ export default function Sidebar({
             </div>
           )}
 
+          {tripResult.shoalWarnings && tripResult.shoalWarnings.length > 0 && (
+            <div className="draft-warning">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <strong>Shallow Water</strong> — Your edited route crosses water too shallow for a {tripResult.draft} ft draft:
+                <ul className="draft-warning-list">
+                  {tripResult.shoalWarnings.map((s) => (
+                    <li key={s.id}>{s.name} — min depth {s.minDepthFt} ft (MLW)</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {tripResult.shoalsAvoided && tripResult.shoalsAvoided.length > 0 && (
+            <div className="shoal-avoided-info">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Route adjusted for your {tripResult.draft} ft draft to stay clear of:{' '}
+              {tripResult.shoalsAvoided.map((s) => s.name).join(', ')}
+            </div>
+          )}
+
+          <p className="route-edit-hint">
+            Drag the white route points to adjust your course. Click a faint midpoint to add one; double-click a point to remove it.
+          </p>
+
           {tripResult.noWakeZones && tripResult.noWakeZones.length > 0 && (
             <div className="no-wake-info">
               <h3>

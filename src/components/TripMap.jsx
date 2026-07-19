@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, CircleMarker, LayersControl, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, CircleMarker, LayersControl, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -183,7 +183,64 @@ const destIcon = new L.Icon({
   className: 'marker-dest',
 })
 
-export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
+const waypointHandleIcon = L.divIcon({
+  className: 'route-handle',
+  iconSize: [14, 14],
+})
+
+const midpointHandleIcon = L.divIcon({
+  className: 'route-handle route-handle-ghost',
+  iconSize: [10, 10],
+})
+
+function RouteEditor({ waypoints, editors }) {
+  const midpoints = []
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    midpoints.push({
+      afterIndex: i,
+      lat: (waypoints[i][0] + waypoints[i + 1][0]) / 2,
+      lng: (waypoints[i][1] + waypoints[i + 1][1]) / 2,
+    })
+  }
+
+  return (
+    <>
+      {/* Draggable handles on interior waypoints; double-click removes */}
+      {waypoints.map((wp, i) => {
+        if (i === 0 || i === waypoints.length - 1) return null
+        return (
+          <Marker
+            key={`wp-${i}-${wp[0]}-${wp[1]}`}
+            position={wp}
+            icon={waypointHandleIcon}
+            draggable
+            eventHandlers={{
+              dragend: (e) => {
+                const { lat, lng } = e.target.getLatLng()
+                editors.move(i, lat, lng)
+              },
+              dblclick: () => editors.remove(i),
+            }}
+          />
+        )
+      })}
+
+      {/* Ghost midpoint handles — click to add a waypoint on that leg */}
+      {midpoints.map((mp) => (
+        <Marker
+          key={`mid-${mp.afterIndex}-${mp.lat}-${mp.lng}`}
+          position={[mp.lat, mp.lng]}
+          icon={midpointHandleIcon}
+          eventHandlers={{
+            click: () => editors.insert(mp.afterIndex, mp.lat, mp.lng),
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
+export default function TripMap({ marinas, tripResult, focusPOI, fullscreen, shoalAreas, routeEditors }) {
   return (
     <div className={`map-container ${fullscreen ? 'map-fullscreen' : ''}`}>
       <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map" key={fullscreen ? 'chart' : 'planner'}>
@@ -227,6 +284,34 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
               attribution='&copy; <a href="https://www.openseamap.org">OpenSeaMap</a>'
             />
           </LayersControl.Overlay>
+
+          {shoalAreas && (
+            <LayersControl.Overlay checked name="Shoals & Hazards">
+              <LayerGroup>
+                {shoalAreas.map((s) => {
+                  const color = s.minDepthFt <= 3 ? '#C53030' : s.minDepthFt <= 6 ? '#DD6B20' : '#D69E2E'
+                  return (
+                    <Circle
+                      key={s.id}
+                      center={[s.lat, s.lng]}
+                      radius={s.radiusNM * 1852}
+                      color={color}
+                      weight={1.5}
+                      dashArray="4 4"
+                      fillColor={color}
+                      fillOpacity={0.08}
+                    >
+                      <Popup>
+                        <strong>{s.name}</strong>
+                        <br />
+                        Min depth: {s.minDepthFt} ft (MLW)
+                      </Popup>
+                    </Circle>
+                  )
+                })}
+              </LayerGroup>
+            </LayersControl.Overlay>
+          )}
         </LayersControl>
 
         <FitBounds tripResult={tripResult} />
@@ -261,6 +346,9 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
               weight={6}
               opacity={0.4}
             />
+            {routeEditors && (
+              <RouteEditor waypoints={tripResult.routeWaypoints} editors={routeEditors} />
+            )}
             {tripResult.nearbyPOIs.map((poi) => (
               <CircleMarker
                 key={poi.id}

@@ -231,6 +231,83 @@ export function buildRouteWaypoints(start, dest, spine) {
 }
 
 /**
+ * Detour a route around shoal areas that are too shallow for the boat.
+ * Any hazard with charted depth < draft + clearance gets a bypass waypoint
+ * pushed just outside its radius, on the side the route already favors.
+ * The first and last legs (marina to approach waypoint) are left alone —
+ * those are curated harbor approaches.
+ */
+export function applyShoalAvoidance(waypoints, shoals, draftFt, clearanceFt = 2) {
+  const active = shoals.filter((s) => s.minDepthFt < draftFt + clearanceFt)
+  const buffer = 0.25
+  const pts = waypoints.map(([lat, lng]) => ({ lat, lng }))
+  const avoided = []
+
+  let changed = true
+  let iter = 0
+  while (changed && iter++ < 6) {
+    changed = false
+    for (let i = 1; i < pts.length - 2 && !changed; i++) {
+      for (const s of active) {
+        const { distance, t } = distanceFromRoute(
+          s.lat, s.lng,
+          pts[i].lat, pts[i].lng,
+          pts[i + 1].lat, pts[i + 1].lng
+        )
+        if (t > 0.02 && t < 0.98 && distance < s.radiusNM + buffer) {
+          const cLat = pts[i].lat + t * (pts[i + 1].lat - pts[i].lat)
+          const cLng = pts[i].lng + t * (pts[i + 1].lng - pts[i].lng)
+          const cosLat = Math.cos((s.lat * Math.PI) / 180)
+          // Direction from shoal center toward the route, in NM space
+          let vLat = (cLat - s.lat) * 60
+          let vLng = (cLng - s.lng) * 60 * cosLat
+          let len = Math.hypot(vLat, vLng)
+          if (len < 1e-6) {
+            // Leg passes through the center — deflect perpendicular to it
+            vLat = -(pts[i + 1].lng - pts[i].lng)
+            vLng = pts[i + 1].lat - pts[i].lat
+            len = Math.hypot(vLat, vLng) || 1
+          }
+          const targetNM = s.radiusNM + buffer + 0.05
+          pts.splice(i + 1, 0, {
+            lat: s.lat + ((vLat / len) * targetNM) / 60,
+            lng: s.lng + ((vLng / len) * targetNM) / (60 * cosLat),
+          })
+          if (!avoided.some((x) => x.id === s.id)) avoided.push(s)
+          changed = true
+          break
+        }
+      }
+    }
+  }
+
+  return { waypoints: pts.map((p) => [p.lat, p.lng]), avoided }
+}
+
+/**
+ * Find shoals a route actually crosses given the boat's draft — used to warn
+ * on hand-edited routes. Marina/approach legs at the ends are exempt.
+ */
+export function findShoalCrossings(waypoints, shoals, draftFt, clearanceFt = 2) {
+  const active = shoals.filter((s) => s.minDepthFt < draftFt + clearanceFt)
+  const crossings = []
+  for (const s of active) {
+    for (let i = 1; i < waypoints.length - 2; i++) {
+      const { distance, t } = distanceFromRoute(
+        s.lat, s.lng,
+        waypoints[i][0], waypoints[i][1],
+        waypoints[i + 1][0], waypoints[i + 1][1]
+      )
+      if (t > 0.02 && t < 0.98 && distance < s.radiusNM) {
+        crossings.push(s)
+        break
+      }
+    }
+  }
+  return crossings
+}
+
+/**
  * Find POIs near the route, sorted by distance to the route midpoint.
  */
 export function findNearbyPOIs(start, end, allPOIs, maxCount = 5) {
