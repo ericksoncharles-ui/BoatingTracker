@@ -113,57 +113,114 @@ export function calcTripDetails(distanceNM, speedKnots, fuelBurnGPH, tankGallons
 }
 
 /**
- * Find the index of the nearest spine waypoint to a given point.
- */
-function nearestSpineIndex(lat, lng, spine) {
-  let bestIdx = 0
-  let bestDist = Infinity
-  for (let i = 0; i < spine.length; i++) {
-    const d = calcDistanceNM(lat, lng, spine[i].lat, spine[i].lng)
-    if (d < bestDist) {
-      bestDist = d
-      bestIdx = i
-    }
-  }
-  return bestIdx
-}
-
-/**
- * Build a realistic route through the navigation spine.
- * Path: marina → approach waypoint → spine segment → approach waypoint → marina
+ * Build the most direct practical route between two marinas.
+ *
+ * The navigation spine marks safe open water down the middle of the Sound.
+ * Rather than always riding the spine between the nearest snap points (which
+ * produces dog-legs and overshoot), evaluate every spine entry/exit pair plus
+ * the direct approach-to-approach line, and take whichever is shortest.
+ * Cross-Sound hops are open water, so the direct line is valid whenever it
+ * beats the spine path.
  */
 export function buildRouteWaypoints(start, dest, spine) {
   const startApproach = start.approach || { lat: start.lat, lng: start.lng }
   const destApproach = dest.approach || { lat: dest.lat, lng: dest.lng }
 
-  const startSpineIdx = nearestSpineIndex(startApproach.lat, startApproach.lng, spine)
-  const destSpineIdx = nearestSpineIndex(destApproach.lat, destApproach.lng, spine)
+  const dist = (a, b) => calcDistanceNM(a.lat, a.lng, b.lat, b.lng)
 
-  // Build spine segment between the two indices
-  const spinePoints = []
-  if (startSpineIdx <= destSpineIdx) {
-    for (let i = startSpineIdx; i <= destSpineIdx; i++) {
-      spinePoints.push([spine[i].lat, spine[i].lng])
+  // Cumulative along-spine distances for fast segment sums
+  const cum = [0]
+  for (let i = 1; i < spine.length; i++) {
+    cum[i] = cum[i - 1] + dist(spine[i - 1], spine[i])
+  }
+  const spineDist = (i, j) => Math.abs(cum[j] - cum[i])
+
+  // A straight segment is considered safe open water when every point along it
+  // stays within this distance of the spine (the Sound's mid-water corridor).
+  // Headlands like Eatons Neck lie farther from the spine than this.
+  const CORRIDOR_NM = 5
+  const inCorridor = (a, b) => {
+    const legNM = dist(a, b)
+    const samples = Math.max(2, Math.ceil(legNM))
+    for (let s = 0; s <= samples; s++) {
+      const t = s / samples
+      const lat = a.lat + (b.lat - a.lat) * t
+      const lng = a.lng + (b.lng - a.lng) * t
+      let minDist = Infinity
+      for (let i = 0; i < spine.length - 1; i++) {
+        const { distance } = distanceFromRoute(
+          lat, lng,
+          spine[i].lat, spine[i].lng,
+          spine[i + 1].lat, spine[i + 1].lng
+        )
+        if (distance < minDist) minDist = distance
+      }
+      if (minDist > CORRIDOR_NM) return false
     }
-  } else {
-    for (let i = startSpineIdx; i >= destSpineIdx; i--) {
-      spinePoints.push([spine[i].lat, spine[i].lng])
+    return true
+  }
+
+  // Entry/exit is limited to the nearest couple of spine points — long diagonal
+  // entry legs can cut across headlands (e.g. Eatons Neck), while the short
+  // hop out to the nearest channel points is a safe approach corridor.
+  const nearestIndices = (pt, count) =>
+    spine
+      .map((s, idx) => ({ idx, d: dist(pt, s) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, count)
+      .map((e) => e.idx)
+
+  const entryCandidates = nearestIndices(startApproach, 2)
+  const exitCandidates = nearestIndices(destApproach, 2)
+
+  // Best route via the spine: enter at i, ride to j, exit
+  let best = { length: Infinity, points: [] }
+  for (const i of entryCandidates) {
+    const entry = dist(startApproach, spine[i])
+    for (const j of exitCandidates) {
+      const length = entry + spineDist(i, j) + dist(spine[j], destApproach)
+      if (length < best.length) {
+        const points = []
+        const step = i <= j ? 1 : -1
+        for (let k = i; k !== j + step; k += step) {
+          points.push([spine[k].lat, spine[k].lng])
+        }
+        best = { length, points }
+      }
     }
   }
 
-  // Skip spine if both marinas share the same nearest spine point
-  // (they're close together, just route approach-to-approach)
-  const route = [[start.lat, start.lng]]
-  route.push([startApproach.lat, startApproach.lng])
-
-  if (startSpineIdx !== destSpineIdx) {
-    route.push(...spinePoints)
+  // Direct open-water crossing beats the spine when it stays in the corridor
+  if (dist(startApproach, destApproach) < best.length && inCorridor(startApproach, destApproach)) {
+    best = { length: dist(startApproach, destApproach), points: [] }
   }
 
-  route.push([destApproach.lat, destApproach.lng])
-  route.push([dest.lat, dest.lng])
+  // Greedy shortcut pass: skip ahead past intermediate points whenever the
+  // straight chord stays inside the open-water corridor
+  const path = [
+    startApproach,
+    ...best.points.map(([lat, lng]) => ({ lat, lng })),
+    destApproach,
+  ]
+  const smoothed = [path[0]]
+  let i = 0
+  while (i < path.length - 1) {
+    let next = i + 1
+    for (let j = path.length - 1; j > i + 1; j--) {
+      if (inCorridor(path[i], path[j])) {
+        next = j
+        break
+      }
+    }
+    smoothed.push(path[next])
+    i = next
+  }
 
-  return route
+  return [
+    [start.lat, start.lng],
+    ...smoothed.map((p) => [p.lat, p.lng]),
+    [dest.lat, dest.lng],
+  ]
 }
 
 /**

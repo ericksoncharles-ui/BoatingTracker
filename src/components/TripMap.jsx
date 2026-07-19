@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, WMSTileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -82,30 +82,21 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
             />
           </LayersControl.BaseLayer>
 
-          <LayersControl.BaseLayer checked name="NOAA Chart (Tiles)">
-            <TileLayer
-              attribution='NOAA Office of Coast Survey'
-              url="https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/tile/{z}/{y}/{x}"
-              maxZoom={18}
-            />
-          </LayersControl.BaseLayer>
-
-          <LayersControl.BaseLayer name="NOAA Chart (WMS)">
-            <WMSTileLayer
-              attribution='NOAA Office of Coast Survey'
-              url="https://gis.charttools.noaa.gov/arcgis/services/MarineChart_Services/NOAACharts/MapServer/WMSServer"
-              layers="0"
-              format="image/png"
-              transparent={false}
-              maxZoom={18}
-            />
-          </LayersControl.BaseLayer>
-
-          <LayersControl.BaseLayer name="Ocean Basemap (Esri)">
+          <LayersControl.BaseLayer checked name="Ocean Chart (Bathymetry)">
             <TileLayer
               attribution='&copy; Esri &mdash; Sources: GEBCO, NOAA, National Geographic, Garmin'
               url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-              maxZoom={13}
+              maxNativeZoom={13}
+              maxZoom={18}
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer name="NOAA Chart (experimental)">
+            <TileLayer
+              attribution='NOAA Office of Coast Survey'
+              url="https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/tile/{z}/{y}/{x}"
+              zoomOffset={-2}
+              maxZoom={18}
             />
           </LayersControl.BaseLayer>
 
@@ -116,7 +107,7 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
             />
           </LayersControl.BaseLayer>
 
-          <LayersControl.Overlay name="OpenSeaMap (Buoys & Marks)">
+          <LayersControl.Overlay checked name="OpenSeaMap (Buoys & Marks)">
             <TileLayer
               url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
               opacity={0.9}
