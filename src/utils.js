@@ -288,29 +288,6 @@ export function applyShoalAvoidance(waypoints, shoals, draftFt, clearanceFt = 2)
 }
 
 /**
- * Find shoals a route actually crosses given the boat's draft — used to warn
- * on hand-edited routes. Marina/approach legs at the ends are exempt.
- */
-export function findShoalCrossings(waypoints, shoals, draftFt, clearanceFt = 2) {
-  const active = shoals.filter((s) => s.minDepthFt < draftFt + clearanceFt)
-  const crossings = []
-  for (const s of active) {
-    for (let i = 1; i < waypoints.length - 2; i++) {
-      const { distance, t } = distanceFromRoute(
-        s.lat, s.lng,
-        waypoints[i][0], waypoints[i][1],
-        waypoints[i + 1][0], waypoints[i + 1][1]
-      )
-      if (t > 0.02 && t < 0.98 && distance < s.radiusNM) {
-        crossings.push(s)
-        break
-      }
-    }
-  }
-  return crossings
-}
-
-/**
  * Find POIs near the route, sorted by distance to the route midpoint.
  */
 export function findNearbyPOIs(start, end, allPOIs, maxCount = 5) {

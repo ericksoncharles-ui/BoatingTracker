@@ -6,7 +6,6 @@ import TripMap from './components/TripMap'
 
 export default function App() {
   const trip = useTripCalculator()
-  const [focusPOI, setFocusPOI] = useState(null)
   const [activeTab, setActiveTab] = useState('planner')
 
   return (
@@ -46,32 +45,14 @@ export default function App() {
             tripResult={trip.tripResult}
             onCalculate={trip.calculateTrip}
             onReset={trip.resetTrip}
-            onFocusPOI={setFocusPOI}
           />
-          <TripMap marinas={marinas} tripResult={trip.tripResult} focusPOI={focusPOI} shoalAreas={shoalAreas} routeEditors={trip.routeEditors} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} />
         </div>
       )}
 
       {activeTab === 'chart' && (
         <div className="chart-layout">
-          <TripMap marinas={marinas} tripResult={trip.tripResult} focusPOI={focusPOI} fullscreen shoalAreas={shoalAreas} routeEditors={trip.routeEditors} />
-          {trip.tripResult && (
-            <div className="chart-overlay">
-              <div className="chart-overlay-stats">
-                <span><strong>{trip.tripResult.start.name}</strong> → <strong>{trip.tripResult.dest.name}</strong></span>
-                <span className="chart-stat">{trip.tripResult.distanceNM} NM</span>
-                <span className="chart-stat">{trip.tripResult.travelTimeFormatted}</span>
-                <span className="chart-stat">{trip.tripResult.fuelUsed} gal fuel</span>
-              </div>
-            </div>
-          )}
-          {!trip.tripResult && (
-            <div className="chart-overlay">
-              <div className="chart-overlay-stats">
-                <span>Plan a trip in the Trip Planner tab to see your route charted here</span>
-              </div>
-            </div>
-          )}
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} />
         </div>
       )}
     </div>

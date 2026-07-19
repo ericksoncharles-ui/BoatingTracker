@@ -11,7 +11,6 @@ export default function Sidebar({
   tripResult,
   onCalculate,
   onReset,
-  onFocusPOI,
 }) {
   const canCalculate = startId && destId && startId !== destId
 
@@ -19,24 +18,18 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="header-icon">
-          {/* Classic compass rose */}
           <svg viewBox="0 0 44 44" width="42" height="42" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Outer ring */}
             <circle cx="22" cy="22" r="20" stroke="#90A4C4" strokeWidth="1.2" opacity="0.5"/>
             <circle cx="22" cy="22" r="17" stroke="#90A4C4" strokeWidth="0.6" opacity="0.3"/>
-            {/* Cardinal points — N/S/E/W */}
             <polygon points="22,2 25,18 22,16 19,18" fill="#C8D6E5" opacity="0.9"/>
             <polygon points="22,42 25,26 22,28 19,26" fill="#90A4C4" opacity="0.5"/>
             <polygon points="42,22 26,19 28,22 26,25" fill="#90A4C4" opacity="0.5"/>
             <polygon points="2,22 18,19 16,22 18,25" fill="#90A4C4" opacity="0.5"/>
-            {/* Intercardinal points — NE/SE/SW/NW */}
             <polygon points="35.7,8.3 27,18 26,17 27,16" fill="#90A4C4" opacity="0.35"/>
             <polygon points="35.7,35.7 27,26 26,27 27,28" fill="#90A4C4" opacity="0.35"/>
             <polygon points="8.3,35.7 17,26 18,27 17,28" fill="#90A4C4" opacity="0.35"/>
             <polygon points="8.3,8.3 17,18 18,17 17,16" fill="#90A4C4" opacity="0.35"/>
-            {/* Center */}
             <circle cx="22" cy="22" r="2.5" fill="#1B2A4A" stroke="#C8D6E5" strokeWidth="1"/>
-            {/* N label */}
             <text x="22" y="10" textAnchor="middle" fill="#C8D6E5" fontSize="5" fontWeight="700" fontFamily="serif">N</text>
           </svg>
         </div>
@@ -178,20 +171,6 @@ export default function Sidebar({
             </div>
           )}
 
-          {tripResult.shoalWarnings && tripResult.shoalWarnings.length > 0 && (
-            <div className="draft-warning">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <div>
-                <strong>Shallow Water</strong> — Your edited route crosses water too shallow for a {tripResult.draft} ft draft:
-                <ul className="draft-warning-list">
-                  {tripResult.shoalWarnings.map((s) => (
-                    <li key={s.id}>{s.name} — min depth {s.minDepthFt} ft (MLW)</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-
           {tripResult.shoalsAvoided && tripResult.shoalsAvoided.length > 0 && (
             <div className="shoal-avoided-info">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -199,10 +178,6 @@ export default function Sidebar({
               {tripResult.shoalsAvoided.map((s) => s.name).join(', ')}
             </div>
           )}
-
-          <p className="route-edit-hint">
-            Drag the white route points to adjust your course. Click a faint midpoint to add one; double-click a point to remove it.
-          </p>
 
           {tripResult.noWakeZones && tripResult.noWakeZones.length > 0 && (
             <div className="no-wake-info">
@@ -244,14 +219,6 @@ export default function Sidebar({
                 <div className="poi-header">
                   <strong>{poi.name}</strong>
                   <div className="poi-actions">
-                    <button
-                      className="poi-btn"
-                      title="View on map"
-                      onClick={() => onFocusPOI(poi)}
-                    >
-                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                      Map
-                    </button>
                     <a
                       className="poi-btn"
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poi.name + ' ' + poi.description.split('—')[0].trim())}&center=${poi.lat},${poi.lng}`}
@@ -260,7 +227,7 @@ export default function Sidebar({
                       title="Open in Google Maps"
                     >
                       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                      Google
+                      Google Maps
                     </a>
                   </div>
                 </div>
