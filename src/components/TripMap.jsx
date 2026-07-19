@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, LayersControl, LayerGroup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, LayersControl, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -16,13 +16,40 @@ L.Icon.Default.mergeOptions({
 const LI_SOUND_CENTER = [41.05, -73.2]
 const LI_SOUND_ZOOM = 10
 
-function LiveLocation() {
+function vesselArrowIcon(heading) {
+  return L.divIcon({
+    className: 'vessel-arrow-icon',
+    iconSize: [56, 56],
+    iconAnchor: [28, 28],
+    html: `
+      <div class="vessel-arrow" style="transform: rotate(${heading}deg)">
+        <svg viewBox="0 0 48 48" width="56" height="56">
+          <polygon points="24,4 38,40 24,32 10,40"
+            fill="#2B6CB0" stroke="#FFFFFF" stroke-width="2.5"
+            stroke-linejoin="round" />
+        </svg>
+      </div>`,
+  })
+}
+
+const vesselDotIcon = L.divIcon({
+  className: 'vessel-arrow-icon',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+  html: '<div class="vessel-dot"></div>',
+})
+
+function LiveLocation({ navMode }) {
   const map = useMap()
   const [tracking, setTracking] = useState(false)
   const [position, setPosition] = useState(null)
   const [error, setError] = useState(null)
   const watchIdRef = useRef(null)
   const hasCenteredRef = useRef(false)
+  const prevFixRef = useRef(null)
+  const lastHeadingRef = useRef(null)
+  const navModeRef = useRef(navMode)
+  navModeRef.current = navMode
 
   const updatePosition = (pos) => {
     const next = {
@@ -31,18 +58,47 @@ function LiveLocation() {
       accuracy: pos.coords.accuracy,
       heading: pos.coords.heading,
       speedKts: pos.coords.speed != null ? pos.coords.speed * 1.94384 : null,
+      time: Date.now(),
     }
+
+    // Fall back to course-over-ground computed from movement when the
+    // device doesn't report heading (common on desktops and some phones).
+    if (next.heading == null && prevFixRef.current) {
+      const prev = prevFixRef.current
+      const elapsed = (next.time - prev.time) / 1000
+      const dLat = next.lat - prev.lat
+      const dLng = (next.lng - prev.lng) * Math.cos((next.lat * Math.PI) / 180)
+      const movedEnough = Math.abs(dLat) > 1e-6 || Math.abs(dLng) > 1e-6
+      if (elapsed > 0 && elapsed < 30 && movedEnough) {
+        next.heading = ((Math.atan2(dLng, dLat) * 180) / Math.PI + 360) % 360
+      }
+    }
+    if (next.heading == null) {
+      next.heading = lastHeadingRef.current
+    } else {
+      lastHeadingRef.current = next.heading
+    }
+
+    prevFixRef.current = next
     setPosition(next)
     if (!hasCenteredRef.current) {
       hasCenteredRef.current = true
       map.flyTo([next.lat, next.lng], Math.max(map.getZoom(), 13), { duration: 1.2 })
+    } else if (navModeRef.current) {
+      map.panTo([next.lat, next.lng], { animate: true, duration: 0.8 })
     }
   }
 
   const handleError = (err) => {
     if (err.code === 1) {
       setError('Location permission denied')
-    } else if (err.code === 3) {
+      stopTracking()
+      return
+    }
+    // Transient GPS dropouts (unavailable/timeout) are normal on the water;
+    // keep an already-running watch alive and wait for the next fix.
+    if (watchIdRef.current !== null) return
+    if (err.code === 3) {
       setError('Location timed out — try moving to an open area')
     } else {
       setError('Unable to get location')
@@ -56,6 +112,8 @@ function LiveLocation() {
       watchIdRef.current = null
     }
     hasCenteredRef.current = false
+    prevFixRef.current = null
+    lastHeadingRef.current = null
     setTracking(false)
     setPosition(null)
     setError(null)
@@ -93,6 +151,12 @@ function LiveLocation() {
     if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
   }, [])
 
+  // Entering navigation mode starts tracking automatically.
+  useEffect(() => {
+    if (navMode && !tracking) startTracking()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navMode])
+
   return (
     <>
       <div
@@ -125,13 +189,10 @@ function LiveLocation() {
             fillColor="#2B6CB0"
             fillOpacity={0.12}
           />
-          <CircleMarker
-            center={[position.lat, position.lng]}
-            radius={8}
-            fillColor="#2B6CB0"
-            color="#FFFFFF"
-            weight={3}
-            fillOpacity={1}
+          <Marker
+            position={[position.lat, position.lng]}
+            icon={position.heading != null ? vesselArrowIcon(position.heading) : vesselDotIcon}
+            zIndexOffset={1000}
           >
             <Popup>
               <strong>Your position</strong>
@@ -146,14 +207,30 @@ function LiveLocation() {
               <br />
               Accuracy: ±{Math.round(position.accuracy)} m
             </Popup>
-          </CircleMarker>
+          </Marker>
         </>
+      )}
+
+      {tracking && (
+        <div className="nav-hud leaflet-top leaflet-left" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+          <div className="nav-hud-card">
+            <div className="nav-hud-speed">
+              <span className="nav-hud-speed-value">
+                {position?.speedKts != null ? position.speedKts.toFixed(1) : '0.0'}
+              </span>
+              <span className="nav-hud-speed-unit">kts</span>
+            </div>
+            <div className="nav-hud-heading">
+              {position?.heading != null ? `${Math.round(position.heading)}°` : '--°'}
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
 }
 
-export default function TripMap({ marinas, shoalAreas }) {
+export default function TripMap({ marinas, shoalAreas, navMode = false }) {
   return (
     <div className="map-container">
       <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map">
@@ -227,7 +304,7 @@ export default function TripMap({ marinas, shoalAreas }) {
           )}
         </LayersControl>
 
-        <LiveLocation />
+        <LiveLocation navMode={navMode} />
 
         {marinas.map((marina) => (
           <Marker key={marina.id} position={[marina.lat, marina.lng]}>

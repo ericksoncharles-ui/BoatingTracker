@@ -762,324 +762,77 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════
-   LIVE NAVIGATION VIEW
+   LIVE NAVIGATION — Vessel Arrow & Speed HUD
    ══════════════════════════════════════════════════════════ */
 
-.navigate-layout {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--navy);
-  min-height: 0;
-}
-
-.nav-view {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 480px;
-  height: 100%;
-  padding: 16px 24px;
-  background: var(--navy);
-  color: var(--white);
-  overflow-y: auto;
-}
-
-.mobile-nav-view {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* ── Idle State ──────────────────────────────────────── */
-
-.nav-idle {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  flex: 1;
-  gap: 16px;
-  padding: 40px 24px;
-}
-
-.nav-idle-icon {
-  color: var(--sea);
-  opacity: 0.6;
-  margin-bottom: 8px;
-}
-
-.nav-idle h2 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.nav-idle p {
-  font-size: 0.9rem;
-  color: #90A4C4;
-  max-width: 280px;
-  line-height: 1.5;
-}
-
-.nav-start-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 14px 28px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--white);
-  background: var(--sea);
+.vessel-arrow-icon {
+  background: none;
   border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
 }
 
-.nav-start-btn:hover {
-  background: var(--sea-hover);
+.vessel-arrow {
+  width: 56px;
+  height: 56px;
+  transition: transform 0.5s ease-out;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
 }
 
-.nav-start-btn:active {
-  transform: scale(0.96);
-}
-
-/* ── Header / Stop bar ───────────────────────────────── */
-
-.nav-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.nav-stop-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--white);
-  background: var(--warning);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.nav-stop-btn:hover {
-  background: #9B2C2C;
-}
-
-.nav-signal {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #90A4C4;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.signal-dot {
-  width: 8px;
-  height: 8px;
+.vessel-dot {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: #5a6e8f;
+  background: var(--sea);
+  border: 3px solid var(--white);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
-.signal-dot.signal-active {
-  background: var(--green);
-  animation: signalBlink 2s ease-in-out infinite;
+/* Offset clears Leaflet's top-left zoom control */
+.nav-hud {
+  pointer-events: auto;
+  margin: 10px 0 0 56px;
 }
 
-@keyframes signalBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* ── Compass ─────────────────────────────────────────── */
-
-.nav-compass-section {
+.nav-hud-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 20px 0 12px;
-  flex-shrink: 0;
+  gap: 14px;
+  padding: 10px 16px;
+  background: rgba(27, 42, 74, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--white);
 }
 
-.nav-compass {
-  position: relative;
-  width: 200px;
-  height: 200px;
-}
-
-.compass-ring {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.compass-arrow-container {
-  position: absolute;
-  inset: 25px;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.compass-arrow {
-  width: 100%;
-  height: 100%;
-}
-
-.nav-heading-display {
+.nav-hud-speed {
   display: flex;
   align-items: baseline;
-  gap: 2px;
-  margin-top: 12px;
+  gap: 5px;
 }
 
-.heading-value {
-  font-size: 2.8rem;
+.nav-hud-speed-value {
+  font-size: 1.9rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  line-height: 1;
 }
 
-.heading-unit {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #90A4C4;
-}
-
-.heading-cardinal {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--sea);
-  margin-left: 10px;
-}
-
-/* ── Speed ───────────────────────────────────────────── */
-
-.nav-speed-section {
-  width: 100%;
-  padding: 16px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.nav-speed-main {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px;
-}
-
-.speed-value {
-  font-size: 3.5rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-  color: var(--white);
-}
-
-.speed-unit {
-  font-size: 1.3rem;
+.nav-hud-speed-unit {
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--sea);
 }
 
-.nav-speed-sub {
-  display: flex;
-  justify-content: center;
-  gap: 32px;
-  margin-top: 8px;
-}
-
-.speed-secondary {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.speed-label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #5a6e8f;
-}
-
-.speed-num {
+.nav-hud-heading {
   font-size: 0.95rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: #90A4C4;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── Data Grid ───────────────────────────────────────── */
-
-.nav-data-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  width: 100%;
-  padding: 16px 0;
-  flex-shrink: 0;
-}
-
-.nav-data-grid .nav-data-item:last-child {
-  grid-column: 1 / -1;
-}
-
-.nav-data-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  background: var(--navy-light);
-  border-radius: 10px;
-  border: 1px solid var(--border);
-}
-
-.nav-data-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #5a6e8f;
-}
-
-.nav-data-value {
-  font-size: 0.9rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--white);
-}
-
-/* ── Error ───────────────────────────────────────────── */
-
-.nav-error {
-  margin-top: 12px;
-  padding: 10px 16px;
-  background: var(--warning);
-  color: var(--white);
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 8px;
-  text-align: center;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1140,31 +893,8 @@ body {
     height: 100%;
   }
 
-  .mobile-nav-view {
-    position: absolute;
-    inset: 0;
-    bottom: calc(60px + env(safe-area-inset-bottom, 0));
-    z-index: 50;
-    background: var(--navy);
-  }
-
-  .mobile-nav-view .nav-view {
-    max-width: 100%;
-    padding: 12px 20px;
-    padding-bottom: 20px;
-  }
-
-  .mobile-nav-view .nav-compass {
-    width: 170px;
-    height: 170px;
-  }
-
-  .mobile-nav-view .heading-value {
-    font-size: 2.2rem;
-  }
-
-  .mobile-nav-view .speed-value {
-    font-size: 2.8rem;
+  .nav-hud {
+    margin-top: calc(12px + env(safe-area-inset-top, 0));
   }
 
   /* ── Bottom Sheet ───────────────────────────────────── */

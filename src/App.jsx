@@ -3,7 +3,6 @@ import { marinas, shoalAreas } from './data'
 import { useTripCalculator } from './hooks/useTripCalculator'
 import Sidebar from './components/Sidebar'
 import TripMap from './components/TripMap'
-import LiveNavigation from './components/LiveNavigation'
 
 export default function App() {
   const trip = useTripCalculator()
@@ -101,22 +100,16 @@ export default function App() {
       )}
 
       {activeTab === 'navigate' && (
-        <div className="navigate-layout desktop-only">
-          <LiveNavigation />
+        <div className="chart-layout desktop-only">
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} navMode />
         </div>
       )}
 
       {/* Mobile layout: map always visible, sidebar as bottom sheet */}
       <div className="mobile-layout mobile-only">
-        <div className="mobile-map" style={activeTab === 'navigate' ? { display: 'none' } : undefined}>
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} />
+        <div className="mobile-map">
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} navMode={activeTab === 'navigate'} />
         </div>
-
-        {activeTab === 'navigate' && (
-          <div className="mobile-nav-view">
-            <LiveNavigation />
-          </div>
-        )}
 
         <div
           ref={sheetRef}
