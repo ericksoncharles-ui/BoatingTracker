@@ -24,6 +24,32 @@ function LiveLocation() {
   const watchIdRef = useRef(null)
   const hasCenteredRef = useRef(false)
 
+  const updatePosition = (pos) => {
+    const next = {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      accuracy: pos.coords.accuracy,
+      heading: pos.coords.heading,
+      speedKts: pos.coords.speed != null ? pos.coords.speed * 1.94384 : null,
+    }
+    setPosition(next)
+    if (!hasCenteredRef.current) {
+      hasCenteredRef.current = true
+      map.flyTo([next.lat, next.lng], Math.max(map.getZoom(), 13), { duration: 1.2 })
+    }
+  }
+
+  const handleError = (err) => {
+    if (err.code === 1) {
+      setError('Location permission denied')
+    } else if (err.code === 3) {
+      setError('Location timed out — try moving to an open area')
+    } else {
+      setError('Unable to get location')
+    }
+    stopTracking()
+  }
+
   const stopTracking = () => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
@@ -40,28 +66,26 @@ function LiveLocation() {
       setError('Location not supported by this browser')
       return
     }
+    if (!window.isSecureContext) {
+      setError('Location requires HTTPS')
+      return
+    }
     setError(null)
     setTracking(true)
-    watchIdRef.current = navigator.geolocation.watchPosition(
+
+    // iOS Safari/Chrome require getCurrentPosition first to reliably
+    // trigger the permission prompt; watchPosition alone often silently fails.
+    navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const next = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          heading: pos.coords.heading,
-          speedKts: pos.coords.speed != null ? pos.coords.speed * 1.94384 : null,
-        }
-        setPosition(next)
-        if (!hasCenteredRef.current) {
-          hasCenteredRef.current = true
-          map.flyTo([next.lat, next.lng], Math.max(map.getZoom(), 13), { duration: 1.2 })
-        }
+        updatePosition(pos)
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          updatePosition,
+          handleError,
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }
+        )
       },
-      (err) => {
-        setError(err.code === 1 ? 'Location permission denied' : 'Unable to get location')
-        stopTracking()
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+      handleError,
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
     )
   }
 
