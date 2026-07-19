@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, WMSTileLayer, Marker, Popup, Polyline, CircleMarker, LayersControl, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -83,11 +83,21 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
           </LayersControl.BaseLayer>
 
           <LayersControl.BaseLayer checked name="NOAA Nautical Chart">
-            <TileLayer
+            <WMSTileLayer
               attribution='NOAA Office of Coast Survey'
-              url="https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png"
+              url="https://gis.charttools.noaa.gov/arcgis/services/MCS/NOAAChartDisplay/MapServer/WMSServer"
+              layers="0,1,2,3,4,5,6,7"
+              format="image/png"
+              transparent={false}
               maxZoom={18}
-              opacity={1}
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer name="NOAA Raster Chart">
+            <TileLayer
+              attribution='NOAA Seamless RNC'
+              url="https://seamlessrnc.nauticalcharts.noaa.gov/arcgis/rest/services/RNC/NOAA_RNC/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={18}
             />
           </LayersControl.BaseLayer>
 
