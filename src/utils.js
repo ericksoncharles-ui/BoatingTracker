@@ -197,9 +197,12 @@ export function buildRouteWaypoints(start, dest, spine) {
     }
   }
 
-  // Direct open-water crossing beats the spine when it stays in the corridor
-  if (dist(startApproach, destApproach) < best.length && inCorridor(startApproach, destApproach)) {
-    best = { length: dist(startApproach, destApproach), points: [] }
+  // Direct open-water crossing beats the spine when it stays in the corridor.
+  // Short hops (< 10 NM between curated approach points) always go direct —
+  // nearby marinas on the same shore don't need the mid-Sound spine.
+  const directDist = dist(startApproach, destApproach)
+  if (directDist < best.length && (directDist < 10 || inCorridor(startApproach, destApproach))) {
+    best = { length: directDist, points: [] }
   }
 
   // Greedy shortcut pass: skip ahead past intermediate points whenever the
