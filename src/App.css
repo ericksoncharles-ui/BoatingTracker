@@ -104,39 +104,6 @@ body {
   inset: 0;
 }
 
-.chart-overlay {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  pointer-events: none;
-}
-
-.chart-overlay-stats {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 20px;
-  background: rgba(27, 42, 74, 0.92);
-  backdrop-filter: blur(8px);
-  color: var(--white);
-  border-radius: 10px;
-  font-size: 0.88rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  white-space: nowrap;
-}
-
-.chart-stat {
-  color: #90A4C4;
-  padding-left: 16px;
-  border-left: 1px solid var(--border);
-}
-
-.map-fullscreen {
-  width: 100%;
-  height: 100%;
-}
 
 /* ── Sidebar ──────────────────────────────────────────── */
 
@@ -713,48 +680,11 @@ body {
   height: 100%;
 }
 
-/* Custom marker colors via CSS filter */
-.marker-start {
-  filter: hue-rotate(120deg);
-}
-
-.marker-dest {
-  filter: hue-rotate(0deg) saturate(3);
-}
-
 /* Layer control styling */
 .leaflet-control-layers {
   border-radius: 8px !important;
   border: none !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
-}
-
-/* ── Route Editing ──────────────────────────────────── */
-
-.route-handle {
-  background: var(--white);
-  border: 3px solid #E53E3E;
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-  cursor: grab;
-}
-
-.route-handle:active {
-  cursor: grabbing;
-}
-
-.route-handle-ghost {
-  background: rgba(255, 255, 255, 0.6);
-  border: 2px solid rgba(229, 62, 62, 0.45);
-  cursor: copy;
-}
-
-.route-edit-hint {
-  margin-top: 12px;
-  font-size: 0.75rem;
-  color: #5a6e8f;
-  line-height: 1.45;
-  font-style: italic;
 }
 
 .shoal-avoided-info {

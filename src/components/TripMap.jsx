@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, CircleMarker, LayersControl, LayerGroup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, LayersControl, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// Fix Leaflet default marker icon issue with bundlers
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
@@ -16,37 +15,6 @@ L.Icon.Default.mergeOptions({
 
 const LI_SOUND_CENTER = [41.05, -73.2]
 const LI_SOUND_ZOOM = 10
-
-function FitBounds({ tripResult }) {
-  const map = useMap()
-
-  useEffect(() => {
-    if (tripResult) {
-      const bounds = L.latLngBounds(
-        [tripResult.start.lat, tripResult.start.lng],
-        [tripResult.dest.lat, tripResult.dest.lng]
-      )
-      tripResult.nearbyPOIs.forEach((poi) => {
-        bounds.extend([poi.lat, poi.lng])
-      })
-      map.fitBounds(bounds, { padding: [50, 50] })
-    }
-  }, [tripResult, map])
-
-  return null
-}
-
-function FlyToPOI({ focusPOI }) {
-  const map = useMap()
-
-  useEffect(() => {
-    if (focusPOI) {
-      map.flyTo([focusPOI.lat, focusPOI.lng], 13, { duration: 1.2 })
-    }
-  }, [focusPOI, map])
-
-  return null
-}
 
 function LiveLocation() {
   const map = useMap()
@@ -161,89 +129,10 @@ function LiveLocation() {
   )
 }
 
-const startIcon = new L.Icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-  className: 'marker-start',
-})
-
-const destIcon = new L.Icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-  className: 'marker-dest',
-})
-
-const waypointHandleIcon = L.divIcon({
-  className: 'route-handle',
-  iconSize: [14, 14],
-})
-
-const midpointHandleIcon = L.divIcon({
-  className: 'route-handle route-handle-ghost',
-  iconSize: [10, 10],
-})
-
-function RouteEditor({ waypoints, editors }) {
-  const midpoints = []
-  for (let i = 0; i < waypoints.length - 1; i++) {
-    midpoints.push({
-      afterIndex: i,
-      lat: (waypoints[i][0] + waypoints[i + 1][0]) / 2,
-      lng: (waypoints[i][1] + waypoints[i + 1][1]) / 2,
-    })
-  }
-
+export default function TripMap({ marinas, shoalAreas }) {
   return (
-    <>
-      {/* Draggable handles on interior waypoints; double-click removes */}
-      {waypoints.map((wp, i) => {
-        if (i === 0 || i === waypoints.length - 1) return null
-        return (
-          <Marker
-            key={`wp-${i}-${wp[0]}-${wp[1]}`}
-            position={wp}
-            icon={waypointHandleIcon}
-            draggable
-            eventHandlers={{
-              dragend: (e) => {
-                const { lat, lng } = e.target.getLatLng()
-                editors.move(i, lat, lng)
-              },
-              dblclick: () => editors.remove(i),
-            }}
-          />
-        )
-      })}
-
-      {/* Ghost midpoint handles — click to add a waypoint on that leg */}
-      {midpoints.map((mp) => (
-        <Marker
-          key={`mid-${mp.afterIndex}-${mp.lat}-${mp.lng}`}
-          position={[mp.lat, mp.lng]}
-          icon={midpointHandleIcon}
-          eventHandlers={{
-            click: () => editors.insert(mp.afterIndex, mp.lat, mp.lng),
-          }}
-        />
-      ))}
-    </>
-  )
-}
-
-export default function TripMap({ marinas, tripResult, focusPOI, fullscreen, shoalAreas, routeEditors }) {
-  return (
-    <div className={`map-container ${fullscreen ? 'map-fullscreen' : ''}`}>
-      <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map" key={fullscreen ? 'chart' : 'planner'}>
+    <div className="map-container">
+      <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map">
         <LayersControl position="topright">
           <LayersControl.BaseLayer name="Street Map">
             <TileLayer
@@ -314,60 +203,13 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen, sho
           )}
         </LayersControl>
 
-        <FitBounds tripResult={tripResult} />
-        <FlyToPOI focusPOI={focusPOI} />
         <LiveLocation />
 
-        {/* Marina markers */}
         {marinas.map((marina) => (
           <Marker key={marina.id} position={[marina.lat, marina.lng]}>
             <Popup>{marina.name}</Popup>
           </Marker>
         ))}
-
-        {/* Trip route and POIs */}
-        {tripResult && (
-          <>
-            <Marker position={[tripResult.start.lat, tripResult.start.lng]} icon={startIcon}>
-              <Popup><strong>Start:</strong> {tripResult.start.name}</Popup>
-            </Marker>
-            <Marker position={[tripResult.dest.lat, tripResult.dest.lng]} icon={destIcon}>
-              <Popup><strong>Destination:</strong> {tripResult.dest.name}</Popup>
-            </Marker>
-            <Polyline
-              positions={tripResult.routeWaypoints}
-              color="#E53E3E"
-              weight={4}
-              opacity={0.85}
-            />
-            <Polyline
-              positions={tripResult.routeWaypoints}
-              color="#FFFFFF"
-              weight={6}
-              opacity={0.4}
-            />
-            {routeEditors && (
-              <RouteEditor waypoints={tripResult.routeWaypoints} editors={routeEditors} />
-            )}
-            {tripResult.nearbyPOIs.map((poi) => (
-              <CircleMarker
-                key={poi.id}
-                center={[poi.lat, poi.lng]}
-                radius={8}
-                fillColor="#D69E2E"
-                color="#1B2A4A"
-                weight={2}
-                fillOpacity={0.8}
-              >
-                <Popup>
-                  <strong>{poi.name}</strong>
-                  <br />
-                  {poi.description}
-                </Popup>
-              </CircleMarker>
-            ))}
-          </>
-        )}
       </MapContainer>
     </div>
   )
