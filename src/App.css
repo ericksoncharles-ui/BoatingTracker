@@ -728,3 +728,55 @@ body {
   border: none !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
 }
+
+/* ── Live Location ──────────────────────────────────── */
+
+.locate-control {
+  margin: 0 12px 24px 0;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.locate-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  color: var(--slate);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  transition: color 0.2s, background 0.2s;
+}
+
+.locate-btn:hover {
+  color: var(--sea);
+}
+
+.locate-btn.locate-active {
+  background: var(--sea);
+  color: var(--white);
+  animation: locatePulse 2s ease-in-out infinite;
+}
+
+@keyframes locatePulse {
+  0%, 100% { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25), 0 0 0 0 rgba(43, 108, 176, 0.5); }
+  50% { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25), 0 0 0 8px rgba(43, 108, 176, 0); }
+}
+
+.locate-error {
+  background: var(--warning);
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
