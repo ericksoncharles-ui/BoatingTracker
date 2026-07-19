@@ -195,20 +195,20 @@ export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
             />
           </LayersControl.BaseLayer>
 
-          <LayersControl.BaseLayer checked name="Ocean Chart (Bathymetry)">
-            <TileLayer
-              attribution='&copy; Esri &mdash; Sources: GEBCO, NOAA, National Geographic, Garmin'
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-              maxNativeZoom={13}
-              maxZoom={18}
-            />
-          </LayersControl.BaseLayer>
-
-          <LayersControl.BaseLayer name="NOAA Chart (experimental)">
+          <LayersControl.BaseLayer checked name="NOAA Nautical Chart">
             <TileLayer
               attribution='NOAA Office of Coast Survey'
               url="https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/tile/{z}/{y}/{x}"
               zoomOffset={-2}
+              maxZoom={18}
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer name="Ocean Chart (Bathymetry)">
+            <TileLayer
+              attribution='&copy; Esri &mdash; Sources: GEBCO, NOAA, National Geographic, Garmin'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
+              maxNativeZoom={13}
               maxZoom={18}
             />
           </LayersControl.BaseLayer>
