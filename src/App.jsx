@@ -3,6 +3,7 @@ import { marinas, shoalAreas } from './data'
 import { useTripCalculator } from './hooks/useTripCalculator'
 import Sidebar from './components/Sidebar'
 import TripMap from './components/TripMap'
+import LiveNavigation from './components/LiveNavigation'
 
 export default function App() {
   const trip = useTripCalculator()
@@ -60,6 +61,13 @@ export default function App() {
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
           Nautical Chart
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'navigate' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('navigate')}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 19 21 12 17 5 21"/></svg>
+          Navigate
+        </button>
       </div>
 
       {/* Desktop layout */}
@@ -92,15 +100,27 @@ export default function App() {
         </div>
       )}
 
+      {activeTab === 'navigate' && (
+        <div className="navigate-layout desktop-only">
+          <LiveNavigation />
+        </div>
+      )}
+
       {/* Mobile layout: map always visible, sidebar as bottom sheet */}
       <div className="mobile-layout mobile-only">
-        <div className="mobile-map">
+        <div className="mobile-map" style={activeTab === 'navigate' ? { display: 'none' } : undefined}>
           <TripMap marinas={marinas} shoalAreas={shoalAreas} />
         </div>
 
+        {activeTab === 'navigate' && (
+          <div className="mobile-nav-view">
+            <LiveNavigation />
+          </div>
+        )}
+
         <div
           ref={sheetRef}
-          className={`mobile-sheet ${sheetOpen ? 'sheet-open' : 'sheet-collapsed'} ${activeTab === 'chart' ? 'sheet-hidden' : ''}`}
+          className={`mobile-sheet ${sheetOpen ? 'sheet-open' : 'sheet-collapsed'} ${activeTab === 'chart' || activeTab === 'navigate' ? 'sheet-hidden' : ''}`}
           style={sheetDrag !== null ? { height: `${sheetDrag}px`, transition: 'none' } : undefined}
         >
           <div
@@ -149,11 +169,11 @@ export default function App() {
             <span>Chart</span>
           </button>
           <button
-            className={`mobile-tab ${activeTab === 'locate' ? 'mobile-tab-active' : ''}`}
-            onClick={() => { setActiveTab('chart'); setSheetOpen(false) }}
+            className={`mobile-tab ${activeTab === 'navigate' ? 'mobile-tab-active' : ''}`}
+            onClick={() => { setActiveTab('navigate'); setSheetOpen(false) }}
           >
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
-            <span>Locate</span>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 19 21 12 17 5 21"/></svg>
+            <span>Navigate</span>
           </button>
         </nav>
       </div>
