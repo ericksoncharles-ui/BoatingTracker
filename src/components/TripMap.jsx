@@ -70,15 +70,24 @@ const destIcon = new L.Icon({
   className: 'marker-dest',
 })
 
-export default function TripMap({ marinas, tripResult, focusPOI }) {
+export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
   return (
-    <div className="map-container">
-      <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map">
+    <div className={`map-container ${fullscreen ? 'map-fullscreen' : ''}`}>
+      <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map" key={fullscreen ? 'chart' : 'planner'}>
         <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="Street Map">
+          <LayersControl.BaseLayer name="Street Map">
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer checked name="NOAA Nautical Chart">
+            <TileLayer
+              attribution='NOAA Office of Coast Survey'
+              url="https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png"
+              maxZoom={18}
+              opacity={1}
             />
           </LayersControl.BaseLayer>
 
@@ -89,11 +98,20 @@ export default function TripMap({ marinas, tripResult, focusPOI }) {
             />
           </LayersControl.BaseLayer>
 
-          <LayersControl.Overlay checked name="OpenSeaMap (Buoys & Marks)">
+          <LayersControl.Overlay name="OpenSeaMap (Buoys & Marks)">
             <TileLayer
               url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
               opacity={0.9}
               attribution='&copy; <a href="https://www.openseamap.org">OpenSeaMap</a>'
+            />
+          </LayersControl.Overlay>
+
+          <LayersControl.Overlay checked name="NOAA ENCs (Depths & Channels)">
+            <TileLayer
+              url="https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/tile/{z}/{y}/{x}"
+              opacity={0.7}
+              attribution='NOAA ENC'
+              maxZoom={18}
             />
           </LayersControl.Overlay>
         </LayersControl>
@@ -119,9 +137,15 @@ export default function TripMap({ marinas, tripResult, focusPOI }) {
             </Marker>
             <Polyline
               positions={tripResult.routeWaypoints}
-              color="#1B2A4A"
-              weight={3}
-              dashArray="10 6"
+              color="#E53E3E"
+              weight={4}
+              opacity={0.85}
+            />
+            <Polyline
+              positions={tripResult.routeWaypoints}
+              color="#FFFFFF"
+              weight={6}
+              opacity={0.4}
             />
             {tripResult.nearbyPOIs.map((poi) => (
               <CircleMarker
