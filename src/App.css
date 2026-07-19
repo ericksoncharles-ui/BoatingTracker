@@ -25,6 +25,7 @@
 html, body, #root {
   height: 100%;
   width: 100%;
+  height: -webkit-fill-available;
 }
 
 body {
@@ -758,4 +759,356 @@ body {
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE — Native App Experience
+   ══════════════════════════════════════════════════════════ */
+
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: flex !important;
+  }
+
+  html, body, #root {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .app {
+    height: 100dvh;
+    height: -webkit-fill-available;
+  }
+
+  /* ── Mobile Layout ──────────────────────────────────── */
+
+  .mobile-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    height: -webkit-fill-available;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mobile-map {
+    position: absolute;
+    inset: 0;
+    bottom: env(safe-area-inset-bottom, 0);
+    z-index: 1;
+  }
+
+  .mobile-map .map-container,
+  .mobile-map .leaflet-map {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Bottom Sheet ───────────────────────────────────── */
+
+  .mobile-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 60px;
+    z-index: 100;
+    height: 55dvh;
+    background: var(--navy);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
+    transition: height 0.35s cubic-bezier(0.32, 0.72, 0, 1), transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    will-change: transform, height;
+  }
+
+  .mobile-sheet.sheet-collapsed {
+    height: 0;
+    transform: translateY(100%);
+  }
+
+  .mobile-sheet.sheet-hidden {
+    transform: translateY(110%);
+    pointer-events: none;
+  }
+
+  .mobile-sheet.sheet-open {
+    height: 55dvh;
+  }
+
+  .sheet-handle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0 8px;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .sheet-handle-bar {
+    width: 40px;
+    height: 5px;
+    background: rgba(144, 164, 196, 0.4);
+    border-radius: 3px;
+  }
+
+  .sheet-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .sheet-content .sidebar {
+    width: 100%;
+    min-width: unset;
+    background: transparent;
+    box-shadow: none;
+    overflow-y: visible;
+  }
+
+  .sheet-content .sidebar-header {
+    padding: 12px 20px 14px;
+  }
+
+  .sheet-content .sidebar-header h1 {
+    font-size: 1.1rem;
+  }
+
+  .sheet-content .header-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .sheet-content .sidebar-form {
+    padding: 14px 20px;
+  }
+
+  .sheet-content .sidebar-results {
+    padding: 14px 20px;
+  }
+
+  .sheet-content .sidebar-footer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+  }
+
+  .sheet-content .sidebar-welcome {
+    padding: 20px;
+    min-height: unset;
+  }
+
+  .sheet-content .header-icon {
+    display: none;
+  }
+
+  .sheet-content .welcome-icon {
+    display: none;
+  }
+
+  /* ── Mobile Tab Bar ─────────────────────────────────── */
+
+  .mobile-tab-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    height: calc(60px + env(safe-area-inset-bottom, 0));
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    background: var(--navy);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    background: transparent;
+    color: #5a6e8f;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    padding: 8px 0;
+  }
+
+  .mobile-tab svg {
+    transition: transform 0.2s;
+  }
+
+  .mobile-tab-active {
+    color: var(--white);
+  }
+
+  .mobile-tab-active svg {
+    transform: scale(1.1);
+    color: var(--sea);
+  }
+
+  /* ── Mobile Form Optimizations ──────────────────────── */
+
+  .sidebar-form select,
+  .sidebar-form input {
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .btn-plan {
+    padding: 14px 20px;
+    font-size: 1.05rem;
+    border-radius: 12px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-plan:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .btn-reset {
+    padding: 14px 16px;
+    border-radius: 12px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Mobile Result Cards ────────────────────────────── */
+
+  .result-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .result-item {
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+
+  .result-value {
+    font-size: 1.1rem;
+  }
+
+  /* ── Mobile POIs ────────────────────────────────────── */
+
+  .poi-list li {
+    padding: 12px 0;
+  }
+
+  .poi-btn {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    border-radius: 6px;
+  }
+
+  /* ── Mobile Welcome State ───────────────────────────── */
+
+  .sidebar-welcome {
+    padding: 24px 20px;
+  }
+
+  .welcome-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* ── Map Controls on Mobile ─────────────────────────── */
+
+  .locate-control {
+    margin: 0 12px 80px 0;
+  }
+
+  .locate-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Leaflet controls need to clear the sheet */
+  .leaflet-top {
+    top: env(safe-area-inset-top, 0) !important;
+  }
+
+  .leaflet-control-layers {
+    margin-top: 8px !important;
+  }
+
+  /* ── Safe Areas ─────────────────────────────────────── */
+
+  .mobile-map .leaflet-bottom {
+    bottom: 64px !important;
+  }
+}
+
+/* ── Extra small phones (< 375px) ───────────────────── */
+@media (max-width: 374px) {
+  .sheet-content .sidebar-header h1 {
+    font-size: 1rem;
+  }
+
+  .input-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .result-grid {
+    gap: 6px;
+  }
+
+  .result-item {
+    padding: 10px 12px;
+  }
+
+  .result-value {
+    font-size: 1rem;
+  }
+}
+
+/* ── Landscape mobile ───────────────────────────────── */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-sheet.sheet-open {
+    height: 70dvh;
+  }
+
+  .mobile-tab-bar {
+    height: calc(50px + env(safe-area-inset-bottom, 0));
+  }
+
+  .mobile-sheet {
+    bottom: 50px;
+  }
 }
