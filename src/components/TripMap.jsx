@@ -70,10 +70,10 @@ const destIcon = new L.Icon({
   className: 'marker-dest',
 })
 
-export default function TripMap({ marinas, tripResult, focusPOI }) {
+export default function TripMap({ marinas, tripResult, focusPOI, fullscreen }) {
   return (
-    <div className="map-container">
-      <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map">
+    <div className={`map-container ${fullscreen ? 'map-fullscreen' : ''}`}>
+      <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map" key={fullscreen ? 'chart' : 'planner'}>
         <LayersControl position="topright">
           <LayersControl.BaseLayer name="Street Map">
             <TileLayer
@@ -137,9 +137,15 @@ export default function TripMap({ marinas, tripResult, focusPOI }) {
             </Marker>
             <Polyline
               positions={tripResult.routeWaypoints}
-              color="#1B2A4A"
-              weight={3}
-              dashArray="10 6"
+              color="#E53E3E"
+              weight={4}
+              opacity={0.85}
+            />
+            <Polyline
+              positions={tripResult.routeWaypoints}
+              color="#FFFFFF"
+              weight={6}
+              opacity={0.4}
             />
             {tripResult.nearbyPOIs.map((poi) => (
               <CircleMarker
