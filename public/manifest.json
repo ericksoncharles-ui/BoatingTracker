@@ -1,6 +1,6 @@
 {
-  "name": "Long Island Sound Trip Planner",
-  "short_name": "LIS Trip",
+  "name": "SoundCaptain — Long Island Sound Trip Planner",
+  "short_name": "SoundCaptain",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1B2A4A",
