@@ -15,6 +15,17 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
+// Switching away from a map tab unmounts the map, and if a zoom animation is
+// mid-flight — the initial GPS recentre makes that a common moment to click
+// Tides & Conditions — Leaflet's queued transition handler then dereferences
+// the pane remove() already deleted and throws (leaflet/Leaflet#7722). Guard
+// the handler so a destroyed map ignores its own leftover animation events.
+const onZoomTransitionEnd = L.Map.prototype._onZoomTransitionEnd
+L.Map.prototype._onZoomTransitionEnd = function (...args) {
+  if (!this._mapPane) return
+  return onZoomTransitionEnd.apply(this, args)
+}
+
 const LI_SOUND_CENTER = [41.05, -73.2]
 const LI_SOUND_ZOOM = 10
 

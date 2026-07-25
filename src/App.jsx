@@ -4,6 +4,7 @@ import { useTripCalculator } from './hooks/useTripCalculator'
 import Sidebar from './components/Sidebar'
 import TripMap from './components/TripMap'
 import ConditionsPanel from './components/ConditionsPanel'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const CONDITIONS_ICON = (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -79,8 +80,10 @@ export default function App() {
         </button>
       </div>
 
-      {/* Desktop layout */}
+      {/* Desktop layout. Each tab gets its own boundary so a crash in one
+          leaves the tab bar alive — switching away and back remounts it. */}
       {activeTab === 'planner' && (
+        <ErrorBoundary>
         <div className="planner-layout desktop-only">
           <Sidebar
             startId={trip.startId}
@@ -101,21 +104,27 @@ export default function App() {
           />
           <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
         </div>
+        </ErrorBoundary>
       )}
 
       {activeTab === 'chart' && (
+        <ErrorBoundary>
         <div className="chart-layout desktop-only">
           <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
         </div>
+        </ErrorBoundary>
       )}
 
       {activeTab === 'conditions' && (
+        <ErrorBoundary>
         <div className="conditions-layout desktop-only">
           <ConditionsPanel fallbackMarinaId={trip.startId} />
         </div>
+        </ErrorBoundary>
       )}
 
       {/* Mobile layout: map always visible, sidebar as bottom sheet */}
+      <ErrorBoundary>
       <div className="mobile-layout mobile-only">
         <div className="mobile-map">
           <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
@@ -195,6 +204,7 @@ export default function App() {
           </button>
         </nav>
       </div>
+      </ErrorBoundary>
     </div>
   )
 }
