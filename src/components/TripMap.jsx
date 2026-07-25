@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, LayersCon
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useGeolocation } from '../hooks/useGeolocation'
+import { calcDistanceNM } from '../utils'
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -16,6 +17,52 @@ L.Icon.Default.mergeOptions({
 
 const LI_SOUND_CENTER = [41.05, -73.2]
 const LI_SOUND_ZOOM = 10
+
+// At zoom 10 the whole Sound fits but soundings, buoys and channel marks are
+// unreadable, so open tighter: zoom 12 covers a harbor and its approaches,
+// zoom 13 is close enough to pick out marks around the boat.
+const HARBOR_ZOOM = 12
+const GPS_ZOOM = 13
+
+// A GPS fix farther than this from mid-Sound is off the chart we cover, so
+// centering on it would just show blank tiles.
+const IN_RANGE_NM = 120
+
+// Recentering on the boat only happens when location is already granted — an
+// unprompted permission dialog on load would ambush anyone just browsing.
+function InitialView() {
+  const map = useMap()
+
+  useEffect(() => {
+    let cancelled = false
+    if (!('geolocation' in navigator) || !window.isSecureContext) return
+    if (!navigator.permissions?.query) return
+
+    navigator.permissions
+      .query({ name: 'geolocation' })
+      .then((status) => {
+        if (cancelled || status.state !== 'granted') return
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (cancelled) return
+            const { latitude, longitude } = pos.coords
+            const offChart = calcDistanceNM(LI_SOUND_CENTER[0], LI_SOUND_CENTER[1], latitude, longitude) > IN_RANGE_NM
+            if (offChart) return
+            map.setView([latitude, longitude], Math.max(map.getZoom(), GPS_ZOOM))
+          },
+          () => {},
+          { enableHighAccuracy: false, maximumAge: 60000, timeout: 10000 }
+        )
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [map])
+
+  return null
+}
 
 function LiveLocation() {
   const map = useMap()
@@ -99,10 +146,13 @@ function LiveLocation() {
   )
 }
 
-export default function TripMap({ marinas, shoalAreas }) {
+export default function TripMap({ marinas, shoalAreas, focus }) {
+  const center = focus ? [focus.lat, focus.lng] : LI_SOUND_CENTER
+  const zoom = focus ? HARBOR_ZOOM : LI_SOUND_ZOOM
+
   return (
     <div className="map-container">
-      <MapContainer center={LI_SOUND_CENTER} zoom={LI_SOUND_ZOOM} className="leaflet-map">
+      <MapContainer center={center} zoom={zoom} className="leaflet-map">
         <LayersControl position="topright">
           <LayersControl.BaseLayer name="Street Map">
             <TileLayer
@@ -173,6 +223,7 @@ export default function TripMap({ marinas, shoalAreas }) {
           )}
         </LayersControl>
 
+        <InitialView />
         <LiveLocation />
 
         {marinas.map((marina) => (

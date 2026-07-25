@@ -15,6 +15,7 @@ const CONDITIONS_ICON = (
 
 export default function App() {
   const trip = useTripCalculator()
+  const startMarina = marinas.find((m) => m.id === trip.startId)
   const [activeTab, setActiveTab] = useState('planner')
   const [sheetOpen, setSheetOpen] = useState(true)
   const [sheetDrag, setSheetDrag] = useState(null)
@@ -98,13 +99,13 @@ export default function App() {
             onCalculate={trip.calculateTrip}
             onReset={trip.resetTrip}
           />
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
         </div>
       )}
 
       {activeTab === 'chart' && (
         <div className="chart-layout desktop-only">
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
         </div>
       )}
 
@@ -117,7 +118,7 @@ export default function App() {
       {/* Mobile layout: map always visible, sidebar as bottom sheet */}
       <div className="mobile-layout mobile-only">
         <div className="mobile-map">
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
         </div>
 
         <div
