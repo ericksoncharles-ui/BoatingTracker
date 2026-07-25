@@ -129,7 +129,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   const conditions = useConditions({ lat: place.lat, lng: place.lng, enabled: !waitingForGeo })
   const { tides, buoy, forecast, alerts, refresh, updatedAt, cachedAt, failedAt, loading } = conditions
 
-  const buoyData = buoy.status === 'ok' ? buoy.data : null
+  const buoyData = buoy.status === 'ok' || buoy.status === 'empty' ? buoy.data : null
   const currentWeather = forecast.status === 'ok' ? forecast.data.current : null
 
   // Wave height comes from the buoy when it has one. When it doesn't — sensor
