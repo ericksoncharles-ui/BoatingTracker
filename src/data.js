@@ -209,6 +209,30 @@ export const shoalAreas = [
   { id: 'sh-valiant', name: 'Valiant Rock (The Race)', lat: 41.2350, lng: -72.0530, radiusNM: 0.3, minDepthFt: 4 },
 ]
 
+// Headlands and peninsulas that project far enough into the Sound to sit
+// between two marina approaches that are otherwise close together — the
+// direct-line short-hop rule in buildRouteWaypoints would draw straight
+// through them. Detection is a circular keep-out zone like shoalAreas, but
+// unconditional on draft since this is land, not a depth hazard. Unlike a
+// shoal — open water on every side, so a route can be nudged toward
+// whichever side it already favors — a peninsula only has water on one
+// side, so each entry also carries a curated `bypass` point (the maritime
+// equivalent of a marina's `approach`: a known-safe point beyond the tip)
+// that applyLandAvoidance routes through instead of computing a direction.
+// Coordinates are approximate — enough to catch the crossing, not surveyed —
+// add more here as bad-looking routes turn up between other marina pairs.
+export const headlands = [
+  // Eatons Neck splits Huntington Bay (west) from Northport Bay (east); a
+  // direct line between their approaches cuts across the peninsula's full
+  // north-south extent, not just its charted tip (sh-eatons-shoal covers the
+  // shoal water just off that tip, a separate depth hazard). Only the north
+  // side, around the light and shoal, is open water — bypass goes there.
+  { id: 'hl-eatons-neck', name: 'Eatons Neck', lat: 40.9400, lng: -73.3970, radiusNM: 1.0, bypass: { lat: 40.9900, lng: -73.3980 } },
+  // Lloyd Neck sits between Cold Spring Harbor/Lloyd Harbor and Huntington
+  // Bay; only the water north of Lloyd Point is clear.
+  { id: 'hl-lloyd-neck', name: 'Lloyd Neck', lat: 40.9250, lng: -73.4620, radiusNM: 1.3, bypass: { lat: 40.9750, lng: -73.4680 } },
+]
+
 // No-wake zones near marinas and harbors on Long Island Sound.
 // Each zone has a center point and a radius (in NM) where speed is restricted,
 // plus the enforced speed limit in knots.

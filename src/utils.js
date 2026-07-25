@@ -261,15 +261,13 @@ export function buildRouteWaypoints(start, dest, spine) {
 }
 
 /**
- * Detour a route around shoal areas that are too shallow for the boat.
- * Any hazard with charted depth < draft + clearance gets a bypass waypoint
- * pushed just outside its radius, on the side the route already favors.
+ * Detour a route around circular hazards (shoals or headlands). Any hazard
+ * the route passes within radiusNM + buffer of gets a bypass waypoint
+ * pushed just outside that radius, on the side the route already favors.
  * The first and last legs (marina to approach waypoint) are left alone —
  * those are curated harbor approaches.
  */
-export function applyShoalAvoidance(waypoints, shoals, draftFt, clearanceFt = 2) {
-  const active = shoals.filter((s) => s.minDepthFt < draftFt + clearanceFt)
-  const buffer = 0.25
+function insertHazardBypasses(waypoints, hazards, buffer) {
   const pts = waypoints.map(([lat, lng]) => ({ lat, lng }))
   const avoided = []
 
@@ -278,31 +276,44 @@ export function applyShoalAvoidance(waypoints, shoals, draftFt, clearanceFt = 2)
   while (changed && iter++ < 6) {
     changed = false
     for (let i = 1; i < pts.length - 2 && !changed; i++) {
-      for (const s of active) {
+      for (const s of hazards) {
+        // A curated bypass point is a single known-safe waypoint, not a
+        // direction to push away from — once a hazard has contributed one,
+        // the leg leading into it can legitimately still pass close by
+        // without needing (or being able to usefully take) a second detour.
+        if (s.bypass && avoided.some((x) => x.id === s.id)) continue
         const { distance, t } = distanceFromRoute(
           s.lat, s.lng,
           pts[i].lat, pts[i].lng,
           pts[i + 1].lat, pts[i + 1].lng
         )
         if (t > 0.02 && t < 0.98 && distance < s.radiusNM + buffer) {
-          const cLat = pts[i].lat + t * (pts[i + 1].lat - pts[i].lat)
-          const cLng = pts[i].lng + t * (pts[i + 1].lng - pts[i].lng)
-          const cosLat = Math.cos((s.lat * Math.PI) / 180)
-          // Direction from shoal center toward the route, in NM space
-          let vLat = (cLat - s.lat) * 60
-          let vLng = (cLng - s.lng) * 60 * cosLat
-          let len = Math.hypot(vLat, vLng)
-          if (len < 1e-6) {
-            // Leg passes through the center — deflect perpendicular to it
-            vLat = -(pts[i + 1].lng - pts[i].lng)
-            vLng = pts[i + 1].lat - pts[i].lat
-            len = Math.hypot(vLat, vLng) || 1
+          let bypassPoint
+          if (s.bypass) {
+            // Land only has water on one side — route through the curated
+            // safe point instead of guessing a direction off the center.
+            bypassPoint = { lat: s.bypass.lat, lng: s.bypass.lng }
+          } else {
+            const cLat = pts[i].lat + t * (pts[i + 1].lat - pts[i].lat)
+            const cLng = pts[i].lng + t * (pts[i + 1].lng - pts[i].lng)
+            const cosLat = Math.cos((s.lat * Math.PI) / 180)
+            // Direction from hazard center toward the route, in NM space
+            let vLat = (cLat - s.lat) * 60
+            let vLng = (cLng - s.lng) * 60 * cosLat
+            let len = Math.hypot(vLat, vLng)
+            if (len < 1e-6) {
+              // Leg passes through the center — deflect perpendicular to it
+              vLat = -(pts[i + 1].lng - pts[i].lng)
+              vLng = pts[i + 1].lat - pts[i].lat
+              len = Math.hypot(vLat, vLng) || 1
+            }
+            const targetNM = s.radiusNM + buffer + 0.05
+            bypassPoint = {
+              lat: s.lat + ((vLat / len) * targetNM) / 60,
+              lng: s.lng + ((vLng / len) * targetNM) / (60 * cosLat),
+            }
           }
-          const targetNM = s.radiusNM + buffer + 0.05
-          pts.splice(i + 1, 0, {
-            lat: s.lat + ((vLat / len) * targetNM) / 60,
-            lng: s.lng + ((vLng / len) * targetNM) / (60 * cosLat),
-          })
+          pts.splice(i + 1, 0, bypassPoint)
           if (!avoided.some((x) => x.id === s.id)) avoided.push(s)
           changed = true
           break
@@ -312,6 +323,23 @@ export function applyShoalAvoidance(waypoints, shoals, draftFt, clearanceFt = 2)
   }
 
   return { waypoints: pts.map((p) => [p.lat, p.lng]), avoided }
+}
+
+/**
+ * Detour a route around shoal areas that are too shallow for the boat.
+ * Only hazards with charted depth < draft + clearance are treated as active.
+ */
+export function applyShoalAvoidance(waypoints, shoals, draftFt, clearanceFt = 2) {
+  const active = shoals.filter((s) => s.minDepthFt < draftFt + clearanceFt)
+  return insertHazardBypasses(waypoints, active, 0.25)
+}
+
+/**
+ * Detour a route around headlands/peninsulas. Unlike shoals these are land,
+ * not a depth hazard, so every headland is always active regardless of draft.
+ */
+export function applyLandAvoidance(waypoints, headlands) {
+  return insertHazardBypasses(waypoints, headlands, 0.3)
 }
 
 /**
