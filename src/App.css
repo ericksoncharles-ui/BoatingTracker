@@ -1593,8 +1593,124 @@ body {
 }
 
 .cond-hour-dir {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   font-size: 0.6rem;
   color: #8FA6C4;
+}
+
+/* ── Multi-day wind outlook ─────────────────────────── */
+
+.cond-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+}
+
+.cond-daily li {
+  display: grid;
+  grid-template-columns: 56px minmax(40px, 1fr) 50px 40px 54px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.cond-day {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.cond-day small {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #8FA6C4;
+}
+
+/* The bar is scaled to a fixed 30 kt so days stay comparable day to day, not
+   just within one week's fetch. */
+.cond-day-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cond-day-bar i {
+  display: block;
+  height: 100%;
+  min-width: 3px;
+  border-radius: 3px;
+  background: currentColor;
+}
+
+.cond-day-wind {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.cond-day-wind small {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #8FA6C4;
+}
+
+.cond-day-wind em {
+  font-size: 0.58rem;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--gold-light);
+}
+
+.cond-day-dir {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: #A8BDD8;
+}
+
+.cond-day-seas {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #C8D6E5;
+  text-align: right;
+}
+
+.cond-day-seas small {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #8FA6C4;
+}
+
+.cond-wind-arrow {
+  flex: 0 0 auto;
+}
+
+/* Comfort bands tint the bar and the hourly strip's top edge, so a rough
+   stretch is visible without reading a single number. */
+.cond-band-calm { color: var(--green); }
+.cond-band-moderate { color: var(--sea); }
+.cond-band-brisk { color: var(--gold); }
+.cond-band-rough { color: #E05252; }
+.cond-band-unknown { color: var(--slate); }
+
+.cond-hourly li[class*='cond-band-'] {
+  border-top: 2px solid currentColor;
 }
 
 /* ── LISICOS links ──────────────────────────────────── */
