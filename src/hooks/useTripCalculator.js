@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
-import { marinas, pointsOfInterest, noWakeZones, navigationSpine, shoalAreas } from '../data'
+import { marinas, pointsOfInterest, noWakeZones, navigationSpine, shoalAreas, headlands } from '../data'
 import {
   calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, buildRouteWaypoints,
-  findNearbyPOIs, applyShoalAvoidance,
+  findNearbyPOIs, applyShoalAvoidance, applyLandAvoidance,
 } from '../utils'
 
 export function useTripCalculator() {
@@ -20,7 +20,8 @@ export function useTripCalculator() {
     if (!start || !dest || start.id === dest.id) return null
 
     const baseWaypoints = buildRouteWaypoints(start, dest, navigationSpine)
-    const { waypoints: routeWaypoints, avoided } = applyShoalAvoidance(baseWaypoints, shoalAreas, draft)
+    const { waypoints: landClearWaypoints } = applyLandAvoidance(baseWaypoints, headlands)
+    const { waypoints: routeWaypoints, avoided } = applyShoalAvoidance(landClearWaypoints, shoalAreas, draft)
     const distanceNM = calcRouteDistanceNM(routeWaypoints)
     const noWakeResult = calcNoWakeDelay(routeWaypoints, noWakeZones, cruisingSpeed)
     const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize, noWakeResult.totalDelayHours)
@@ -47,6 +48,7 @@ export function useTripCalculator() {
       nearbyPOIs,
       draftWarnings,
       shoalsAvoided: avoided,
+      routeWaypoints,
     }
 
     setTripResult(result)
