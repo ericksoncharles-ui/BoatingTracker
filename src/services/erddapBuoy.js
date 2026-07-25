@@ -249,6 +249,13 @@ export async function fetchBuoyConditions({ here, signal } = {}) {
     if (attempts > 0 && failures.length === attempts) {
       throw new Error(failures.join('; '))
     }
+    // A clean "no rows" 404 from one host can hide a broken host next to it —
+    // the walk only throws when every attempt errors, so a wrong dataset URL
+    // or a CORS-blocked mirror otherwise reads as an ordinary seasonal outage.
+    // This is the only place that information isn't already visible somewhere.
+    if (failures.length > 0) {
+      console.warn(`[erddapBuoy] reporting empty after ${attempts} attempts; ${failures.length} errored:`, failures)
+    }
     return {
       status: 'empty',
       failures,
