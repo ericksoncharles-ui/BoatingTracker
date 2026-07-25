@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, LayersControl, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { useGeolocation } from '../hooks/useGeolocation'
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -18,80 +19,25 @@ const LI_SOUND_ZOOM = 10
 
 function LiveLocation() {
   const map = useMap()
-  const [tracking, setTracking] = useState(false)
-  const [position, setPosition] = useState(null)
-  const [error, setError] = useState(null)
-  const watchIdRef = useRef(null)
+  const { position, error, tracking, start, stop } = useGeolocation({ watch: true })
   const hasCenteredRef = useRef(false)
 
-  const updatePosition = (pos) => {
-    const next = {
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      accuracy: pos.coords.accuracy,
-      heading: pos.coords.heading,
-      speedKts: pos.coords.speed != null ? pos.coords.speed * 1.94384 : null,
-    }
-    setPosition(next)
-    if (!hasCenteredRef.current) {
-      hasCenteredRef.current = true
-      map.flyTo([next.lat, next.lng], Math.max(map.getZoom(), 13), { duration: 1.2 })
-    }
-  }
+  // Recentre on the first fix only — after that the skipper stays in control of
+  // the viewport instead of being yanked back on every update.
+  useEffect(() => {
+    if (!position || hasCenteredRef.current) return
+    hasCenteredRef.current = true
+    map.flyTo([position.lat, position.lng], Math.max(map.getZoom(), 13), { duration: 1.2 })
+  }, [position, map])
 
-  const handleError = (err) => {
-    if (err.code === 1) {
-      setError('Location permission denied')
-    } else if (err.code === 3) {
-      setError('Location timed out — try moving to an open area')
-    } else {
-      setError('Unable to get location')
-    }
-    stopTracking()
-  }
+  // Whenever tracking ends — by the button or by a geolocation error — arm the
+  // recentre again so the next fix flies to it.
+  useEffect(() => {
+    if (!tracking) hasCenteredRef.current = false
+  }, [tracking])
 
-  const stopTracking = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current)
-      watchIdRef.current = null
-    }
-    hasCenteredRef.current = false
-    setTracking(false)
-    setPosition(null)
-    setError(null)
-  }
-
-  const startTracking = () => {
-    if (!('geolocation' in navigator)) {
-      setError('Location not supported by this browser')
-      return
-    }
-    if (!window.isSecureContext) {
-      setError('Location requires HTTPS')
-      return
-    }
-    setError(null)
-    setTracking(true)
-
-    // iOS Safari/Chrome require getCurrentPosition first to reliably
-    // trigger the permission prompt; watchPosition alone often silently fails.
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        updatePosition(pos)
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          updatePosition,
-          handleError,
-          { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }
-        )
-      },
-      handleError,
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
-    )
-  }
-
-  useEffect(() => () => {
-    if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
-  }, [])
+  const startTracking = start
+  const stopTracking = stop
 
   return (
     <>

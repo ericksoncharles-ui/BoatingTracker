@@ -1112,3 +1112,558 @@ body {
     bottom: 50px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   CONDITIONS — Tides, Weather & Waves
+   ══════════════════════════════════════════════════════════ */
+
+.conditions-layout {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--navy);
+  padding: 20px;
+}
+
+.conditions-panel {
+  max-width: 1100px;
+  margin: 0 auto;
+  color: #C8D6E5;
+}
+
+/* Desktop lays the cards out side by side; the header, picker, alerts and
+   footer always span the full width. */
+.conditions-layout .conditions-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+
+.conditions-layout .cond-header,
+.conditions-layout .cond-place-picker,
+.conditions-layout .cond-alerts,
+.conditions-layout .cond-footer {
+  grid-column: 1 / -1;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+
+.cond-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cond-header h2 {
+  color: var(--white);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cond-location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: #8FA6C4;
+}
+
+.cond-location-icon {
+  display: inline-flex;
+  color: var(--sea);
+}
+
+.cond-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--navy-light);
+  color: #C8D6E5;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cond-refresh:hover:not(:disabled) {
+  background: var(--sea);
+  color: var(--white);
+}
+
+.cond-refresh:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cond-refresh span {
+  display: inline-flex;
+}
+
+.cond-spin {
+  animation: cond-spin 1s linear infinite;
+}
+
+@keyframes cond-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Location picker ─────────────────────────────────── */
+
+.cond-place-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8FA6C4;
+}
+
+.cond-place-picker select {
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--white);
+  background: var(--navy-light);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cond-place-picker select:focus {
+  outline: none;
+  border-color: var(--sea);
+}
+
+/* ── Cards ───────────────────────────────────────────── */
+
+.cond-card {
+  background: var(--navy-medium);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.cond-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cond-card-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--white);
+}
+
+.cond-card-icon {
+  display: inline-flex;
+  color: var(--sea);
+}
+
+.cond-badge {
+  padding: 3px 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  color: #A8BDD8;
+  background: rgba(43, 108, 176, 0.18);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.cond-badge-observed {
+  color: #9AE6B4;
+  background: rgba(56, 161, 105, 0.18);
+  border-color: rgba(56, 161, 105, 0.4);
+}
+
+.cond-badge-estimated {
+  color: var(--gold-light);
+  background: rgba(214, 158, 46, 0.16);
+  border-color: rgba(214, 158, 46, 0.4);
+}
+
+/* ── Metrics ─────────────────────────────────────────── */
+
+.cond-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.cond-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9px;
+}
+
+.cond-metric-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8FA6C4;
+}
+
+.cond-metric-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.2;
+}
+
+.cond-metric-value small {
+  margin-left: 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #8FA6C4;
+}
+
+.cond-metric-sub {
+  font-size: 0.66rem;
+  color: #8FA6C4;
+}
+
+/* ── Notes, errors, provenance ───────────────────────── */
+
+.cond-note,
+.cond-error,
+.cond-provenance {
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.cond-note {
+  color: #8FA6C4;
+}
+
+.cond-error {
+  margin-top: 8px;
+  padding: 8px 10px;
+  color: #FEB2B2;
+  background: rgba(197, 48, 48, 0.14);
+  border-left: 3px solid var(--warning);
+  border-radius: 6px;
+}
+
+.cond-provenance {
+  margin-top: 10px;
+  color: #7D93B2;
+  font-style: italic;
+}
+
+.cond-provenance-warn {
+  color: var(--gold-light);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.cond-station {
+  margin-bottom: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #C8D6E5;
+}
+
+.cond-subhead {
+  margin: 14px 0 7px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8FA6C4;
+}
+
+/* ── Alerts ──────────────────────────────────────────── */
+
+.cond-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cond-alert {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(214, 158, 46, 0.14);
+  border: 1px solid rgba(214, 158, 46, 0.45);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: #F0E0BC;
+}
+
+.cond-alert strong {
+  display: block;
+  color: var(--white);
+  font-size: 0.84rem;
+}
+
+.cond-alert p {
+  margin-top: 3px;
+  line-height: 1.45;
+}
+
+.cond-alert-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--gold-light);
+}
+
+.cond-alert-severe,
+.cond-alert-extreme {
+  background: rgba(197, 48, 48, 0.16);
+  border-color: rgba(197, 48, 48, 0.55);
+  color: #FED7D7;
+}
+
+.cond-alert-severe .cond-alert-icon,
+.cond-alert-extreme .cond-alert-icon {
+  color: #FC8181;
+}
+
+/* ── Tide chart & table ──────────────────────────────── */
+
+.tide-chart {
+  margin: 12px 0 4px;
+}
+
+.tide-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tide-chart-label {
+  font-size: 7px;
+  font-weight: 700;
+  fill: #A8BDD8;
+}
+
+.tide-chart-now {
+  font-size: 7px;
+  font-weight: 700;
+  fill: #F6AD55;
+  text-transform: uppercase;
+}
+
+.cond-tide-list {
+  list-style: none;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.cond-tide-list li {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 2px;
+  font-size: 0.78rem;
+  color: #C8D6E5;
+  border-bottom: 1px solid rgba(45, 62, 94, 0.5);
+}
+
+.cond-tide-list li.cond-past {
+  opacity: 0.42;
+}
+
+.cond-tide-kind {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cond-tide-high {
+  color: #8FD3F4;
+}
+
+.cond-tide-low {
+  color: #7D93B2;
+}
+
+.cond-tide-height {
+  font-weight: 700;
+  color: var(--white);
+}
+
+/* ── Hourly wind strip ──────────────────────────────── */
+
+.cond-hourly {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  list-style: none;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cond-hourly li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  min-width: 52px;
+  padding: 8px 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.cond-hour {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #8FA6C4;
+  white-space: nowrap;
+}
+
+.cond-hour-wind {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.cond-hour-dir {
+  font-size: 0.6rem;
+  color: #8FA6C4;
+}
+
+/* ── LISICOS links ──────────────────────────────────── */
+
+.cond-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cond-link {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 12px;
+  background: rgba(43, 108, 176, 0.14);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.cond-link:hover {
+  background: rgba(43, 108, 176, 0.28);
+  border-color: var(--sea);
+}
+
+.cond-link-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.cond-link-icon {
+  display: inline-flex;
+  color: var(--sea);
+}
+
+.cond-link-desc {
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: #8FA6C4;
+}
+
+/* ── Footer ─────────────────────────────────────────── */
+
+.cond-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+  font-size: 0.68rem;
+  color: #6F86A6;
+}
+
+.cond-stale {
+  color: var(--gold-light);
+  font-weight: 700;
+}
+
+.cond-sources {
+  text-align: right;
+}
+
+/* ── Mobile ─────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Sits above the map but below the tab bar (z-index 200). Owns its own
+     scrolling, because body is position:fixed/overflow:hidden on mobile. */
+  .mobile-conditions {
+    position: absolute;
+    inset: 0;
+    z-index: 150;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    background: var(--navy);
+    padding: 14px 14px calc(74px + env(safe-area-inset-bottom, 0));
+  }
+
+  .conditions-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cond-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .cond-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  }
+
+  /* Four tabs need a little more room for their labels than three did. */
+  .mobile-tab {
+    font-size: 0.6rem;
+    gap: 2px;
+  }
+
+  .cond-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cond-sources {
+    text-align: left;
+  }
+}
