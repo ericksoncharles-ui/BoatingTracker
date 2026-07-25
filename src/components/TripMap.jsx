@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, Polyline, LayersControl, LayerGroup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, LayersControl, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useGeolocation } from '../hooks/useGeolocation'
@@ -157,26 +157,7 @@ function LiveLocation() {
   )
 }
 
-function ClearRouteControl({ onClear }) {
-  return (
-    <div
-      className="clear-route-control leaflet-bottom leaflet-left"
-      onClick={(e) => e.stopPropagation()}
-      onDoubleClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <button className="clear-route-btn" title="Clear route" onClick={onClear}>
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-        Clear Route
-      </button>
-    </div>
-  )
-}
-
-export default function TripMap({ marinas, shoalAreas, focus, route, onClearRoute }) {
+export default function TripMap({ marinas, shoalAreas, focus }) {
   const center = focus ? [focus.lat, focus.lng] : LI_SOUND_CENTER
   const zoom = focus ? HARBOR_ZOOM : LI_SOUND_ZOOM
 
@@ -255,15 +236,6 @@ export default function TripMap({ marinas, shoalAreas, focus, route, onClearRout
 
         <InitialView />
         <LiveLocation />
-
-        {route?.routeWaypoints && (
-          <Polyline
-            positions={route.routeWaypoints}
-            pathOptions={{ color: '#2B6CB0', weight: 4, opacity: 0.85 }}
-          />
-        )}
-
-        {route?.routeWaypoints && onClearRoute && <ClearRouteControl onClear={onClearRoute} />}
 
         {marinas.map((marina) => (
           <Marker key={marina.id} position={[marina.lat, marina.lng]}>

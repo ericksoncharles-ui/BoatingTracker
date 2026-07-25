@@ -74,17 +74,6 @@ export default function App() {
     if (trip.tripResult) setSheetOpen(true)
   }, [trip.tripResult])
 
-  // Calculating a trip on the Planner tab jumps straight to the chart so the
-  // route is the first thing the skipper sees, instead of leaving them to
-  // find the Chart tab themselves.
-  const handleCalculate = () => {
-    const result = trip.calculateTrip()
-    if (result) {
-      setActiveTab('chart')
-      setSheetOpen(false)
-    }
-  }
-
   return (
     <div className="app">
       {/* Desktop tab bar */}
@@ -131,10 +120,10 @@ export default function App() {
             draft={trip.draft}
             setDraft={trip.setDraft}
             tripResult={trip.tripResult}
-            onCalculate={handleCalculate}
+            onCalculate={trip.calculateTrip}
             onReset={trip.resetTrip}
           />
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} route={trip.tripResult} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
         </div>
         </ErrorBoundary>
       )}
@@ -142,7 +131,7 @@ export default function App() {
       {activeTab === 'chart' && (
         <ErrorBoundary>
         <div className="chart-layout desktop-only">
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} route={trip.tripResult} onClearRoute={trip.resetTrip} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
         </div>
         </ErrorBoundary>
       )}
@@ -159,13 +148,7 @@ export default function App() {
       <ErrorBoundary>
       <div className="mobile-layout mobile-only">
         <div className="mobile-map">
-          <TripMap
-            marinas={marinas}
-            shoalAreas={shoalAreas}
-            focus={startMarina}
-            route={trip.tripResult}
-            onClearRoute={activeTab === 'chart' ? trip.resetTrip : undefined}
-          />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
         </div>
 
         <div
@@ -196,7 +179,7 @@ export default function App() {
               draft={trip.draft}
               setDraft={trip.setDraft}
               tripResult={trip.tripResult}
-              onCalculate={handleCalculate}
+              onCalculate={trip.calculateTrip}
               onReset={trip.resetTrip}
             />
           </div>
