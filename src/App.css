@@ -45,12 +45,26 @@ body {
 
 .tab-bar {
   display: flex;
+  align-items: center;
   background: var(--navy);
   border-bottom: 1px solid var(--border);
   padding: 0 16px;
   gap: 2px;
   flex-shrink: 0;
   z-index: 20;
+}
+
+.tab-bar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 16px;
+  margin-right: 14px;
+  border-right: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--white);
 }
 
 .tab-btn {
@@ -869,6 +883,30 @@ body {
   .mobile-map .leaflet-map {
     width: 100%;
     height: 100%;
+  }
+
+  /* Centered so it clears Leaflet's zoom control (top-left) and the layers
+     control (top-right) without needing to know either control's width. */
+  .mobile-brand {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0) + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(27, 42, 74, 0.82);
+    border: 1px solid rgba(144, 164, 196, 0.3);
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--white);
+    pointer-events: none;
   }
 
   /* ── Bottom Sheet ───────────────────────────────────── */

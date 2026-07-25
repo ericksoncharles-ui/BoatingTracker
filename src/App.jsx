@@ -14,6 +14,26 @@ const CONDITIONS_ICON = (
   </svg>
 )
 
+// The same compass rose used in the sidebar header, resized for the tab bar
+// and the mobile map badge so the SoundCaptain mark stays visible on the
+// Chart and Conditions tabs, which have no sidebar to carry it.
+const BRAND_ICON = (
+  <svg viewBox="0 0 44 44" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="22" cy="22" r="20" stroke="#90A4C4" strokeWidth="1.2" opacity="0.5"/>
+    <circle cx="22" cy="22" r="17" stroke="#90A4C4" strokeWidth="0.6" opacity="0.3"/>
+    <polygon points="22,2 25,18 22,16 19,18" fill="#C8D6E5" opacity="0.9"/>
+    <polygon points="22,42 25,26 22,28 19,26" fill="#90A4C4" opacity="0.5"/>
+    <polygon points="42,22 26,19 28,22 26,25" fill="#90A4C4" opacity="0.5"/>
+    <polygon points="2,22 18,19 16,22 18,25" fill="#90A4C4" opacity="0.5"/>
+    <polygon points="35.7,8.3 27,18 26,17 27,16" fill="#90A4C4" opacity="0.35"/>
+    <polygon points="35.7,35.7 27,26 26,27 27,28" fill="#90A4C4" opacity="0.35"/>
+    <polygon points="8.3,35.7 17,26 18,27 17,28" fill="#90A4C4" opacity="0.35"/>
+    <polygon points="8.3,8.3 17,18 18,17 17,16" fill="#90A4C4" opacity="0.35"/>
+    <circle cx="22" cy="22" r="2.5" fill="#1B2A4A" stroke="#C8D6E5" strokeWidth="1"/>
+    <text x="22" y="10" textAnchor="middle" fill="#C8D6E5" fontSize="5" fontWeight="700" fontFamily="serif">N</text>
+  </svg>
+)
+
 // Both layouts stay in the DOM and are toggled with CSS, so anything rendered in
 // each one mounts twice. Harmless for the planner, but the conditions panel would
 // ask the locator for a fix twice and hit NOAA, open-meteo and the buoy feeds
@@ -78,6 +98,10 @@ export default function App() {
     <div className="app">
       {/* Desktop tab bar */}
       <div className="tab-bar desktop-only">
+        <div className="tab-bar-brand">
+          {BRAND_ICON}
+          <span>SoundCaptain</span>
+        </div>
         <button
           className={`tab-btn ${activeTab === 'planner' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('planner')}
@@ -149,6 +173,11 @@ export default function App() {
       <div className="mobile-layout mobile-only">
         <div className="mobile-map">
           <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
+        </div>
+
+        <div className="mobile-brand">
+          {BRAND_ICON}
+          <span>SoundCaptain</span>
         </div>
 
         <div
