@@ -330,3 +330,34 @@ export const lisicosLinks = [
     url: 'https://lisicos.uconn.edu/',
   },
 ]
+
+// Outbound links to fishing reports, same "only confirmed URLs" rule as
+// lisicosLinks above. Fisherman's World is the Norwalk tackle shop closest to
+// the app's home waters; the rest are aggregate reports covering the wider
+// Sound from both the Connecticut and Long Island shores.
+export const fishingLinks = [
+  {
+    id: 'fishermans-world',
+    label: "Fisherman's World, Norwalk CT",
+    description: 'Local tackle shop report — species, bait, and hot spots around western Long Island Sound.',
+    url: 'https://www.fishermansworld.net/',
+  },
+  {
+    id: 'onthewater-ct',
+    label: 'On The Water — Connecticut',
+    description: 'Weekly aggregate fishing reports for the Connecticut shore of the Sound.',
+    url: 'https://onthewater.com/regions/connecticut',
+  },
+  {
+    id: 'onthewater-ny',
+    label: 'On The Water — New York & Long Island',
+    description: 'Weekly aggregate fishing reports for the Long Island / North Shore side of the Sound.',
+    url: 'https://onthewater.com/regions/new-york',
+  },
+  {
+    id: 'thefisherman-northshore',
+    label: 'The Fisherman — North Shore, LI',
+    description: "Regional reports covering Long Island's North Shore and western Long Island Sound.",
+    url: 'https://www.thefisherman.com/area/north-shore/',
+  },
+]
