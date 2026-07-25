@@ -709,6 +709,49 @@ body {
   margin-top: 1px;
 }
 
+/* Local knowledge for the chosen start/destination — cautions that a single
+   controlling-depth figure can't express (current in an entrance, exposure to
+   an easterly). Gold rather than orange: advisory, not a hazard warning. */
+.local-knowledge {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--navy-light);
+  border-radius: 10px;
+  border-left: 3px solid var(--gold);
+}
+
+.local-knowledge h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gold);
+  margin: 0 0 8px;
+}
+
+.local-knowledge-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.local-knowledge-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.local-knowledge-list strong {
+  color: var(--cream);
+  font-size: 0.82rem;
+}
+
+.local-knowledge-list span {
+  color: #CBD5E0;
+}
+
 /* ── Live Location ──────────────────────────────────── */
 
 .locate-control {
