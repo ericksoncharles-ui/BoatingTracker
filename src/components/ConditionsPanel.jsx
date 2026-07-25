@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { marinas, lisicosLinks } from '../data'
+import { marinas, lisicosLinks, WLIS_STATION } from '../data'
 import { degreesToCardinal } from '../utils'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { useConditions } from '../hooks/useConditions'
@@ -73,9 +73,13 @@ function Metric({ label, value, unit, sub }) {
   )
 }
 
-function Card({ icon, title, badge, section, children, emptyMessage }) {
+// `substituted` means the card is showing usable numbers from another source
+// despite its own being down. The outage then belongs in the provenance line
+// under those numbers, not in a banner above them that reads like the card
+// failed — and never as a raw fetch error the skipper can't act on.
+function Card({ icon, title, badge, section, children, emptyMessage, substituted = false }) {
   const status = section?.status
-  const showSpinner = status === 'loading' && !section?.data
+  const showSpinner = status === 'loading' && !section?.data && !substituted
 
   return (
     <section className="cond-card">
@@ -88,12 +92,14 @@ function Card({ icon, title, badge, section, children, emptyMessage }) {
       </header>
 
       {showSpinner && <p className="cond-note">Loading…</p>}
-      {status === 'error' && (
+      {status === 'error' && !substituted && (
         <p className="cond-error">
           {section.error || 'Could not load this data.'}
         </p>
       )}
-      {status === 'empty' && <p className="cond-note">{emptyMessage || 'No data available.'}</p>}
+      {status === 'empty' && !substituted && (
+        <p className="cond-note">{emptyMessage || 'No data available.'}</p>
+      )}
       {children}
     </section>
   )
@@ -160,6 +166,18 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     return null
   }, [buoyData, currentWeather])
 
+  // Why the wave numbers are estimated, in the fewest words that stay accurate:
+  // the buoy is silent, unreachable, or up but with its wave sensor down.
+  const buoyName = buoyData?.station?.name || WLIS_STATION.name
+  const buoyOutage =
+    buoy.status === 'empty'
+      ? `${buoyName} buoy not reporting`
+      : buoy.status === 'error'
+        ? `${buoyName} buoy unreachable`
+        : buoy.status === 'ok' && buoyData?.readings?.waveHeightFt == null
+          ? `${buoyName} wave sensor down`
+          : null
+
   const activeAlerts = alerts.status === 'ok' ? alerts.data : []
   const tideData = tides.status === 'ok' ? tides.data : null
 
@@ -220,6 +238,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
         title="Sea State"
         section={buoy}
         emptyMessage={buoy.data?.message}
+        substituted={seaState?.source === 'estimated'}
         badge={
           seaState && (
             <span className={`cond-badge ${seaState.source === 'observed' ? 'cond-badge-observed' : 'cond-badge-estimated'}`}>
@@ -258,7 +277,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
             ) : (
               <p className="cond-provenance cond-provenance-warn">
                 Estimated from wind — not measured
-                {buoyData?.station && <> · {buoyData.station.name} buoy unavailable</>}
+                {buoyOutage && <> · {buoyOutage}</>}
                 {seaState.fetchNM != null && <> · {seaState.fetchNM} NM fetch</>}
               </p>
             )}

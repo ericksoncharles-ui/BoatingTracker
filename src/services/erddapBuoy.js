@@ -17,6 +17,17 @@ const STALE_AFTER_MINUTES = 90
 // Beyond this distance the buoy describes the region, not the water you're in.
 const REGIONAL_DISTANCE_NM = 25
 
+// LISICOS recovers its buoys before the ice season and re-moors them in spring,
+// so silence over the winter is expected rather than a fault. Blaming the season
+// in July would be wrong, so the two cases are worded separately.
+const RECOVERY_MONTHS = new Set([10, 11, 0, 1, 2, 3])
+
+function describeOutage(station, now = new Date()) {
+  return RECOVERY_MONTHS.has(now.getMonth())
+    ? `${station.name} is not reporting. LISICOS recovers its buoys for the winter, so it is probably out of the water until spring.`
+    : `${station.name} is not reporting right now. The buoy may be off station for servicing.`
+}
+
 const HOSTS = [
   {
     id: 'ioos',
@@ -216,7 +227,7 @@ export async function fetchBuoyConditions({ here, signal } = {}) {
       status: 'empty',
       station,
       failures,
-      message: `No current observations from ${station.name}. The buoy may be out of service or recovered for the season.`,
+      message: describeOutage(station),
     }
   }
 
