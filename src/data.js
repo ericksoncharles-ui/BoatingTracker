@@ -34,6 +34,47 @@ export const marinas = [
 
   // Rhode Island (eastern Sound access)
   { id: 'watch-hill', name: 'Watch Hill Docks, RI', lat: 41.3060, lng: -71.8600, approachDepthFt: 8, approach: { lat: 41.305, lng: -71.862 } },
+
+  // ── Anchorages, beaches, and landmarks in the western Sound ────────────────
+  // Day-trip destinations rather than marinas — no slips or fuel dock — so
+  // `kind` groups them apart from the harbors in the departure/destination
+  // dropdowns. approachDepthFt is set ONLY where a charted or published
+  // controlling depth exists: the calculator skips the draft check when the
+  // field is absent, which is the honest outcome for a beach or open roadstead
+  // that has no single controlling depth. Inventing one would fire a
+  // confident-looking draft warning off a number nobody surveyed.
+  // `note` carries local knowledge that a depth figure alone doesn't convey.
+
+  // Connecticut — Greenwich east to Westport
+  { id: 'great-captain', kind: 'anchorage', name: 'Great Captain Island, Greenwich, CT', lat: 40.9825, lng: -73.6233, approach: { lat: 40.974, lng: -73.615 } },
+  { id: 'calf-island', kind: 'anchorage', name: 'Calf Island, Greenwich, CT', lat: 40.9930, lng: -73.6395, approach: { lat: 40.983, lng: -73.639 } },
+  { id: 'tods-point', kind: 'anchorage', name: "Tod's Point (Greenwich Point), CT", lat: 41.0020, lng: -73.5710, approach: { lat: 40.990, lng: -73.572 } },
+  { id: 'westcott-cove', kind: 'anchorage', name: 'Westcott Cove, Stamford, CT', lat: 41.0354, lng: -73.5185, approach: { lat: 41.022, lng: -73.516 } },
+  { id: 'zieglers-cove', kind: 'anchorage', name: "Ziegler's Cove, Darien, CT", lat: 41.0511, lng: -73.4713, approachDepthFt: 8, approach: { lat: 41.038, lng: -73.470 }, note: 'Best water is near the channel into the cove (about 10 ft at MLW). Shoreline is private — no shore access.' },
+  { id: 'shea-island', kind: 'anchorage', name: 'Shea Island, Norwalk, CT', lat: 41.0595, lng: -73.4020, approach: { lat: 41.050, lng: -73.406 } },
+  { id: 'chimon-island', kind: 'anchorage', name: 'Chimon Island (SW beach), Norwalk, CT', lat: 41.0620, lng: -73.3945, approach: { lat: 41.054, lng: -73.399 } },
+  // Placed west of the sand spit, where published depths run over 7 ft. The
+  // island group's charted shoal (sh-cockenoe) sits east of here — the inner
+  // harbor carries only 3-4 ft and is not the anchorage this points at.
+  { id: 'cockenoe-island', kind: 'anchorage', name: 'Cockenoe Island (west of the spit), Westport, CT', lat: 41.0865, lng: -73.3620, approachDepthFt: 7, approach: { lat: 41.078, lng: -73.366 }, note: 'Bottom is irregular with rocks throughout the island group. Inner harbor holds only 3-4 ft at low water and needs half tide or better.' },
+
+  // Long Island north shore — directly across the Sound
+  { id: 'bayville-beach', kind: 'anchorage', name: 'Bayville Beach, NY', lat: 40.9130, lng: -73.5621, approach: { lat: 40.926, lng: -73.562 } },
+  // Position is approximate — no published lat/lng for the basin was found, so
+  // this is the north end of Lloyd Neck rather than a surveyed fix. The
+  // entrance caution below is the part that matters.
+  { id: 'sand-hole', kind: 'anchorage', name: 'The Sand Hole, Lloyd Neck, NY', lat: 40.9450, lng: -73.4800, approach: { lat: 40.956, lng: -73.479 }, note: 'Deep inside (up to 25 ft at low water) but entered through two narrow, steep-sided channels running as much as 5 kt. Enter near high water, and only with local knowledge.' },
+  { id: 'lloyd-harbor', kind: 'anchorage', name: 'Lloyd Harbor, NY', lat: 40.9060, lng: -73.4542, approach: { lat: 40.915, lng: -73.435 } },
+  { id: 'sand-city', kind: 'anchorage', name: 'Sand City, Eatons Neck, NY', lat: 40.9198, lng: -73.4037, approach: { lat: 40.942, lng: -73.418 }, note: 'Tucked behind Eatons Neck — anchor, pick up a mooring, or beach the bow. Exposed when the wind pipes up from the east.' },
+
+  // Lighthouses — visited by boat as waypoints and photo stops, not landings
+  { id: 'stamford-ledge-light', kind: 'landmark', name: 'Stamford Harbor Ledge Light, CT', lat: 41.0137, lng: -73.5426, approach: { lat: 41.005, lng: -73.542 } },
+  // Sits in about 10 ft on the west end of Greens Ledge, but the ledge itself
+  // carries 3 ft (see sh-greens-ledge) — hence the shallow approach depth.
+  { id: 'greens-ledge-light', kind: 'landmark', name: 'Greens Ledge Light, Norwalk, CT', lat: 41.0420, lng: -73.4440, approachDepthFt: 3, approach: { lat: 41.033, lng: -73.444 }, note: 'Stand off and view from deep water — the ledge running east toward Sheffield Island carries as little as 3 ft.' },
+  { id: 'peck-ledge-light', kind: 'landmark', name: 'Peck Ledge Light, Norwalk, CT', lat: 41.0773, lng: -73.3698, approach: { lat: 41.069, lng: -73.372 } },
+  { id: 'huntington-light', kind: 'landmark', name: 'Huntington Harbor Light, Lloyd Harbor, NY', lat: 40.9107, lng: -73.4313, approach: { lat: 40.922, lng: -73.428 } },
+  { id: 'eatons-neck-light', kind: 'landmark', name: 'Eatons Neck Light, NY', lat: 40.9540, lng: -73.3951, approach: { lat: 40.964, lng: -73.395 } },
 ]
 
 // Main navigation channel waypoints through Long Island Sound (west to east).
@@ -104,8 +145,11 @@ export const pointsOfInterest = [
   {
     id: 'captain-islands',
     name: 'Captain Islands',
-    lat: 41.0010,
-    lng: -73.6300,
+    // Was plotted at 41.001/-73.630, which is up in the mouth of Greenwich
+    // Harbor — over a mile north of the islands. Centred on the group instead:
+    // Great Captain sits at 40.9825/-73.6233, Calf Island at 40.993/-73.6395.
+    lat: 40.9880,
+    lng: -73.6280,
     description: 'Three small islands off Greenwich with beaches and a lighthouse.',
   },
   {

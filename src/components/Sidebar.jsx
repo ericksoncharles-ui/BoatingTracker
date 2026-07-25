@@ -1,6 +1,29 @@
 import { marinas } from '../data'
 import TripBriefing from './TripBriefing'
 
+// The list spans working harbors, open anchorages, and lighthouses you'd only
+// stand off and look at. Grouping keeps a 50-entry dropdown scannable and warns
+// the helm that picking "Greens Ledge Light" is not picking a place to tie up.
+const DESTINATION_GROUPS = [
+  { label: 'Marinas & Harbors', match: (m) => !m.kind || m.kind === 'marina' },
+  { label: 'Anchorages & Beaches', match: (m) => m.kind === 'anchorage' },
+  { label: 'Lighthouses & Landmarks', match: (m) => m.kind === 'landmark' },
+]
+
+function DestinationOptions() {
+  return DESTINATION_GROUPS.map(({ label, match }) => {
+    const options = marinas.filter(match)
+    if (options.length === 0) return null
+    return (
+      <optgroup key={label} label={label}>
+        {options.map((m) => (
+          <option key={m.id} value={m.id}>{m.name}</option>
+        ))}
+      </optgroup>
+    )
+  })
+}
+
 export default function Sidebar({
   startId, setStartId,
   destId, setDestId,
@@ -44,12 +67,10 @@ export default function Sidebar({
           <span className="label-icon">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg>
           </span>
-          Starting Marina
+          Starting Point
           <select value={startId} onChange={(e) => setStartId(e.target.value)}>
-            <option value="">Select a marina...</option>
-            {marinas.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
+            <option value="">Select a starting point...</option>
+            <DestinationOptions />
           </select>
         </label>
 
@@ -60,9 +81,7 @@ export default function Sidebar({
           Destination
           <select value={destId} onChange={(e) => setDestId(e.target.value)}>
             <option value="">Select a destination...</option>
-            {marinas.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
+            <DestinationOptions />
           </select>
         </label>
 
@@ -168,6 +187,25 @@ export default function Sidebar({
                   ))}
                 </ul>
               </div>
+            </div>
+          )}
+
+          {[tripResult.start, tripResult.dest].some((p) => p.note) && (
+            <div className="local-knowledge">
+              <h3>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Local Knowledge
+              </h3>
+              <ul className="local-knowledge-list">
+                {[tripResult.start, tripResult.dest]
+                  .filter((p) => p.note)
+                  .map((p) => (
+                    <li key={p.id}>
+                      <strong>{p.name}</strong>
+                      <span>{p.note}</span>
+                    </li>
+                  ))}
+              </ul>
             </div>
           )}
 
