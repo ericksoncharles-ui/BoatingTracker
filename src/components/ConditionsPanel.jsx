@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { marinas, lisicosLinks, WLIS_STATION } from '../data'
+import { marinas, lisicosLinks } from '../data'
 import { degreesToCardinal } from '../utils'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { useConditions } from '../hooks/useConditions'
@@ -166,16 +166,16 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     return null
   }, [buoyData, currentWeather])
 
-  // Why the wave numbers are estimated, in the fewest words that stay accurate:
-  // the buoy is silent, unreachable, or up but with its wave sensor down.
-  const buoyName = buoyData?.station?.name || WLIS_STATION.name
+  // Why the wave numbers are estimated, in the fewest words that stay accurate.
+  // The fetch walks every Sound buoy, so "empty" means all of them are silent
+  // and "sensor down" means the nearest reporting buoy had no wave reading.
   const buoyOutage =
     buoy.status === 'empty'
-      ? `${buoyName} buoy not reporting`
+      ? 'no Sound buoy reporting'
       : buoy.status === 'error'
-        ? `${buoyName} buoy unreachable`
+        ? 'buoy feeds unreachable'
         : buoy.status === 'ok' && buoyData?.readings?.waveHeightFt == null
-          ? `${buoyName} wave sensor down`
+          ? `${buoyData?.station?.name || 'buoy'} wave sensor down`
           : null
 
   const activeAlerts = alerts.status === 'ok' ? alerts.data : []
@@ -439,7 +439,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
           </h3>
         </header>
         <p className="cond-note">
-          The Long Island Sound Integrated Coastal Observing System runs the WLIS buoy these
+          The Long Island Sound Integrated Coastal Observing System runs the Sound buoys these
           observations come from. Its own panels carry the full instrument set and plots.
         </p>
         <div className="cond-links">
