@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import Anthropic from '@anthropic-ai/sdk'
 
 function generateFallbackBriefing(tripResult) {
   const { start, dest, distanceNM, travelTimeFormatted, cruisingSpeed, fuelPercentUsed, nearbyPOIs, needsFuelWarning } = tripResult
@@ -21,45 +20,42 @@ export default function TripBriefing({ tripResult }) {
       return
     }
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
-    if (!apiKey) {
-      setBriefing(generateFallbackBriefing(tripResult))
-      setIsAI(false)
-      return
-    }
-
-    let cancelled = false
+    const controller = new AbortController()
     setLoading(true)
 
-    const poiNames = tripResult.nearbyPOIs.map((p) => p.name).join(', ')
-    const prompt = `You are a friendly harbor master. Give a 2-3 sentence trip briefing for a boating trip from ${tripResult.start.name} to ${tripResult.dest.name}, ${tripResult.distanceNM} nautical miles across Long Island Sound. Travel time is about ${tripResult.travelTimeFormatted} at cruising speed. Fuel usage is ${tripResult.fuelPercentUsed}% of tank. Nearby points of interest: ${poiNames}. Recommend one anchorage, mention fuel confidence, and keep it nautical and friendly.`
-
-    const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
-
-    client.messages
-      .create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 200,
-        messages: [{ role: 'user', content: prompt }],
-      })
+    fetch('/api/briefing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        startName: tripResult.start.name,
+        destName: tripResult.dest.name,
+        distanceNM: tripResult.distanceNM,
+        travelTimeFormatted: tripResult.travelTimeFormatted,
+        cruisingSpeed: tripResult.cruisingSpeed,
+        fuelPercentUsed: tripResult.fuelPercentUsed,
+        nearbyPOIs: tripResult.nearbyPOIs.map((p) => p.name),
+      }),
+    })
       .then((response) => {
-        if (!cancelled) {
-          const text = response.content[0]?.text || ''
-          setBriefing(text)
-          setIsAI(true)
-        }
+        if (!response.ok) throw new Error(`Briefing request failed: ${response.status}`)
+        return response.json()
       })
-      .catch(() => {
-        if (!cancelled) {
-          setBriefing(generateFallbackBriefing(tripResult))
-          setIsAI(false)
-        }
+      .then((data) => {
+        if (!data.briefing) throw new Error('Empty briefing')
+        setBriefing(data.briefing)
+        setIsAI(true)
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') return
+        setBriefing(generateFallbackBriefing(tripResult))
+        setIsAI(false)
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
 
-    return () => { cancelled = true }
+    return () => { controller.abort() }
   }, [tripResult])
 
   if (!tripResult || (!briefing && !loading)) return null
