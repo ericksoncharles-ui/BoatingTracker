@@ -82,6 +82,9 @@ function windBand(kt) {
 // week reads as calm instead of stretching its lightest day to full width.
 const WIND_BAR_MAX_KT = 30
 
+// How long the panel holds off fetching while it waits for a first fix.
+const GEO_GRACE_MS = 8000
+
 // Wind direction is the direction the wind comes *from*, so the arrow has to
 // point the opposite way — where it is pushing you.
 function WindArrow({ deg }) {
@@ -165,12 +168,19 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     return () => clearInterval(id)
   }, [])
 
+  const [geoGraceOver, setGeoGraceOver] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setGeoGraceOver(true), GEO_GRACE_MS)
+    return () => clearTimeout(id)
+  }, [])
+
   const fallbackMarina =
     marinas.find((m) => m.id === fallbackMarinaId) || marinas.find((m) => m.id === 'stamford') || marinas[0]
   const overrideMarina = overrideId ? marinas.find((m) => m.id === overrideId) : null
 
   // Geolocation hasn't answered yet — neither a fix nor a refusal.
   const geoPending = geo.tracking || (!geo.position && !geo.error)
+  const searchingForGeo = !overrideMarina && geoPending
 
   const place = overrideMarina
     ? { lat: overrideMarina.lat, lng: overrideMarina.lng, label: overrideMarina.name, source: 'picked' }
@@ -178,9 +188,12 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
       ? { lat: geo.position.lat, lng: geo.position.lng, label: 'your location', source: 'gps' }
       : { lat: fallbackMarina.lat, lng: fallbackMarina.lng, label: fallbackMarina.name, source: 'fallback' }
 
-  // Don't fetch against the fallback while GPS is still resolving, or every tab
-  // visit would fire two rounds of requests.
-  const waitingForGeo = !overrideMarina && geoPending
+  // Holding off on the fetch until the locator answers avoids a double round of
+  // requests, but a locator that has to escalate can take most of a minute, and
+  // a blank screen at the helm is worse than tides for the harbor you probably
+  // left from. Wait a few seconds, then show the fallback — a fix arriving later
+  // just moves the position and refetches.
+  const waitingForGeo = searchingForGeo && !geoGraceOver
 
   const conditions = useConditions({ lat: place.lat, lng: place.lng, enabled: !waitingForGeo })
   const { tides, buoy, forecast, alerts, refresh, updatedAt, cachedAt, failedAt, loading } = conditions
@@ -251,9 +264,11 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   const locationNote = {
     gps: 'Using your location',
     picked: `Showing ${place.label}`,
-    fallback: geo.error
-      ? `${geo.error} — showing ${fallbackMarina.name}`
-      : `Showing ${fallbackMarina.name}`,
+    fallback: searchingForGeo
+      ? `Still finding your location — showing ${fallbackMarina.name}`
+      : geo.error
+        ? `${geo.error} — showing ${fallbackMarina.name}`
+        : `Showing ${fallbackMarina.name}`,
   }[place.source]
 
   return (
@@ -264,6 +279,13 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
           <p className="cond-location">
             <span className="cond-location-icon">{ICONS.pin}</span>
             {waitingForGeo ? 'Finding your location…' : locationNote}
+            {/* A failed fix used to be permanent until a reload. Locators fail
+                transiently, so there has to be a way to ask again. */}
+            {!searchingForGeo && place.source === 'fallback' && (
+              <button className="cond-location-retry" onClick={geo.start}>
+                Try again
+              </button>
+            )}
           </p>
         </div>
         <button
@@ -278,7 +300,16 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
       <label className="cond-place-picker">
         Location
-        <select value={overrideId} onChange={(e) => setOverrideId(e.target.value)}>
+        <select
+          value={overrideId}
+          onChange={(e) => {
+            const next = e.target.value
+            setOverrideId(next)
+            // Choosing "My location" back is how a skipper asks for another fix
+            // after picking a marina to get past a failed one.
+            if (!next && !geo.position) geo.start()
+          }}
+        >
           <option value="">My location{geo.error ? ' (unavailable)' : ''}</option>
           {marinas.map((m) => (
             <option key={m.id} value={m.id}>{m.name}</option>

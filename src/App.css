@@ -1220,6 +1220,22 @@ body {
   color: var(--sea);
 }
 
+.cond-location-retry {
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--sea);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.cond-location-retry:hover {
+  border-color: var(--sea);
+}
+
 .cond-refresh {
   display: inline-flex;
   align-items: center;
