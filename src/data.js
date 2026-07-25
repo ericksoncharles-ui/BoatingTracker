@@ -341,23 +341,27 @@ export const fishingLinks = [
     label: "Fisherman's World, Norwalk CT",
     description: 'Local tackle shop report — species, bait, and hot spots around western Long Island Sound.',
     url: 'https://www.fishermansworld.net/',
+    kind: 'shop',
   },
   {
     id: 'onthewater-ct',
     label: 'On The Water — Connecticut',
     description: 'Weekly aggregate fishing reports for the Connecticut shore of the Sound.',
     url: 'https://onthewater.com/regions/connecticut',
+    kind: 'aggregate',
   },
   {
     id: 'onthewater-ny',
     label: 'On The Water — New York & Long Island',
     description: 'Weekly aggregate fishing reports for the Long Island / North Shore side of the Sound.',
     url: 'https://onthewater.com/regions/new-york',
+    kind: 'aggregate',
   },
   {
     id: 'thefisherman-northshore',
     label: 'The Fisherman — North Shore, LI',
     description: "Regional reports covering Long Island's North Shore and western Long Island Sound.",
     url: 'https://www.thefisherman.com/area/north-shore/',
+    kind: 'aggregate',
   },
 ]

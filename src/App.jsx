@@ -187,7 +187,7 @@ export default function App() {
       {activeTab === 'fishing' && !isMobileLayout && (
         <ErrorBoundary>
         <div className="conditions-layout desktop-only">
-          <FishingReportPanel />
+          <FishingReportPanel fallbackMarinaId={trip.startId} />
         </div>
         </ErrorBoundary>
       )}
@@ -248,7 +248,7 @@ export default function App() {
 
         {activeTab === 'fishing' && isMobileLayout && (
           <div className="mobile-conditions">
-            <FishingReportPanel />
+            <FishingReportPanel fallbackMarinaId={trip.startId} />
           </div>
         )}
 

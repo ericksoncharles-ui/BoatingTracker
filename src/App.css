@@ -1848,6 +1848,10 @@ body {
   color: var(--sea);
 }
 
+.cond-link-badge {
+  margin-left: auto;
+}
+
 .cond-link-desc {
   font-size: 0.7rem;
   line-height: 1.45;
