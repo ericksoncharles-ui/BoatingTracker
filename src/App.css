@@ -918,18 +918,24 @@ body {
     z-index: 50;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: rgba(27, 42, 74, 0.82);
-    border: 1px solid rgba(144, 164, 196, 0.3);
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(27, 42, 74, 0.92);
+    border: 1px solid rgba(214, 158, 46, 0.45);
     border-radius: 999px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    color: var(--white);
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    color: var(--gold-light);
     pointer-events: none;
+  }
+
+  .mobile-brand svg {
+    width: 24px;
+    height: 24px;
   }
 
   /* ── Bottom Sheet ───────────────────────────────────── */
@@ -1007,7 +1013,10 @@ body {
   }
 
   .sheet-content .brand-mark {
-    font-size: 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--gold-light);
     margin-bottom: 4px;
   }
 
@@ -1903,7 +1912,10 @@ body {
   }
 
   .cond-header .brand-mark {
-    font-size: 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--gold-light);
     margin-bottom: 3px;
   }
 
