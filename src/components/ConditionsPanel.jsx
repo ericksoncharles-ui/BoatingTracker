@@ -223,7 +223,9 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
         badge={
           seaState && (
             <span className={`cond-badge ${seaState.source === 'observed' ? 'cond-badge-observed' : 'cond-badge-estimated'}`}>
-              {seaState.source === 'observed' ? 'Observed' : 'Estimated'}
+              {seaState.source === 'observed'
+                ? `Observed · ${buoyData?.station?.name || 'buoy'}`
+                : 'Estimated'}
             </span>
           )
         }
@@ -256,6 +258,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
             ) : (
               <p className="cond-provenance cond-provenance-warn">
                 Estimated from wind — not measured
+                {buoyData?.station && <> · {buoyData.station.name} buoy unavailable</>}
                 {seaState.fetchNM != null && <> · {seaState.fetchNM} NM fetch</>}
               </p>
             )}
@@ -285,7 +288,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
         icon={ICONS.tide}
         title="Tides"
         section={tides}
-        badge={<span className="cond-badge">Predicted · NOAA</span>}
+        badge={<span className="cond-badge">Predicted · NOAA CO-OPS</span>}
       >
         {tideData && (
           <>
@@ -349,7 +352,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
         icon={ICONS.wind}
         title="Wind & Weather"
         section={forecast}
-        badge={<span className="cond-badge">Forecast · model</span>}
+        badge={<span className="cond-badge">Forecast · Open-Meteo</span>}
       >
         {currentWeather && (
           <>
