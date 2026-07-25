@@ -4,6 +4,7 @@ import { useTripCalculator } from './hooks/useTripCalculator'
 import Sidebar from './components/Sidebar'
 import TripMap from './components/TripMap'
 import ConditionsPanel from './components/ConditionsPanel'
+import FishingReportPanel from './components/FishingReportPanel'
 import ErrorBoundary from './components/ErrorBoundary'
 
 const CONDITIONS_ICON = (
@@ -11,6 +12,14 @@ const CONDITIONS_ICON = (
     <path d="M3 8c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3" />
     <path d="M3 14c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3" />
     <path d="M3 20c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3" />
+  </svg>
+)
+
+const FISHING_ICON = (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6.5 12c0-3.5 4-7 10-8-1 2-1.5 4-1.5 6s.5 4 1.5 6c-6-1-10-4.5-10-8z" />
+    <path d="M6.5 12L2 9m4.5 3L2 15" />
+    <circle cx="16" cy="10" r="0.5" fill="currentColor" />
   </svg>
 )
 
@@ -123,6 +132,13 @@ export default function App() {
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3"/><path d="M3 14c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3"/><path d="M3 20c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3"/></svg>
           Tides &amp; Conditions
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'fishing' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('fishing')}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 12c0-3.5 4-7 10-8-1 2-1.5 4-1.5 6s.5 4 1.5 6c-6-1-10-4.5-10-8z"/><path d="M6.5 12L2 9m4.5 3L2 15"/><circle cx="16" cy="10" r="0.5" fill="currentColor"/></svg>
+          Fishing Reports
+        </button>
       </div>
 
       {/* Desktop layout. Each tab gets its own boundary so a crash in one
@@ -168,6 +184,14 @@ export default function App() {
         </ErrorBoundary>
       )}
 
+      {activeTab === 'fishing' && !isMobileLayout && (
+        <ErrorBoundary>
+        <div className="conditions-layout desktop-only">
+          <FishingReportPanel />
+        </div>
+        </ErrorBoundary>
+      )}
+
       {/* Mobile layout: map always visible, sidebar as bottom sheet */}
       <ErrorBoundary>
       <div className="mobile-layout mobile-only">
@@ -182,7 +206,7 @@ export default function App() {
 
         <div
           ref={sheetRef}
-          className={`mobile-sheet ${sheetOpen ? 'sheet-open' : 'sheet-collapsed'} ${activeTab === 'chart' || activeTab === 'conditions' ? 'sheet-hidden' : ''}`}
+          className={`mobile-sheet ${sheetOpen ? 'sheet-open' : 'sheet-collapsed'} ${activeTab === 'chart' || activeTab === 'conditions' || activeTab === 'fishing' ? 'sheet-hidden' : ''}`}
           style={sheetDrag !== null ? { height: `${sheetDrag}px`, transition: 'none' } : undefined}
         >
           <div
@@ -222,6 +246,12 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'fishing' && isMobileLayout && (
+          <div className="mobile-conditions">
+            <FishingReportPanel />
+          </div>
+        )}
+
         {/* Mobile bottom tab bar */}
         <nav className="mobile-tab-bar">
           <button
@@ -244,6 +274,13 @@ export default function App() {
           >
             {CONDITIONS_ICON}
             <span>Tides</span>
+          </button>
+          <button
+            className={`mobile-tab ${activeTab === 'fishing' ? 'mobile-tab-active' : ''}`}
+            onClick={() => { setActiveTab('fishing'); setSheetOpen(false) }}
+          >
+            {FISHING_ICON}
+            <span>Fishing</span>
           </button>
         </nav>
       </div>
