@@ -192,3 +192,40 @@ export const noWakeZones = [
   { id: 'nwz-old-saybrook', name: 'Connecticut River Mouth', lat: 41.2700, lng: -72.3430, radiusNM: 0.5, speedLimit: 5, marinaId: 'old-saybrook' },
   { id: 'nwz-thimble', name: 'Thimble Islands', lat: 41.2420, lng: -72.7740, radiusNM: 0.3, speedLimit: 5 },
 ]
+
+// UConn LISICOS's Western Long Island Sound buoy, which reports into the national
+// observing network as NDBC station 44040. The lat/lng is the buoy's expected
+// mooring — erddapBuoy.js checks the position ERDDAP returns against it so a
+// dataset change can't silently feed us a different buoy's readings.
+export const WLIS_STATION = {
+  id: '44040',
+  name: 'WLIS',
+  label: 'Western Long Island Sound buoy',
+  operator: 'UConn LISICOS',
+  lat: 41.138,
+  lng: -73.580,
+  // Reject a returned position further than this from the expected mooring.
+  toleranceNM: 10,
+}
+
+// Long Island Sound bounding box, used to trim NOAA's nationwide tide-station
+// list down to stations that could plausibly serve a trip on the Sound.
+export const LIS_BBOX = { minLat: 40.5, maxLat: 41.7, minLng: -74.2, maxLng: -71.6 }
+
+// Outbound links to the authoritative UConn LISICOS pages. Only URLs that have
+// been confirmed to exist are listed — the per-station URL pattern looks
+// predictable, but a dead link is worse than a missing one.
+export const lisicosLinks = [
+  {
+    id: 'wlis-waves',
+    label: 'WLIS wave & weather panel',
+    description: 'Live wave and meteorological panel for the Western Sound buoy.',
+    url: 'https://lisicos.uconn.edu/stn_wlis.php?id=wlis_wv_panel',
+  },
+  {
+    id: 'lisicos-home',
+    label: 'LISICOS observing system',
+    description: 'All UConn Long Island Sound buoys, maps, and archived data.',
+    url: 'https://lisicos.uconn.edu/',
+  },
+]

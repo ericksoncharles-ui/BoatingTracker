@@ -15,6 +15,33 @@ export function calcDistanceNM(lat1, lng1, lat2, lng2) {
 }
 
 /**
+ * Initial bearing from one coordinate to another, in degrees true (0-360).
+ */
+export function calcBearing(lat1, lng1, lat2, lng2) {
+  const toRad = (deg) => (deg * Math.PI) / 180
+  const φ1 = toRad(lat1)
+  const φ2 = toRad(lat2)
+  const Δλ = toRad(lng2 - lng1)
+  const y = Math.sin(Δλ) * Math.cos(φ2)
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ)
+  return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360
+}
+
+const COMPASS_POINTS = [
+  'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+]
+
+/**
+ * Convert a bearing in degrees to a 16-point compass label (e.g. 247 -> "WSW").
+ */
+export function degreesToCardinal(deg) {
+  if (deg == null || Number.isNaN(deg)) return null
+  const idx = Math.round((((deg % 360) + 360) % 360) / 22.5) % 16
+  return COMPASS_POINTS[idx]
+}
+
+/**
  * Check if a point is within a given distance of a line segment (route).
  * Uses perpendicular distance from point to the line between start and end.
  */
