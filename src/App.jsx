@@ -14,8 +14,29 @@ const CONDITIONS_ICON = (
   </svg>
 )
 
+// Both layouts stay in the DOM and are toggled with CSS, so anything rendered in
+// each one mounts twice. Harmless for the planner, but the conditions panel would
+// ask the locator for a fix twice and hit NOAA, open-meteo and the buoy feeds
+// twice on every load — so it is mounted only in the tree the breakpoint shows.
+const MOBILE_QUERY = '(max-width: 768px)'
+
+function useIsMobileLayout() {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_QUERY)
+    const onChange = (event) => setIsMobile(event.matches)
+    setIsMobile(query.matches)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+
+  return isMobile
+}
+
 export default function App() {
   const trip = useTripCalculator()
+  const isMobileLayout = useIsMobileLayout()
   const startMarina = marinas.find((m) => m.id === trip.startId)
   const [activeTab, setActiveTab] = useState('planner')
   const [sheetOpen, setSheetOpen] = useState(true)
@@ -115,7 +136,7 @@ export default function App() {
         </ErrorBoundary>
       )}
 
-      {activeTab === 'conditions' && (
+      {activeTab === 'conditions' && !isMobileLayout && (
         <ErrorBoundary>
         <div className="conditions-layout desktop-only">
           <ConditionsPanel fallbackMarinaId={trip.startId} />
@@ -166,7 +187,7 @@ export default function App() {
 
         {/* Conditions takes the full screen rather than the bottom sheet — it
             scrolls, and the map behind it isn't relevant to reading tides. */}
-        {activeTab === 'conditions' && (
+        {activeTab === 'conditions' && isMobileLayout && (
           <div className="mobile-conditions">
             <ConditionsPanel fallbackMarinaId={trip.startId} />
           </div>
