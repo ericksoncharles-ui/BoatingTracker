@@ -1,8 +1,8 @@
 import { calcDistanceNM, calcBearing, degreesToCardinal } from '../utils'
-import { WLIS_STATION } from '../data'
+import { LIS_WAVE_STATIONS } from '../data'
 
-// Observed conditions from UConn LISICOS's WLIS buoy, read over ERDDAP's
-// tabledap service as JSON.
+// Observed conditions from UConn LISICOS's Long Island Sound buoys, read over
+// ERDDAP's tabledap service as JSON.
 //
 // UConn's own ERDDAP (merlin.dms.uconn.edu:8080) is plain HTTP on a non-standard
 // port. This app needs HTTPS for geolocation, and an HTTPS page may not fetch
@@ -22,10 +22,10 @@ const REGIONAL_DISTANCE_NM = 25
 // in July would be wrong, so the two cases are worded separately.
 const RECOVERY_MONTHS = new Set([10, 11, 0, 1, 2, 3])
 
-function describeOutage(station, now = new Date()) {
+function describeOutage(now = new Date()) {
   return RECOVERY_MONTHS.has(now.getMonth())
-    ? `${station.name} is not reporting. LISICOS recovers its buoys for the winter, so it is probably out of the water until spring.`
-    : `${station.name} is not reporting right now. The buoy may be off station for servicing.`
+    ? 'No Sound buoy is reporting. LISICOS recovers its buoys for the winter, so they are probably out of the water until spring.'
+    : 'No Sound buoy is reporting right now. The buoys may be off station for servicing.'
 }
 
 const HOSTS = [
@@ -195,45 +195,73 @@ async function readHost(host, station, signal) {
 }
 
 /**
- * Latest observed conditions from the WLIS buoy.
+ * Latest observed conditions from the nearest reporting Long Island Sound buoy.
  *
- * Tries each ERDDAP host in turn. Returns { status: 'empty' } when the buoy is
- * reporting nothing — off for the season, or sensors down — which callers should
- * present as a normal state rather than an error.
+ * Walks the LISICOS buoys nearest-first, trying each ERDDAP host per station.
+ * A station answering without wave data is kept as a fallback but the walk
+ * continues — waves from the next buoy up the Sound beat a wind estimate.
+ * Returns { status: 'empty' } when no buoy is reporting anything — off for the
+ * season, or sensors down — which callers should present as a normal state
+ * rather than an error.
  *
- * `here` is the boat's position, used only to describe how far away the buoy is.
+ * `here` is the boat's position, used to order the stations and to describe how
+ * far away the chosen buoy is.
  */
 export async function fetchBuoyConditions({ here, signal } = {}) {
-  const station = WLIS_STATION
-  const failures = []
-  let row = null
-
-  for (const host of HOSTS) {
-    try {
-      row = await readHost(host, station.id, signal)
-      if (row) break
-    } catch (err) {
-      if (err.name === 'AbortError') throw err
-      failures.push(`${host.label}: ${err.message}`)
-    }
+  const stations = [...LIS_WAVE_STATIONS]
+  if (here?.lat != null && here?.lng != null) {
+    stations.sort(
+      (a, b) =>
+        calcDistanceNM(here.lat, here.lng, a.lat, a.lng) -
+        calcDistanceNM(here.lat, here.lng, b.lat, b.lng),
+    )
   }
 
-  if (!row) {
-    // Every host answered, none had data — as opposed to every host erroring.
-    if (failures.length === HOSTS.length) {
+  const failures = []
+  let attempts = 0
+  let found = null
+  let waveless = null
+
+  for (const candidate of stations) {
+    let row = null
+    for (const host of HOSTS) {
+      attempts += 1
+      try {
+        row = await readHost(host, candidate.id, signal)
+        if (row) break
+      } catch (err) {
+        if (err.name === 'AbortError') throw err
+        failures.push(`${candidate.name} via ${host.label}: ${err.message}`)
+      }
+    }
+    if (!row) continue
+    if (row.readings.waveHeightFt != null) {
+      found = { station: candidate, row }
+      break
+    }
+    if (!waveless) waveless = { station: candidate, row }
+  }
+
+  if (!found) found = waveless
+  if (!found) {
+    // Every attempt errored is a failure; anything answering "no rows" means
+    // the buoys are genuinely silent, which is an ordinary outcome.
+    if (attempts > 0 && failures.length === attempts) {
       throw new Error(failures.join('; '))
     }
     return {
       status: 'empty',
-      station,
       failures,
-      message: describeOutage(station),
+      message: describeOutage(),
     }
   }
 
-  // The station id is hardcoded, so confirm the position ERDDAP handed back is
-  // actually the WLIS mooring. Costs nothing — the coordinates are already in
-  // the response — and stops a renamed dataset quietly feeding us another buoy.
+  const { station, row } = found
+
+  // The station ids are hardcoded, so confirm the position ERDDAP handed back
+  // is actually this station's mooring. Costs nothing — the coordinates are
+  // already in the response — and stops a renamed dataset quietly feeding us
+  // another buoy's readings.
   let positionWarning = null
   const { lat, lng } = row.position
   if (lat != null && lng != null) {

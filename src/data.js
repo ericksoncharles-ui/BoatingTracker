@@ -237,20 +237,53 @@ export const noWakeZones = [
   { id: 'nwz-thimble', name: 'Thimble Islands', lat: 41.2420, lng: -72.7740, radiusNM: 0.3, speedLimit: 5 },
 ]
 
-// UConn LISICOS's Western Long Island Sound buoy, which reports into the national
-// observing network as NDBC station 44040. The lat/lng is the buoy's expected
-// mooring — erddapBuoy.js checks the position ERDDAP returns against it so a
-// dataset change can't silently feed us a different buoy's readings.
-export const WLIS_STATION = {
-  id: '44040',
-  name: 'WLIS',
-  label: 'Western Long Island Sound buoy',
-  operator: 'UConn LISICOS',
-  lat: 41.138,
-  lng: -73.580,
-  // Reject a returned position further than this from the expected mooring.
-  toleranceNM: 10,
-}
+// UConn LISICOS's Long Island Sound wave buoys, which report into the national
+// observing network under NDBC station ids. Listed west to east; erddapBuoy.js
+// walks them nearest-first because any one of them can go quiet — WLIS in
+// particular reports intermittently — and a reading from the next buoy up the
+// Sound beats a wind-driven guess. Each lat/lng is the NDBC mooring position,
+// which erddapBuoy.js checks against the position ERDDAP returns so a dataset
+// change can't silently feed us a different buoy's readings. The tolerance is
+// 5 NM because the closest pair (Execution Rocks and WLIS) sit only ~8 NM
+// apart — a looser check couldn't tell neighbors from each other.
+export const LIS_WAVE_STATIONS = [
+  {
+    id: '44022',
+    name: 'Execution Rocks',
+    label: 'Execution Rocks buoy',
+    operator: 'UConn LISICOS',
+    lat: 40.883,
+    lng: -73.728,
+    toleranceNM: 5,
+  },
+  {
+    id: '44040',
+    name: 'WLIS',
+    label: 'Western Long Island Sound buoy',
+    operator: 'UConn LISICOS',
+    lat: 40.956,
+    lng: -73.580,
+    toleranceNM: 5,
+  },
+  {
+    id: '44039',
+    name: 'CLIS',
+    label: 'Central Long Island Sound buoy',
+    operator: 'UConn LISICOS',
+    lat: 41.138,
+    lng: -72.655,
+    toleranceNM: 5,
+  },
+  {
+    id: '44060',
+    name: 'ELIS',
+    label: 'Eastern Long Island Sound buoy',
+    operator: 'UConn LISICOS',
+    lat: 41.263,
+    lng: -72.067,
+    toleranceNM: 5,
+  },
+]
 
 // Long Island Sound bounding box, used to trim NOAA's nationwide tide-station
 // list down to stations that could plausibly serve a trip on the Sound.
