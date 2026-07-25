@@ -82,7 +82,11 @@ export function estimateWindWaves(windKt, windDirDeg) {
 }
 
 /**
- * Current and near-term forecast weather for a position.
+ * Current, hourly and multi-day forecast weather for a position.
+ *
+ * Seven days is as far as this is worth showing: past about day five the wind
+ * direction is a guess, and a skipper planning a weekend needs the whole
+ * weekend visible from any day of the week.
  */
 export async function fetchForecast({ lat, lng, signal }) {
   const params = new URLSearchParams({
@@ -99,7 +103,14 @@ export async function fetchForecast({ lat, lng, signal }) {
       'precipitation',
     ].join(','),
     hourly: ['temperature_2m', 'wind_speed_10m', 'wind_gusts_10m', 'wind_direction_10m'].join(','),
-    forecast_days: '2',
+    daily: [
+      'wind_speed_10m_max',
+      'wind_gusts_10m_max',
+      'wind_direction_10m_dominant',
+      'temperature_2m_max',
+      'temperature_2m_min',
+    ].join(','),
+    forecast_days: '7',
     timezone: 'auto',
   })
 
@@ -133,7 +144,25 @@ export async function fetchForecast({ lat, lng, signal }) {
       windDirDeg: h.wind_direction_10m?.[i] ?? null,
     }))
     .filter((row) => !Number.isNaN(row.at.getTime()) && row.at.getTime() >= nowMs - 60 * 60 * 1000)
-    .slice(0, 12)
+    .slice(0, 24)
 
-  return { current, hourly }
+  const d = json.daily || {}
+  const days = d.time || []
+  const daily = days
+    .map((day, i) => ({
+      // Open-Meteo returns a bare date. Anchoring it at local noon keeps the day
+      // label right either side of a DST change and across the UTC date line —
+      // parsing "2026-07-25" alone would land on the previous evening here.
+      at: new Date(`${day}T12:00:00`),
+      // Daily wind is the day's maximum, not an average: what matters when
+      // deciding whether to go is the worst of it, not the mean.
+      windKt: scale(d.wind_speed_10m_max?.[i], KMH_TO_KT),
+      gustKt: scale(d.wind_gusts_10m_max?.[i], KMH_TO_KT),
+      windDirDeg: d.wind_direction_10m_dominant?.[i] ?? null,
+      highF: toFahrenheit(d.temperature_2m_max?.[i]),
+      lowF: toFahrenheit(d.temperature_2m_min?.[i]),
+    }))
+    .filter((row) => !Number.isNaN(row.at.getTime()))
+
+  return { current, hourly, daily }
 }

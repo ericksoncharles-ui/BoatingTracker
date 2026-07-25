@@ -55,6 +55,56 @@ function formatCountdown(date) {
   return `in ${hours}h ${minutes}m`
 }
 
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+}
+
+function formatDayLabel(date) {
+  const days = Math.round((startOfDay(date) - startOfDay(new Date())) / 86400000)
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  return date.toLocaleDateString([], { weekday: 'short' })
+}
+
+// Comfort bands for the small boats this app plans for, on Long Island Sound.
+// The Sound's short fetch means wind turns into a steep, close-spaced chop fast:
+// under 10 kt is a flat day, by 18 kt it is uncomfortable, and 25 kt is where
+// small craft advisories land.
+function windBand(kt) {
+  if (kt == null) return 'unknown'
+  if (kt < 10) return 'calm'
+  if (kt < 18) return 'moderate'
+  if (kt < 25) return 'brisk'
+  return 'rough'
+}
+
+// Bars are scaled against 30 kt rather than the week's own maximum, so a calm
+// week reads as calm instead of stretching its lightest day to full width.
+const WIND_BAR_MAX_KT = 30
+
+// Wind direction is the direction the wind comes *from*, so the arrow has to
+// point the opposite way — where it is pushing you.
+function WindArrow({ deg }) {
+  if (deg == null) return null
+  return (
+    <svg
+      className="cond-wind-arrow"
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ transform: `rotate(${(deg + 180) % 360}deg)` }}
+    >
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <polyline points="6 10 12 4 18 10" />
+    </svg>
+  )
+}
+
 function formatAgeFromMs(ms) {
   if (ms == null) return null
   return formatAge(Math.max(0, Math.round((Date.now() - ms) / 60000)))
@@ -169,6 +219,26 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   // Why the wave numbers are estimated, in the fewest words that stay accurate.
   // The fetch walks every Sound buoy, so "empty" means all of them are silent
   // and "sensor down" means the nearest reporting buoy had no wave reading.
+  // The multi-day outlook is wind-first: peak wind, gusts, dominant direction
+  // and the seas that combination would build. `daily` is optional so a payload
+  // cached before this section existed still renders.
+  const dailyOutlook = useMemo(() => {
+    const days = forecast.status === 'ok' ? forecast.data.daily : null
+    if (!days?.length) return []
+    return days.map((day) => {
+      const seas = estimateWindWaves(day.windKt, day.windDirDeg)
+      return {
+        ...day,
+        band: windBand(day.windKt),
+        barPct: Math.min(100, Math.round(((day.windKt ?? 0) / WIND_BAR_MAX_KT) * 100)),
+        seasFt: seas?.heightFt ?? null,
+      }
+    })
+  }, [forecast])
+
+  // Why the wave numbers are estimated, in the fewest words that stay accurate:
+  // the buoy is silent, unreachable, or up but with its wave sensor down.
+  const buoyName = buoyData?.station?.name || WLIS_STATION.name
   const buoyOutage =
     buoy.status === 'empty'
       ? 'no Sound buoy reporting'
@@ -411,20 +481,68 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
             {forecast.data.hourly.length > 0 && (
               <>
-                <h4 className="cond-subhead">Next hours</h4>
+                <h4 className="cond-subhead">Next 24 hours</h4>
                 <ul className="cond-hourly">
                   {forecast.data.hourly.map((hour) => (
-                    <li key={hour.at.getTime()}>
+                    <li key={hour.at.getTime()} className={`cond-band-${windBand(hour.windKt)}`}>
                       <span className="cond-hour">
                         {hour.at.toLocaleTimeString([], { hour: 'numeric' })}
                       </span>
                       <span className="cond-hour-wind">{hour.windKt?.toFixed(0) ?? '—'} kt</span>
                       <span className="cond-hour-dir">
+                        <WindArrow deg={hour.windDirDeg} />
                         {hour.windDirDeg != null ? degreesToCardinal(hour.windDirDeg) : ''}
                       </span>
                     </li>
                   ))}
                 </ul>
+              </>
+            )}
+
+            {dailyOutlook.length > 0 && (
+              <>
+                <h4 className="cond-subhead">{dailyOutlook.length}-day wind outlook</h4>
+                <ul className="cond-daily">
+                  {dailyOutlook.map((day) => (
+                    <li key={day.at.getTime()}>
+                      <span className="cond-day">
+                        {/* Computed at render, not memoised — "Today" has to
+                            move if the app is left open past midnight. */}
+                        {formatDayLabel(day.at)}
+                        <small>{day.at.toLocaleDateString([], { month: 'short', day: 'numeric' })}</small>
+                      </span>
+
+                      <span className={`cond-day-bar cond-band-${day.band}`}>
+                        <i style={{ width: `${day.barPct}%` }} />
+                      </span>
+
+                      <span className="cond-day-wind">
+                        {day.windKt?.toFixed(0) ?? '—'}
+                        <small>kt</small>
+                        {day.gustKt != null && <em>G {day.gustKt.toFixed(0)}</em>}
+                      </span>
+
+                      <span className="cond-day-dir">
+                        <WindArrow deg={day.windDirDeg} />
+                        {day.windDirDeg != null ? degreesToCardinal(day.windDirDeg) : ''}
+                      </span>
+
+                      <span className="cond-day-seas">
+                        {day.seasFt != null ? `~${day.seasFt.toFixed(1)} ft` : '—'}
+                        {day.highF != null && (
+                          <small>
+                            {day.highF.toFixed(0)}°{day.lowF != null && `/${day.lowF.toFixed(0)}°`}
+                          </small>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="cond-provenance">
+                  Daily maximum wind and dominant direction — a day can be calmer than its
+                  peak. Seas estimated from wind and Sound fetch, not measured; direction
+                  beyond about five days out is a rough steer.
+                </p>
               </>
             )}
           </>
