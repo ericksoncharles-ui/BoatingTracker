@@ -69,12 +69,12 @@ export function estimateWindWaves(windKt, windDirDeg) {
   const fetchM = fetchMetresFor(windDirDeg)
   const u = windKt * KT_TO_MS
   if (u <= 0) {
-    return { waveHeightFt: 0, periodS: 0, fetchNM: round(fetchM * M_TO_NM, 0), estimated: true }
+    return { heightFt: 0, periodS: 0, fetchNM: round(fetchM * M_TO_NM, 0), estimated: true }
   }
   const heightM = 0.0016 * u * Math.sqrt(fetchM / G)
   const periodS = 0.286 * (u / G) * Math.cbrt((G * fetchM) / (u * u))
   return {
-    waveHeightFt: round(heightM * 3.28084, 1),
+    heightFt: round(heightM * 3.28084, 1),
     periodS: round(periodS, 1),
     fetchNM: round(fetchM * M_TO_NM, 0),
     estimated: true,
