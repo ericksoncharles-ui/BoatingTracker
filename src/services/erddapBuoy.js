@@ -35,8 +35,12 @@ const HOSTS = [
     // Per-station dataset, so no station constraint is needed. No column list
     // is given either: ERDDAP returns every variable, which keeps the query
     // working whatever CF standard names this dataset happens to publish.
+    //
+    // Dataset ids on this ERDDAP are hyphenated (confirmed via its dataset
+    // search: "gov-ndbc-44040" for WLIS) — an earlier "gov_noaa_ndbc_" guess
+    // 404'd for every station.
     url: (station) =>
-      `https://erddap.sensors.ioos.us/erddap/tabledap/gov_noaa_ndbc_${station}.json` +
+      `https://erddap.sensors.ioos.us/erddap/tabledap/gov-ndbc-${station}.json` +
       `?&time%3E=now-${LOOKBACK_HOURS}hours&orderByMax(%22time%22)`,
   },
   {
@@ -61,7 +65,12 @@ const COLUMN_SYNONYMS = {
   lat: ['latitude', 'lat'],
   lng: ['longitude', 'lon', 'lng'],
   waveHeightM: ['sea_surface_wave_significant_height', 'wvht', 'significant_wave_height'],
-  wavePeriodS: ['sea_surface_wave_peak_period', 'dpd', 'dominant_wave_period'],
+  wavePeriodS: [
+    'sea_surface_wave_peak_period',
+    'sea_surface_wave_period_at_variance_spectral_density_maximum',
+    'dpd',
+    'dominant_wave_period',
+  ],
   waveMeanPeriodS: ['sea_surface_wave_mean_period', 'apd', 'average_wave_period'],
   waveDirDeg: [
     'sea_surface_wave_from_direction',
