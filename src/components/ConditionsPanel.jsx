@@ -275,6 +275,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     <div className="conditions-panel">
       <div className="cond-header">
         <div>
+          <p className="brand-mark">SoundCaptain</p>
           <h2>On-Water Conditions</h2>
           <p className="cond-location">
             <span className="cond-location-icon">{ICONS.pin}</span>
