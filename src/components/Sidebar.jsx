@@ -57,6 +57,7 @@ export default function Sidebar({
           </svg>
         </div>
         <div>
+          <p className="brand-mark">SoundCaptain</p>
           <h1>Long Island Sound<br />Trip Planner</h1>
           <p className="subtitle">Plan your next adventure on the Sound</p>
         </div>
@@ -294,7 +295,7 @@ export default function Sidebar({
         </div>
       )}
       <div className="sidebar-footer">
-        Built by Charles Erickson | SoundMind AI
+        SoundCaptain • Built by Charles Erickson
       </div>
     </aside>
   )
