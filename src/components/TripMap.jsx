@@ -26,6 +26,25 @@ L.Map.prototype._onZoomTransitionEnd = function (...args) {
   return onZoomTransitionEnd.apply(this, args)
 }
 
+// Compass rose matching the sidebar/tab-bar mark, printed on the chart itself
+// like a title block — the Nautical Chart tab has no sidebar to carry the brand.
+const BRAND_ICON = (
+  <svg viewBox="0 0 44 44" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="22" cy="22" r="20" stroke="#90A4C4" strokeWidth="1.2" opacity="0.5"/>
+    <circle cx="22" cy="22" r="17" stroke="#90A4C4" strokeWidth="0.6" opacity="0.3"/>
+    <polygon points="22,2 25,18 22,16 19,18" fill="#C8D6E5" opacity="0.9"/>
+    <polygon points="22,42 25,26 22,28 19,26" fill="#90A4C4" opacity="0.5"/>
+    <polygon points="42,22 26,19 28,22 26,25" fill="#90A4C4" opacity="0.5"/>
+    <polygon points="2,22 18,19 16,22 18,25" fill="#90A4C4" opacity="0.5"/>
+    <polygon points="35.7,8.3 27,18 26,17 27,16" fill="#90A4C4" opacity="0.35"/>
+    <polygon points="35.7,35.7 27,26 26,27 27,28" fill="#90A4C4" opacity="0.35"/>
+    <polygon points="8.3,35.7 17,26 18,27 17,28" fill="#90A4C4" opacity="0.35"/>
+    <polygon points="8.3,8.3 17,18 18,17 17,16" fill="#90A4C4" opacity="0.35"/>
+    <circle cx="22" cy="22" r="2.5" fill="#1B2A4A" stroke="#C8D6E5" strokeWidth="1"/>
+    <text x="22" y="10" textAnchor="middle" fill="#C8D6E5" fontSize="5" fontWeight="700" fontFamily="serif">N</text>
+  </svg>
+)
+
 const LI_SOUND_CENTER = [41.05, -73.2]
 const LI_SOUND_ZOOM = 10
 
@@ -243,6 +262,14 @@ export default function TripMap({ marinas, shoalAreas, focus }) {
           </Marker>
         ))}
       </MapContainer>
+
+      {/* Only shown on the standalone Nautical Chart tab (see .chart-layout
+          .map-brand-plate) — the planner map has the sidebar for branding, and
+          the mobile map has the floating .mobile-brand badge over every tab. */}
+      <div className="map-brand-plate">
+        {BRAND_ICON}
+        <span>SoundCaptain</span>
+      </div>
     </div>
   )
 }

@@ -119,6 +119,29 @@ body {
   inset: 0;
 }
 
+.map-brand-plate {
+  display: none;
+}
+
+.chart-layout .map-brand-plate {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 40;
+  padding: 6px 10px;
+  background: rgba(27, 42, 74, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
 
 
 /* ── Sidebar ──────────────────────────────────────────── */
@@ -1258,6 +1281,10 @@ body {
   letter-spacing: -0.01em;
 }
 
+.cond-header .brand-mark {
+  margin: 0 0 4px;
+}
+
 .cond-location {
   display: flex;
   align-items: center;
@@ -1873,6 +1900,11 @@ body {
 
   .cond-header h2 {
     font-size: 1.05rem;
+  }
+
+  .cond-header .brand-mark {
+    font-size: 0.7rem;
+    margin-bottom: 3px;
   }
 
   .cond-metrics {
