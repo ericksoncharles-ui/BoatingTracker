@@ -341,23 +341,96 @@ export const fishingLinks = [
     label: "Fisherman's World, Norwalk CT",
     description: 'Local tackle shop report — species, bait, and hot spots around western Long Island Sound.',
     url: 'https://www.fishermansworld.net/',
+    kind: 'shop',
   },
   {
     id: 'onthewater-ct',
     label: 'On The Water — Connecticut',
     description: 'Weekly aggregate fishing reports for the Connecticut shore of the Sound.',
     url: 'https://onthewater.com/regions/connecticut',
+    kind: 'aggregate',
   },
   {
     id: 'onthewater-ny',
     label: 'On The Water — New York & Long Island',
     description: 'Weekly aggregate fishing reports for the Long Island / North Shore side of the Sound.',
     url: 'https://onthewater.com/regions/new-york',
+    kind: 'aggregate',
   },
   {
     id: 'thefisherman-northshore',
     label: 'The Fisherman — North Shore, LI',
     description: "Regional reports covering Long Island's North Shore and western Long Island Sound.",
     url: 'https://www.thefisherman.com/area/north-shore/',
+    kind: 'aggregate',
+  },
+  {
+    id: 'ct-deep-regs',
+    label: 'CT DEEP — Saltwater Regulations',
+    description: 'Current Connecticut species seasons, size, and bag limits.',
+    url: 'https://portal.ct.gov/deep/fishing/saltwater-fishing-guide/species-regulations',
+    kind: 'regs',
+  },
+  {
+    id: 'ny-dec-regs',
+    label: 'NY DEC — Saltwater Fishing',
+    description: 'Current New York saltwater seasons, size, and bag limits.',
+    url: 'https://dec.ny.gov/things-to-do/saltwater-fishing',
+    kind: 'regs',
+  },
+]
+
+// General species timing for Long Island Sound, month indices 0-11 (Jan-Dec).
+// This is typical-year seasonal behavior, not a live report or a regulatory
+// calendar — season/size/bag limits shift year to year and by state, so the
+// Fishing tab links out to the actual CT/NY regs rather than restating them.
+export const soundSpecies = [
+  {
+    id: 'striped-bass',
+    name: 'Striped Bass',
+    months: [3, 4, 5, 6, 7, 8, 9, 10],
+    note: 'Spring push up the Sound, steady through summer around structure, then a fall run as they head back out.',
+  },
+  {
+    id: 'bluefish',
+    name: 'Bluefish',
+    months: [4, 5, 6, 7, 8, 9, 10],
+    note: 'Blitzes on bait pods in open water — look for diving birds.',
+  },
+  {
+    id: 'fluke',
+    name: 'Fluke (Summer Flounder)',
+    months: [4, 5, 6, 7, 8, 9],
+    note: 'Drift bucktails or bait over sandy bottom near channels and inlets.',
+  },
+  {
+    id: 'black-sea-bass',
+    name: 'Black Sea Bass',
+    months: [4, 5, 6, 7, 8, 9, 10, 11],
+    note: 'Jigs or cut bait over wrecks, rock piles, and reefs.',
+  },
+  {
+    id: 'scup',
+    name: 'Scup (Porgy)',
+    months: [4, 5, 6, 7, 8, 9, 10],
+    note: 'Easy, reliable bottom fishing over reefs and rocky structure.',
+  },
+  {
+    id: 'tautog',
+    name: 'Tautog (Blackfish)',
+    months: [3, 4, 9, 10, 11],
+    note: 'Spring and fall runs around rock piles and jetties — green crab is the standard bait.',
+  },
+  {
+    id: 'bonito-albacore',
+    name: 'False Albacore & Bonito',
+    months: [7, 8, 9],
+    note: 'Fast-moving late-summer run on light tackle, chasing bay anchovies.',
+  },
+  {
+    id: 'weakfish',
+    name: 'Weakfish',
+    months: [4, 5, 8, 9],
+    note: 'Less consistent than the rest of the Sound — worth a drift over deep holes at dawn or dusk.',
   },
 ]
