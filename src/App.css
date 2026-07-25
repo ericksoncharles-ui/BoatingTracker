@@ -1848,13 +1848,71 @@ body {
   color: var(--sea);
 }
 
-.cond-link-badge {
-  margin-left: auto;
-}
-
 .cond-link-desc {
   font-size: 0.7rem;
   line-height: 1.45;
+  color: #8FA6C4;
+}
+
+/* ── Fishing tab ────────────────────────────────────── */
+
+.fishing-panel .species-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.fishing-panel .species-card {
+  padding: 10px 12px;
+  background: rgba(43, 108, 176, 0.12);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.fishing-panel .species-name {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 3px;
+}
+
+.fishing-panel .species-note {
+  display: block;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: #8FA6C4;
+}
+
+.fishing-panel .fishing-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.fishing-panel .fishing-link {
+  border-left: 3px solid var(--sea);
+}
+
+.fishing-panel .fishing-link.link-accent-gold {
+  border-left-color: var(--gold);
+}
+
+.fishing-panel .fishing-link.link-accent-green {
+  border-left-color: var(--green);
+}
+
+.fishing-panel .fishing-link-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: #8FA6C4;
 }
 
