@@ -216,9 +216,6 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     return null
   }, [buoyData, currentWeather])
 
-  // Why the wave numbers are estimated, in the fewest words that stay accurate.
-  // The fetch walks every Sound buoy, so "empty" means all of them are silent
-  // and "sensor down" means the nearest reporting buoy had no wave reading.
   // The multi-day outlook is wind-first: peak wind, gusts, dominant direction
   // and the seas that combination would build. `daily` is optional so a payload
   // cached before this section existed still renders.
@@ -236,9 +233,9 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     })
   }, [forecast])
 
-  // Why the wave numbers are estimated, in the fewest words that stay accurate:
-  // the buoy is silent, unreachable, or up but with its wave sensor down.
-  const buoyName = buoyData?.station?.name || WLIS_STATION.name
+  // Why the wave numbers are estimated, in the fewest words that stay accurate.
+  // The fetch walks every Sound buoy, so "empty" means all of them are silent
+  // and "sensor down" means the nearest reporting buoy had no wave reading.
   const buoyOutage =
     buoy.status === 'empty'
       ? 'no Sound buoy reporting'
