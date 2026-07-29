@@ -1,28 +1,13 @@
-import { marinas } from '../data'
 import TripBriefing from './TripBriefing'
+import PlacePicker from './PlacePicker'
 
-// The list spans working harbors, open anchorages, and lighthouses you'd only
-// stand off and look at. Grouping keeps a 50-entry dropdown scannable and warns
-// the helm that picking "Greens Ledge Light" is not picking a place to tie up.
-const DESTINATION_GROUPS = [
-  { label: 'Marinas & Harbors', match: (m) => !m.kind || m.kind === 'marina' },
-  { label: 'Anchorages & Beaches', match: (m) => m.kind === 'anchorage' },
-  { label: 'Lighthouses & Landmarks', match: (m) => m.kind === 'landmark' },
-]
+const START_ICON = (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg>
+)
 
-function DestinationOptions() {
-  return DESTINATION_GROUPS.map(({ label, match }) => {
-    const options = marinas.filter(match)
-    if (options.length === 0) return null
-    return (
-      <optgroup key={label} label={label}>
-        {options.map((m) => (
-          <option key={m.id} value={m.id}>{m.name}</option>
-        ))}
-      </optgroup>
-    )
-  })
-}
+const DEST_ICON = (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+)
 
 export default function Sidebar({
   startId, setStartId,
@@ -64,27 +49,21 @@ export default function Sidebar({
       </div>
 
       <div className="sidebar-form">
-        <label>
-          <span className="label-icon">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg>
-          </span>
-          Starting Point
-          <select value={startId} onChange={(e) => setStartId(e.target.value)}>
-            <option value="">Select a starting point...</option>
-            <DestinationOptions />
-          </select>
-        </label>
+        <PlacePicker
+          label="Starting Point"
+          labelIcon={START_ICON}
+          value={startId}
+          onChange={setStartId}
+          placeholder="Search harbors, anchorages, landmarks..."
+        />
 
-        <label>
-          <span className="label-icon">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          </span>
-          Destination
-          <select value={destId} onChange={(e) => setDestId(e.target.value)}>
-            <option value="">Select a destination...</option>
-            <DestinationOptions />
-          </select>
-        </label>
+        <PlacePicker
+          label="Destination"
+          labelIcon={DEST_ICON}
+          value={destId}
+          onChange={setDestId}
+          placeholder="Search harbors, anchorages, landmarks..."
+        />
 
         <div className="section-divider">
           <span>Boat Parameters</span>
