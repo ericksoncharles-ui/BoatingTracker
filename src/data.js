@@ -270,6 +270,15 @@ export const noWakeZones = [
 // change can't silently feed us a different buoy's readings. The tolerance is
 // 5 NM because the closest pair (Execution Rocks and WLIS) sit only ~8 NM
 // apart — a looser check couldn't tell neighbors from each other.
+// The UConn LISICOS buoys, with the pages `/api/sea-state` reads them from.
+//
+// `sources` is tried in order and the first page that comes back readable wins.
+// UConn's own station panel is listed first because it is the buoy's operator
+// and publishes the freshest numbers; the NDBC station page for the same hull
+// is the backstop, since NDBC redistributes these buoys and its page URLs have
+// been stable for years. Only the WLIS panel URL is confirmed (it is the one
+// linked from the Conditions tab) — the other three follow LISICOS's own naming
+// pattern, and a wrong guess costs nothing but a fall through to NDBC.
 export const LIS_WAVE_STATIONS = [
   {
     id: '44022',
@@ -279,6 +288,10 @@ export const LIS_WAVE_STATIONS = [
     lat: 40.883,
     lng: -73.728,
     toleranceNM: 5,
+    sources: [
+      { label: 'UConn LISICOS', url: 'https://lisicos.uconn.edu/stn_exrx.php?id=exrx_wv_panel' },
+      { label: 'NDBC 44022', url: 'https://www.ndbc.noaa.gov/station_page.php?station=44022' },
+    ],
   },
   {
     id: '44040',
@@ -288,6 +301,10 @@ export const LIS_WAVE_STATIONS = [
     lat: 40.956,
     lng: -73.580,
     toleranceNM: 5,
+    sources: [
+      { label: 'UConn LISICOS', url: 'https://lisicos.uconn.edu/stn_wlis.php?id=wlis_wv_panel' },
+      { label: 'NDBC 44040', url: 'https://www.ndbc.noaa.gov/station_page.php?station=44040' },
+    ],
   },
   {
     id: '44039',
@@ -297,6 +314,10 @@ export const LIS_WAVE_STATIONS = [
     lat: 41.138,
     lng: -72.655,
     toleranceNM: 5,
+    sources: [
+      { label: 'UConn LISICOS', url: 'https://lisicos.uconn.edu/stn_clis.php?id=clis_wv_panel' },
+      { label: 'NDBC 44039', url: 'https://www.ndbc.noaa.gov/station_page.php?station=44039' },
+    ],
   },
   {
     id: '44060',
@@ -306,6 +327,10 @@ export const LIS_WAVE_STATIONS = [
     lat: 41.263,
     lng: -72.067,
     toleranceNM: 5,
+    sources: [
+      { label: 'UConn LISICOS', url: 'https://lisicos.uconn.edu/stn_elis.php?id=elis_wv_panel' },
+      { label: 'NDBC 44060', url: 'https://www.ndbc.noaa.gov/station_page.php?station=44060' },
+    ],
   },
 ]
 

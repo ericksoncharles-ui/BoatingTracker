@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { fishingLinks } from '../src/data.js'
+import { htmlToText } from './htmlText.js'
 
 // The Fishing tab links out to weekly reports; this turns those pages into one
 // aggregate read. It runs server-side because the report sites send no CORS
@@ -37,6 +38,7 @@ const FEED_ACCEPT = 'application/rss+xml,application/atom+xml,application/xml;q=
 const USER_AGENT =
   'Mozilla/5.0 (compatible; SoundCaptain/1.0; +https://github.com/ericksoncharles-ui/BoatingTracker)'
 
+async function fetchSource(source, signal) {
 // The card can only tell an angler what to do next if it knows why the summary
 // failed — a blocked source site and a missing API key need different answers.
 export class FishingSummaryError extends Error {

@@ -1,4 +1,4 @@
-import { calcDistanceNM, calcBearing, degreesToCardinal } from '../utils'
+import { calcDistanceNM, calcBearing, degreesToCardinal, keepPlausibleReading } from '../utils'
 import { LIS_WAVE_STATIONS } from '../data'
 
 // Observed conditions from UConn LISICOS's Long Island Sound buoys, read over
@@ -12,10 +12,10 @@ import { LIS_WAVE_STATIONS } from '../data'
 const LOOKBACK_HOURS = 6
 
 // Age past which a reading is shown as stale rather than current.
-const STALE_AFTER_MINUTES = 90
+export const STALE_AFTER_MINUTES = 90
 
 // Beyond this distance the buoy describes the region, not the water you're in.
-const REGIONAL_DISTANCE_NM = 25
+export const REGIONAL_DISTANCE_NM = 25
 
 // LISICOS recovers its buoys before the ice season and re-moors them in spring,
 // so silence over the winter is expected rather than a fault. Blaming the season
@@ -86,30 +86,14 @@ const COLUMN_SYNONYMS = {
   pressureHpa: ['air_pressure', 'air_pressure_at_sea_level', 'bar', 'mbar'],
 }
 
-// ERDDAP datasets publish SI units, but a mis-typed dataset would sail straight
-// into the UI as a plausible-looking number. Anything outside these ranges is
-// dropped rather than displayed.
-const PLAUSIBLE = {
-  waveHeightFt: [0, 50],
-  wavePeriodS: [0, 30],
-  waveMeanPeriodS: [0, 30],
-  windKt: [0, 150],
-  gustKt: [0, 200],
-  airTempF: [-30, 130],
-  waterTempF: [20, 100],
-  pressureInHg: [25, 33],
-}
-
 const M_TO_FT = 3.28084
 const MS_TO_KT = 1.94384
 const HPA_TO_INHG = 0.02953
 
-function keep(field, value) {
-  if (value == null || Number.isNaN(value)) return null
-  const range = PLAUSIBLE[field]
-  if (!range) return value
-  return value >= range[0] && value <= range[1] ? value : null
-}
+// ERDDAP datasets publish SI units, but a mis-typed dataset would sail straight
+// into the UI as a plausible-looking number, so every reading is range-checked
+// against the shared plausible bounds before it is displayed.
+const keep = keepPlausibleReading
 
 function round(value, places = 1) {
   if (value == null) return null

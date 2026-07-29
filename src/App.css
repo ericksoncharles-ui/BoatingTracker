@@ -1552,6 +1552,13 @@ body {
   color: var(--sea);
 }
 
+/* Holds a source badge and the AI badge together, so the card header still
+   reads as two columns rather than three. */
+.cond-badge-group {
+  display: flex;
+  align-items: center;
+}
+
 .cond-badge {
   padding: 3px 8px;
   font-size: 0.62rem;
@@ -1647,6 +1654,18 @@ body {
   margin-top: 10px;
   color: #7D93B2;
   font-style: italic;
+}
+
+/* Provenance links stay in the line's own muted colour — they name a source,
+   they aren't a call to action. */
+.cond-provenance a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cond-provenance a:hover {
+  color: var(--gold-light);
 }
 
 .cond-provenance-warn {

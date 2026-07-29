@@ -71,3 +71,42 @@ readable report in them, rate limited, or the API server not running at all.
 
 Regulation links (CT DEEP, NY DEC) are deliberately left out of the summary —
 seasons and bag limits should be read at the source, not paraphrased by a model.
+
+## Live sea state from the UConn buoys
+
+The Conditions tab's Sea State card prefers readings taken straight off the UConn
+LISICOS buoys' own observation pages. `GET /api/sea-state` fetches those pages for
+all four Sound buoys, strips them to text, and has Claude read the latest
+observation out of each — wave height and period, wave and wind direction, wind
+speed and gusts, water and air temperature, pressure.
+
+Server-side for the same reason as the fishing summary, plus one more: UConn's
+pages send no CORS headers, and its ERDDAP server is plain HTTP on a non-standard
+port, which an HTTPS page is not allowed to fetch at all.
+
+Claude rather than a scraper because these are human-facing observation panels —
+labels, units, and layout differ between stations and get redesigned without
+notice, and a selector-based parser would be the first thing to break.
+
+The model is not trusted with the numbers, though:
+
+- It reports each value **exactly as the page prints it, with the printed unit**,
+  and the server does the conversion. A units error is the one mistake this app's
+  domain rules care most about, and asking the model to convert would put it
+  somewhere nothing can check.
+- Every converted reading is range-checked against the same plausible bounds the
+  ERDDAP reader uses (`PLAUSIBLE_READING_RANGES` in `src/utils.js`). Anything
+  outside them is dropped rather than shown.
+- Observation times that are in the future or more than 12 hours old are dropped,
+  so a misread timestamp can't make stale water look current.
+- It is told to return null rather than estimate, and never to carry a value over
+  from another buoy or from a forecast on the same page.
+
+Results are cached for 10 minutes and a stale payload is served for up to 3 hours
+if a refresh fails. The endpoint takes no position — all four buoys come back in
+one response and the browser picks the nearest one that is reporting, which keeps
+the skipper's location in the browser and lets every request share a cache entry.
+
+If any of it is unavailable — no key, dead page, failed call — the card falls back
+to the ERDDAP buoy feed and then to a wind-driven estimate, exactly as before. The
+Sea State card is labelled with which of those you are looking at.
