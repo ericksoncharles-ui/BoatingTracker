@@ -27,6 +27,17 @@ const MAX_CHARS_PER_SOURCE = 6000
 const USER_AGENT =
   'Mozilla/5.0 (compatible; SoundCaptain/1.0; +https://github.com/ericksoncharles-ui/BoatingTracker)'
 
+// The card can only tell an angler what to do next if it knows why the summary
+// failed — a blocked source site and a missing API key need different answers.
+export class FishingSummaryError extends Error {
+  constructor(message, { reason, sources } = {}) {
+    super(message)
+    this.name = 'FishingSummaryError'
+    this.reason = reason
+    this.sources = sources
+  }
+}
+
 const NAMED_ENTITIES = {
   amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
   rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“',
@@ -97,10 +108,11 @@ async function collectSources(signal) {
   return SOURCES.map((source, i) => {
     const result = settled[i]
     if (result.status === 'fulfilled') {
-      return { ...source, status: 'ok', text: result.value }
+      return { ...source, status: 'ok', detail: null, text: result.value }
     }
-    console.warn(`Fishing source ${source.id} unavailable:`, result.reason?.message || result.reason)
-    return { ...source, status: 'unavailable', text: null }
+    const detail = result.reason?.message || String(result.reason)
+    console.warn(`Fishing source ${source.id} unavailable: ${detail}`)
+    return { ...source, status: 'unavailable', detail, text: null }
   })
 }
 
@@ -147,12 +159,14 @@ async function summarize(reachable) {
   })
 
   if (response.stop_reason === 'refusal') {
-    throw new Error('Summary request was declined.')
+    throw new FishingSummaryError('Summary request was declined.', { reason: 'declined' })
   }
 
   const text = response.content.find((block) => block.type === 'text')?.text?.trim() ?? ''
   if (!text || text === 'NO_REPORTS') {
-    throw new Error('No usable report text in the sources.')
+    // The pages loaded but held no readable report — usually a site that builds
+    // its reports in the browser, so a plain fetch only sees the shell.
+    throw new FishingSummaryError('No usable report text in the sources.', { reason: 'no_reports' })
   }
   return text
 }
@@ -160,12 +174,17 @@ async function summarize(reachable) {
 let cache = null
 let inFlight = null
 
+const publicSource = ({ id, label, url, status, detail }) => ({ id, label, url, status, detail })
+
 async function generate() {
   const sources = await collectSources()
   const reachable = sources.filter((source) => source.status === 'ok')
 
   if (reachable.length === 0) {
-    throw new Error('No fishing report sources could be reached.')
+    throw new FishingSummaryError('No fishing report sources could be reached.', {
+      reason: 'sources_unreachable',
+      sources: sources.map(publicSource),
+    })
   }
 
   const summary = await summarize(reachable)
@@ -173,7 +192,7 @@ async function generate() {
   return {
     summary,
     generatedAt: new Date().toISOString(),
-    sources: sources.map(({ id, label, url, status }) => ({ id, label, url, status })),
+    sources: sources.map(publicSource),
   }
 }
 

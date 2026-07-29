@@ -1,10 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const ICON = (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 5h16M4 10h10M4 15h13M4 20h7" />
   </svg>
 )
+
+// Reading four sites and summarizing them costs an API call, so it happens when
+// the angler asks for it — not on every visit to the tab.
+const BUTTON_LABEL = {
+  idle: 'Summarize reports',
+  loading: 'Reading reports…',
+  ok: 'Refresh',
+  error: 'Try again',
+}
+
+// Each failure has a different next step, so the card names the actual one.
+const FAILURE_MESSAGE = {
+  not_configured:
+    'The server has no Anthropic API key set, so it can’t write a summary. Everything else on this tab still works — read the reports at the source below.',
+  sources_unreachable:
+    'None of the report sites would load — they may be blocking automated requests, or the connection dropped. Open them directly below.',
+  no_reports:
+    'The report pages loaded but had no readable report text in them. That usually means the site builds its reports in the browser — open them below.',
+  busy: 'Too many summary requests just now. Give it a minute and try again.',
+  unreachable:
+    'Couldn’t reach the app’s own API server. In development that’s `npm run server` on :3001.',
+  failed: 'Something went wrong summarizing the reports. Try again, or read them at the source below.',
+}
 
 function formatUpdated(iso) {
   const at = new Date(iso)
@@ -15,32 +38,72 @@ function formatUpdated(iso) {
     : at.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
+function SourceChips({ sources }) {
+  if (!sources?.length) return null
+  return (
+    <div className="fishing-summary-sources">
+      {sources.map((source) => (
+        <a
+          key={source.id}
+          className={`fishing-summary-source ${source.status === 'ok' ? '' : 'source-missing'}`}
+          href={source.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={source.detail ? `Not read: ${source.detail}` : undefined}
+        >
+          <span className="source-dot" aria-hidden="true" />
+          {source.label}
+        </a>
+      ))}
+    </div>
+  )
+}
+
 export default function FishingSummary() {
-  const [state, setState] = useState({ status: 'loading', data: null })
+  const [state, setState] = useState({ status: 'idle', data: null, failure: null })
+  const abortRef = useRef(null)
 
-  useEffect(() => {
+  useEffect(() => () => abortRef.current?.abort(), [])
+
+  const run = useCallback(async () => {
+    abortRef.current?.abort()
     const controller = new AbortController()
+    abortRef.current = controller
 
-    fetch('/api/fishing-summary', { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Summary request failed: ${response.status}`)
-        return response.json()
-      })
-      .then((data) => {
-        if (!data?.summary) throw new Error('Empty summary')
-        setState({ status: 'ok', data })
-      })
-      .catch((error) => {
-        if (error.name === 'AbortError') return
-        // Same rule as the trip briefing: no key, no server, or a dead source
-        // site degrades this card, never the tab.
-        setState({ status: 'error', data: null })
-      })
+    setState((prev) => ({ ...prev, status: 'loading' }))
 
-    return () => { controller.abort() }
+    try {
+      const response = await fetch('/api/fishing-summary', { signal: controller.signal })
+
+      // A dead API server comes back through the dev proxy as a non-JSON 500,
+      // which is worth telling apart from a summary that genuinely failed.
+      let body = null
+      try {
+        body = await response.json()
+      } catch {
+        body = null
+      }
+
+      if (!response.ok || !body?.summary) {
+        setState({
+          status: 'error',
+          data: null,
+          failure: {
+            reason: body?.reason || (body ? 'failed' : 'unreachable'),
+            sources: body?.sources || null,
+          },
+        })
+        return
+      }
+
+      setState({ status: 'ok', data: body, failure: null })
+    } catch (error) {
+      if (error.name === 'AbortError') return
+      setState({ status: 'error', data: null, failure: { reason: 'unreachable', sources: null } })
+    }
   }, [])
 
-  const { status, data } = state
+  const { status, data, failure } = state
   const updated = data?.generatedAt ? formatUpdated(data.generatedAt) : null
   const missing = data?.sources?.filter((source) => source.status !== 'ok') || []
 
@@ -51,16 +114,37 @@ export default function FishingSummary() {
           <span className="cond-card-icon">{ICON}</span>
           What the Reports Say
         </h3>
-        {status === 'ok' && <span className="ai-badge">AI</span>}
+        <div className="fishing-summary-actions">
+          {status === 'ok' && <span className="ai-badge">AI</span>}
+          <button
+            className="fishing-summary-run"
+            onClick={run}
+            disabled={status === 'loading'}
+            type="button"
+          >
+            {BUTTON_LABEL[status]}
+          </button>
+        </div>
       </header>
 
-      {status === 'loading' && <p className="cond-note">Reading the latest reports…</p>}
+      {status === 'idle' && (
+        <p className="cond-note">
+          Pull the shop and regional reports linked below into one read — what&apos;s being caught,
+          where, and on what. Takes a few seconds and asks Claude to summarize the live pages.
+        </p>
+      )}
+
+      {status === 'loading' && (
+        <p className="cond-note">Reading the linked reports…</p>
+      )}
 
       {status === 'error' && (
-        <p className="cond-note">
-          Couldn&apos;t pull the reports together right now — read them straight from the sources
-          at the bottom of this tab.
-        </p>
+        <>
+          <p className="cond-note">
+            {FAILURE_MESSAGE[failure?.reason] || FAILURE_MESSAGE.failed}
+          </p>
+          <SourceChips sources={failure?.sources} />
+        </>
       )}
 
       {status === 'ok' && (
@@ -69,20 +153,7 @@ export default function FishingSummary() {
             <p className="fishing-summary-text" key={i}>{paragraph}</p>
           ))}
 
-          <div className="fishing-summary-sources">
-            {data.sources.map((source) => (
-              <a
-                key={source.id}
-                className={`fishing-summary-source ${source.status === 'ok' ? '' : 'source-missing'}`}
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span className="source-dot" aria-hidden="true" />
-                {source.label}
-              </a>
-            ))}
-          </div>
+          <SourceChips sources={data.sources} />
 
           <p className="cond-provenance">
             Summarized from the linked reports{updated ? ` · ${updated}` : ''}
