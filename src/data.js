@@ -340,7 +340,7 @@ export const fishingLinks = [
     id: 'fishermans-world',
     label: "Fisherman's World, Norwalk CT",
     description: 'Local tackle shop report — species, bait, and hot spots around western Long Island Sound.',
-    url: 'https://www.fishermansworld.net/',
+    url: 'https://www.thefisherman.com/contributor/fishermans-world/',
     kind: 'shop',
   },
   {
