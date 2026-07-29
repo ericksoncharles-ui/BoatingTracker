@@ -22,7 +22,7 @@ const FAILURE_MESSAGE = {
   sources_unreachable:
     'None of the report sites would load — they may be blocking automated requests, or the connection dropped. Open them directly below.',
   no_reports:
-    'The report pages loaded but had no readable report text in them. That usually means the site builds its reports in the browser — open them below.',
+    'The report sources loaded but held no readable report text — the sites may not have posted a new report yet. Open them below to check.',
   busy: 'Too many summary requests just now. Give it a minute and try again.',
   unreachable:
     'Couldn’t reach the app’s own API server. In development that’s `npm run server` on :3001.',

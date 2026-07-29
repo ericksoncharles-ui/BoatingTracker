@@ -8,6 +8,7 @@
     "server": "node --env-file-if-exists=.env --watch server/index.js",
     "build": "vite build",
     "preview": "vite preview",
+    "fishing:probe": "node scripts/fishing-probe.mjs",
     "start": "node --env-file-if-exists=.env server/index.js"
   },
   "dependencies": {
