@@ -30,7 +30,7 @@ export function decodeEntities(text) {
 export function htmlToText(html, { cells = false } = {}) {
   let text = html
     .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<(script|style|noscript|svg|head|nav|footer)\b[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<(script|style|noscript|svg|head|nav|footer|template|iframe)\b[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<br\s*\/?>/gi, '\n')
 
   if (cells) text = text.replace(/<\/(td|th)\s*>/gi, ' | ')
