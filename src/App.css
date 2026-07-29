@@ -1552,13 +1552,6 @@ body {
   color: var(--sea);
 }
 
-/* Holds a source badge and the AI badge together, so the card header still
-   reads as two columns rather than three. */
-.cond-badge-group {
-  display: flex;
-  align-items: center;
-}
-
 .cond-badge {
   padding: 3px 8px;
   font-size: 0.62rem;
@@ -1570,12 +1563,6 @@ body {
   background: rgba(43, 108, 176, 0.18);
   border: 1px solid var(--border);
   border-radius: 20px;
-}
-
-.cond-badge-observed {
-  color: #9AE6B4;
-  background: rgba(56, 161, 105, 0.18);
-  border-color: rgba(56, 161, 105, 0.4);
 }
 
 .cond-badge-estimated {

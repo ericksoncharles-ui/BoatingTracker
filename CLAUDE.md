@@ -48,20 +48,17 @@ src/data.js           Marinas, navigation spine, shoals, no-wake zones, POIs
 src/utils.js          Pure navigation/fuel math — no React
 src/hooks/useTripCalculator.js   Owns all form state, orchestrates utils.js
 src/hooks/useConditions.js       Fetches every live conditions source for one position
-src/services/erddapBuoy.js       Buoy observations via the ERDDAP mirrors
-src/services/uconnSeaState.js    Buoy observations via /api/sea-state (UConn's own pages)
 src/services/noaaTides.js        Tide predictions
-src/services/forecast.js         Wind/weather forecast + the wind-wave estimate
+src/services/forecast.js         Wind/weather forecast + the wind-and-tide wave estimate
 src/services/nwsAlerts.js        Active marine alerts
 src/components/Sidebar.jsx       Inputs + results panel
 src/components/TripMap.jsx       Leaflet map, chart layers, live GPS
 src/components/TripBriefing.jsx  Optional Claude-generated briefing
 src/components/ConditionsPanel.jsx  Sea state, tides, wind, alerts
 src/components/FishingSummary.jsx  Aggregate summary of the linked fishing reports
-server/index.js       Express: /api/briefing, /api/fishing-summary, /api/sea-state, serves dist/
+server/index.js       Express: /api/briefing, /api/fishing-summary, serves dist/
 server/fishingSummary.js  Fetches + summarizes the fishing report sources
-server/uconnSeaState.js   Reads the UConn buoy pages into structured sea state
-server/htmlText.js        Shared HTML -> text pass for both page readers
+server/htmlText.js        HTML -> text pass for the fishing-summary page reader
 ```
 
 **Where to make a change:**
@@ -140,8 +137,7 @@ used as a free Claude proxy, and they share a per-IP rate limit.
 The briefing and the fishing summary run `claude-haiku-4-5`. It rejects the
 `effort` parameter and doesn't think unless handed a `budget_tokens`, so neither
 call passes `output_config` or `thinking` — copying those in from newer-model
-examples returns a 400. `/api/sea-state` is the exception and runs
-`claude-opus-5`, which does take `output_config`; see below for why.
+examples returns a 400.
 
 When the key is absent or the request fails, it silently falls back to
 `generateFallbackBriefing`, a template-string summary. Keep that fallback
@@ -182,47 +178,39 @@ links are deliberately excluded — those get read at the source, not paraphrase
   the client adds `unreachable` when the API server itself doesn't answer. Keep
   that mapping in sync — a generic "something went wrong" is what this replaced.
 
-## Live sea state from the UConn buoys
+## Sea state estimate
 
-`/api/sea-state` (`server/uconnSeaState.js`) reads each buoy's own observation
-page from the `sources` list on `LIS_WAVE_STATIONS` in `src/data.js` — UConn's
-LISICOS panel first, that hull's NDBC station page as the backstop — and has
-Claude pull the latest observation out of the page text. `src/services/
-uconnSeaState.js` picks the nearest reporting buoy and `ConditionsPanel.jsx`
-prefers it for the Sea State card, falling back to `erddapBuoy.js` and then to
-the wind-driven estimate.
+There is no live buoy reader — the Sea State card is always computed,
+client-side, by `estimateWindWaves` in `src/services/forecast.js`. It takes the
+real Open-Meteo wind reading, never a guess at wind, and turns it into a
+significant wave height and period with the simplified SMB fetch-limited
+relations, using an elliptical fetch model of the Sound (`FETCH_ALONG_KM` /
+`FETCH_ACROSS_KM` around `SOUND_AXIS_DEG`, the Sound's WSW-ENE long axis).
 
-This is the one place a model produces numbers a skipper navigates on, so the
-rules are tighter than the prose endpoints:
+`ConditionsPanel.jsx` also passes it the real tide payload from `fetchTides`
+(`src/services/noaaTides.js`), which layers on a wind-against-tide adjustment:
 
-- **Claude reports values exactly as printed, with the printed unit; the server
-  converts.** Never move the unit conversion into the prompt — a units error is
-  the exact failure mode this app's domain rules exist to prevent, and in the
-  prompt nothing can check it.
-- **Every reading is range-checked** by `keepPlausibleReading` against
-  `PLAUSIBLE_READING_RANGES` in `src/utils.js`, shared with the ERDDAP reader so
-  the two can't disagree about what counts as real. Out of range means dropped,
-  not displayed.
-- **Observation times in the future or over 12 h old are dropped**, so a misread
-  timestamp can't present stale water as current.
-- The prompt tells the model to return null rather than estimate, and never to
-  carry a value over from another buoy or a forecast on the same page. Keep that.
-- The endpoint takes no position: it returns all four buoys and the browser
-  chooses, which keeps the skipper's location client-side and lets every request
-  share one cache entry (10 min fresh, 3 h stale-on-failure).
-- Same rule as the other two: no key, dead page, or failed call must leave the
-  tab fully usable — the client treats a 503 as "off", not as an error.
-- Station pages are read with `htmlToText(html, { cells: true })`, which keeps a
-  `|` between table cells. Observation pages put the label in one cell and the
-  number in the next; collapsing that to whitespace makes the reader guess which
-  number goes with which label.
-- `npm run sea-state:probe` prints what each station's sources actually yield
-  (char count, a preview) without spending an API call. Reach for it first when
-  every reading comes back null: if the preview is nav chrome, a JS-rendered
-  panel shell with no server-rendered numbers, or a "no recent data" notice,
-  the page itself has nothing to read — the model returning null for
-  everything (including `observedAtRaw`) is doing exactly what it's told, not
-  malfunctioning.
+- **Current is assumed to run along the Sound's axis** — flood (rising) sets
+  west, into the Sound from the ocean at its eastern end; ebb (falling) sets
+  east, back out. This is a simplification (it reverses near the Hell Gate node
+  at the western end) but matches what boaters see on the open Sound, and reuses
+  the same axis the fetch model already assumes.
+- **Current strength is modelled as a sine wave between tide extremes** — slack
+  (0) at a high or low, maximum at the midpoint between them — because a simple
+  harmonic tide's current is the rate of change of its height, which peaks
+  exactly halfway between extremes.
+- Wind blowing the same way the current is setting eases the estimate (longer,
+  flatter sea); wind blowing into the current steepens it (shorter, higher sea).
+  Both are capped modest (`WIND_AGAINST_TIDE_HEIGHT` / `_PERIOD`) since this
+  rides on top of an already-approximate wind estimate.
+- The 7-day wind outlook (`dailyOutlook` in `ConditionsPanel.jsx`) calls
+  `estimateWindWaves` **without** a tide argument — NOAA's predictions only
+  reach a day or two out, not the whole week the outlook shows, so days beyond
+  that get the plain wind estimate rather than a fabricated tide phase.
+
+Never present these numbers as a measurement — the card always labels them
+"Estimated," and `estimateWindWaves` returns `estimated: true` for exactly that
+reason.
 
 ## Conventions
 

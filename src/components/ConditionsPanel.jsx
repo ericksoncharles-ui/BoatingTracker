@@ -126,13 +126,9 @@ function Metric({ label, value, unit, sub }) {
   )
 }
 
-// `substituted` means the card is showing usable numbers from another source
-// despite its own being down. The outage then belongs in the provenance line
-// under those numbers, not in a banner above them that reads like the card
-// failed — and never as a raw fetch error the skipper can't act on.
-function Card({ icon, title, badge, section, children, emptyMessage, substituted = false }) {
+function Card({ icon, title, badge, section, children }) {
   const status = section?.status
-  const showSpinner = status === 'loading' && !section?.data && !substituted
+  const showSpinner = status === 'loading' && !section?.data
 
   return (
     <section className="cond-card">
@@ -145,13 +141,10 @@ function Card({ icon, title, badge, section, children, emptyMessage, substituted
       </header>
 
       {showSpinner && <p className="cond-note">Loading…</p>}
-      {status === 'error' && !substituted && (
+      {status === 'error' && (
         <p className="cond-error">
           {section.error || 'Could not load this data.'}
         </p>
-      )}
-      {status === 'empty' && !substituted && (
-        <p className="cond-note">{emptyMessage || 'No data available.'}</p>
       )}
       {children}
     </section>
@@ -196,69 +189,26 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   const waitingForGeo = searchingForGeo && !geoGraceOver
 
   const conditions = useConditions({ lat: place.lat, lng: place.lng, enabled: !waitingForGeo })
-  const { tides, buoy, uconn, forecast, alerts, refresh, updatedAt, cachedAt, failedAt, loading } =
-    conditions
+  const { tides, forecast, alerts, refresh, updatedAt, cachedAt, failedAt, loading } = conditions
 
-  const buoyData = buoy.status === 'ok' || buoy.status === 'empty' ? buoy.data : null
-  const uconnData = uconn.status === 'ok' ? uconn.data : null
   const currentWeather = forecast.status === 'ok' ? forecast.data.current : null
+  const tideData = tides.status === 'ok' ? tides.data : null
 
-  // Wave height comes from a buoy when one has it, and from a wind-driven
-  // estimate — labelled as such — when every buoy is quiet. `fix` is the buoy
-  // payload behind the numbers, so the station, age, and distance shown
-  // underneath always describe the same read.
+  // Sea state is always computed from wind and tide — there is no live buoy
+  // reader. estimateWindWaves folds in a wind-against-tide chop adjustment
+  // whenever tide data is available; without it, this is a plain wind estimate.
   const seaState = useMemo(() => {
-    const observed = [
-      { origin: 'uconn', fix: uconnData },
-      { origin: 'erddap', fix: buoyData },
-    ].filter(({ fix }) => fix?.readings?.waveHeightFt != null)
-
-    // Both readers walk the same four buoys and can land on different ones, so
-    // the water nearest the boat wins. UConn takes ties — it operates the buoys
-    // and its own pages post ahead of the national mirrors.
-    observed.sort((a, b) => (a.fix.distanceNM ?? Infinity) - (b.fix.distanceNM ?? Infinity))
-
-    if (observed.length > 0) {
-      const [chosen] = observed
-      const readings = chosen.fix.readings
-      return {
-        source: 'observed',
-        origin: chosen.origin,
-        fix: chosen.fix,
-        heightFt: readings.waveHeightFt,
-        periodS: readings.wavePeriodS ?? readings.waveMeanPeriodS,
-        dirDeg: readings.waveDirDeg,
-      }
+    if (currentWeather?.windKt == null) return null
+    const estimate = estimateWindWaves(currentWeather.windKt, currentWeather.windDirDeg, tideData)
+    if (!estimate) return null
+    return {
+      heightFt: estimate.heightFt,
+      periodS: estimate.periodS,
+      fetchNM: estimate.fetchNM,
+      tideEffect: estimate.tideEffect,
+      dirDeg: currentWeather.windDirDeg,
     }
-
-    if (currentWeather?.windKt != null) {
-      const estimate = estimateWindWaves(currentWeather.windKt, currentWeather.windDirDeg)
-      if (estimate) {
-        return {
-          source: 'estimated',
-          origin: 'wind',
-          fix: null,
-          heightFt: estimate.heightFt,
-          periodS: estimate.periodS,
-          fetchNM: estimate.fetchNM,
-          dirDeg: currentWeather.windDirDeg,
-        }
-      }
-    }
-    return null
-  }, [uconnData, buoyData, currentWeather])
-
-  // Water temperature and wind are their own readings — a buoy with a dead wave
-  // sensor still has them. Take them from the station the sea state came from
-  // first, so the card's numbers describe one place, and only then from
-  // whichever other source reported something.
-  const pick = (field) =>
-    seaState?.fix?.readings?.[field] ??
-    uconnData?.readings?.[field] ??
-    buoyData?.readings?.[field] ??
-    null
-  const waterTempF = pick('waterTempF')
-  const observedWindKt = pick('windKt')
+  }, [currentWeather, tideData])
 
   // The multi-day outlook is wind-first: peak wind, gusts, dominant direction
   // and the seas that combination would build. `daily` is optional so a payload
@@ -277,21 +227,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     })
   }, [forecast])
 
-  // Why the wave numbers are estimated, in the fewest words that stay accurate.
-  // Both readers walk every Sound buoy, so this only reads "no buoy reporting"
-  // when neither found a station with anything to say.
-  const buoyOutage = (() => {
-    if (seaState && seaState.source !== 'estimated') return null
-    if (uconnData || buoyData) {
-      const name = uconnData?.station?.name || buoyData?.station?.name || 'buoy'
-      return `${name} wave sensor down`
-    }
-    if (buoy.status === 'error' && uconn.status !== 'empty') return 'buoy feeds unreachable'
-    return 'no Sound buoy reporting'
-  })()
-
   const activeAlerts = alerts.status === 'ok' ? alerts.data : []
-  const tideData = tides.status === 'ok' ? tides.data : null
 
   const locationNote = {
     gps: 'Using your location',
@@ -367,23 +303,8 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
       <Card
         icon={ICONS.wave}
         title="Sea State"
-        section={buoy}
-        emptyMessage={buoy.data?.message || uconn.data?.message}
-        // Numbers from UConn count as a substitute too: the ERDDAP feed being
-        // down doesn't warrant an error banner over readings that are on screen.
-        substituted={seaState != null && seaState.origin !== 'erddap'}
-        badge={
-          seaState && (
-            <span className="cond-badge-group">
-              <span className={`cond-badge ${seaState.source === 'observed' ? 'cond-badge-observed' : 'cond-badge-estimated'}`}>
-                {seaState.source === 'observed'
-                  ? `Observed · ${seaState.fix.station.name}`
-                  : 'Estimated'}
-              </span>
-              {seaState.origin === 'uconn' && <span className="ai-badge">AI</span>}
-            </span>
-          )
-        }
+        section={forecast}
+        badge={seaState && <span className="cond-badge cond-badge-estimated">Estimated</span>}
       >
         {seaState && (
           <>
@@ -395,56 +316,14 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
                 value={seaState.dirDeg != null ? degreesToCardinal(seaState.dirDeg) : null}
                 sub={seaState.dirDeg != null ? `${Math.round(seaState.dirDeg)}°` : null}
               />
-              <Metric label="Water Temp" value={waterTempF?.toFixed(0)} unit="°F" />
             </div>
 
-            {seaState.source === 'observed' ? (
-              <p className="cond-provenance">
-                Observed · {seaState.fix.station.name} ({seaState.fix.station.operator}) ·{' '}
-                {formatAge(seaState.fix.ageMinutes) || 'time unknown'}
-                {seaState.fix.distanceNM != null && (
-                  <> · {seaState.fix.distanceNM} NM {seaState.fix.bearingCardinal} of you</>
-                )}
-                {/* Where a number came from matters at the helm, and "Claude read
-                    it off the buoy's page" is a different claim from "a data feed
-                    served it". Say so rather than leaving the AI badge to imply it. */}
-                {seaState.origin === 'uconn' && (
-                  <> · read by Claude from{' '}
-                    {seaState.fix.source?.url ? (
-                      <a href={seaState.fix.source.url} target="_blank" rel="noopener noreferrer">
-                        {seaState.fix.source.label}
-                      </a>
-                    ) : (
-                      'the station page'
-                    )}
-                  </>
-                )}
-              </p>
-            ) : (
-              <p className="cond-provenance cond-provenance-warn">
-                Estimated from wind — not measured
-                {buoyOutage && <> · {buoyOutage}</>}
-                {seaState.fetchNM != null && <> · {seaState.fetchNM} NM fetch</>}
-              </p>
-            )}
-
-            {seaState.fix?.regional && (
-              <p className="cond-note">
-                The buoy is {seaState.fix.distanceNM} NM away, so treat these as regional
-                conditions rather than the water you're on.
-              </p>
-            )}
-
-            {seaState.fix?.positionWarning && (
-              <p className="cond-error">{seaState.fix.positionWarning}</p>
-            )}
-
-            {seaState.fix?.stale && (
-              <p className="cond-note">
-                Latest buoy report is {formatAge(seaState.fix.ageMinutes)} — the station may be
-                reporting intermittently.
-              </p>
-            )}
+            <p className="cond-provenance cond-provenance-warn">
+              Estimated from wind{tideData ? ' and tide' : ''} — not measured
+              {seaState.fetchNM != null && <> · {seaState.fetchNM} NM fetch</>}
+              {seaState.tideEffect === 'against' && <> · wind against the tide, chop increased</>}
+              {seaState.tideEffect === 'with' && <> · wind with the tide, chop eased</>}
+            </p>
           </>
         )}
       </Card>
@@ -545,9 +424,6 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
                 value={currentWeather.visibilityNM != null ? currentWeather.visibilityNM.toFixed(1) : null}
                 unit="NM"
               />
-              {observedWindKt != null && (
-                <Metric label="Buoy Wind" value={observedWindKt.toFixed(0)} unit="kt" sub="observed" />
-              )}
             </div>
 
             {forecast.data.hourly.length > 0 && (
@@ -628,8 +504,9 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
           </h3>
         </header>
         <p className="cond-note">
-          The Long Island Sound Integrated Coastal Observing System runs the Sound buoys these
-          observations come from. Its own panels carry the full instrument set and plots.
+          The Long Island Sound Integrated Coastal Observing System runs a handful of buoys
+          across the Sound. This app's Sea State card is a wind-and-tide estimate, not a reading
+          from them — for the actual instruments and plots, see UConn's own panels.
         </p>
         <div className="cond-links">
           {lisicosLinks.map((link) => (
@@ -661,7 +538,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
           <span>{waitingForGeo ? 'Waiting for location…' : 'Loading…'}</span>
         )}
         <span className="cond-sources">
-          UConn LISICOS / NDBC · NOAA CO-OPS · NWS · Open-Meteo
+          NOAA CO-OPS · NWS · Open-Meteo
         </span>
       </footer>
     </div>
