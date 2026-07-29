@@ -216,6 +216,13 @@ rules are tighter than the prose endpoints:
   `|` between table cells. Observation pages put the label in one cell and the
   number in the next; collapsing that to whitespace makes the reader guess which
   number goes with which label.
+- `npm run sea-state:probe` prints what each station's sources actually yield
+  (char count, a preview) without spending an API call. Reach for it first when
+  every reading comes back null: if the preview is nav chrome, a JS-rendered
+  panel shell with no server-rendered numbers, or a "no recent data" notice,
+  the page itself has nothing to read — the model returning null for
+  everything (including `observedAtRaw`) is doing exactly what it's told, not
+  malfunctioning.
 
 ## Conventions
 

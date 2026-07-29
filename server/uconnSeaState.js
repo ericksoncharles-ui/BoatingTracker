@@ -36,7 +36,7 @@ const MAX_AGE_MS = 12 * 60 * 60 * 1000
 const USER_AGENT =
   'Mozilla/5.0 (compatible; SoundCaptain/1.0; +https://github.com/ericksoncharles-ui/BoatingTracker)'
 
-async function fetchPage(url, signal) {
+export async function fetchPage(url, signal) {
   const timeout = AbortSignal.timeout(FETCH_TIMEOUT_MS)
   const response = await fetch(url, {
     redirect: 'follow',
