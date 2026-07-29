@@ -110,7 +110,10 @@ app.post('/api/briefing', rateLimit, async (req, res) => {
 // client falls back to its own copy on anything but a 200.
 app.get('/api/fishing-summary', rateLimit, async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(503).json({ error: 'Fishing summary service is not configured.' })
+    return res.status(503).json({
+      error: 'Fishing summary service is not configured.',
+      reason: 'not_configured',
+    })
   }
 
   try {
@@ -121,10 +124,19 @@ app.get('/api/fishing-summary', rateLimit, async (req, res) => {
     res.json({ ...payload, cached })
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
-      return res.status(429).json({ error: 'Summary service is busy. Try again shortly.' })
+      return res.status(429).json({
+        error: 'Summary service is busy. Try again shortly.',
+        reason: 'busy',
+      })
     }
+    // The reason travels to the client so the card can say what actually went
+    // wrong; the stack stays here.
     console.error('Fishing summary failed:', error?.message || error)
-    res.status(502).json({ error: 'Could not summarize the fishing reports.' })
+    res.status(502).json({
+      error: 'Could not summarize the fishing reports.',
+      reason: error?.reason || 'failed',
+      sources: error?.sources,
+    })
   }
 })
 

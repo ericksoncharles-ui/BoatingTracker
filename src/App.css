@@ -2030,6 +2030,41 @@ body {
   margin-top: 8px;
 }
 
+.fishing-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.fishing-summary-run {
+  padding: 6px 12px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  color: var(--navy);
+  background: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fishing-summary-run:hover:not(:disabled) {
+  background: var(--gold-light);
+  border-color: var(--gold-light);
+}
+
+.fishing-summary-run:disabled {
+  color: #C8D6E5;
+  background: var(--navy-light);
+  border-color: var(--border);
+  cursor: default;
+}
+
 .fishing-summary-sources {
   display: flex;
   flex-wrap: wrap;
