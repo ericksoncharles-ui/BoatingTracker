@@ -137,7 +137,8 @@ working — the app must be fully usable with no API key.
 
 ## Fishing report summary
 
-`FishingSummary.jsx` calls `/api/fishing-summary`, which fetches the shop and
+`FishingSummary.jsx` calls `/api/fishing-summary` **when the angler presses the
+button** — never on mount, so opening the tab never spends an API call. It fetches the shop and
 aggregate pages from `fishingLinks` (`server/fishingSummary.js` imports that
 array from `src/data.js`, so the links stay a single source of truth), strips the
 HTML to text, and has Claude write one aggregate summary of them. Regulation
@@ -152,6 +153,10 @@ links are deliberately excluded — those get read at the source, not paraphrase
   breaks). Don't replace it with site-specific selectors; those break first.
 - If the whole call fails, the card degrades to a one-line note pointing at the
   links. Same rule as the briefing: the tab must work with no API key.
+- Failures carry a `reason` (`not_configured`, `sources_unreachable`,
+  `no_reports`, `busy`, `failed`) that the card turns into a specific next step;
+  the client adds `unreachable` when the API server itself doesn't answer. Keep
+  that mapping in sync — a generic "something went wrong" is what this replaced.
 
 ## Conventions
 
