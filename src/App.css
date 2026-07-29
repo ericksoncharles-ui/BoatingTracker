@@ -253,6 +253,119 @@ body {
   box-shadow: 0 0 0 3px var(--sea-glow);
 }
 
+/* ── Place Picker (searchable start / destination) ────── */
+
+.place-picker {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.sidebar-form .place-picker-label {
+  margin-bottom: 0;
+}
+
+.place-picker-field {
+  position: relative;
+}
+
+/* The icons sit inside the field, so the input needs room carved out on both
+   sides — longhand and scoped so the mobile padding shorthand can't reset it. */
+.sidebar-form .place-picker-field input {
+  padding-left: 36px;
+  padding-right: 36px;
+  text-overflow: ellipsis;
+}
+
+.place-picker-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  color: #7c8ba5;
+  pointer-events: none;
+}
+
+.place-picker-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: #7c8ba5;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.place-picker-clear:hover {
+  color: var(--navy);
+  background: rgba(27, 42, 74, 0.1);
+}
+
+.place-picker-list {
+  position: absolute;
+  z-index: 500;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--cream);
+  border: 1px solid rgba(27, 42, 74, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.place-picker-list-above {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+.place-picker-group {
+  position: sticky;
+  top: 0;
+  padding: 7px 12px 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7c99;
+  background: var(--cream);
+  border-bottom: 1px solid rgba(27, 42, 74, 0.08);
+}
+
+.place-picker-option {
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.place-picker-active {
+  background: rgba(43, 108, 176, 0.14);
+}
+
+.place-picker-selected {
+  font-weight: 700;
+}
+
+.place-picker-empty {
+  padding: 14px 12px;
+  font-size: 0.85rem;
+  color: var(--slate);
+}
+
 .section-divider {
   display: flex;
   align-items: center;
@@ -1108,6 +1221,18 @@ body {
     font-size: 16px;
     padding: 12px 14px;
     border-radius: 10px;
+  }
+
+  /* Thumb-sized rows for tapping at the helm. */
+  .place-picker-option {
+    padding: 12px 14px;
+    font-size: 0.95rem;
+  }
+
+  .place-picker-clear {
+    width: 28px;
+    height: 28px;
+    right: 6px;
   }
 
   .input-row {
