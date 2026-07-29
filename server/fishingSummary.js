@@ -38,7 +38,6 @@ const FEED_ACCEPT = 'application/rss+xml,application/atom+xml,application/xml;q=
 const USER_AGENT =
   'Mozilla/5.0 (compatible; SoundCaptain/1.0; +https://github.com/ericksoncharles-ui/BoatingTracker)'
 
-async function fetchSource(source, signal) {
 // The card can only tell an angler what to do next if it knows why the summary
 // failed — a blocked source site and a missing API key need different answers.
 export class FishingSummaryError extends Error {
@@ -50,47 +49,17 @@ export class FishingSummaryError extends Error {
   }
 }
 
-const NAMED_ENTITIES = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
-  rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“',
-  ndash: '–', mdash: '—', hellip: '…', deg: '°',
-}
-
-function decodeEntities(text) {
-  return text
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
-    .replace(/&([a-z]+);/gi, (match, name) => NAMED_ENTITIES[name.toLowerCase()] ?? match)
-}
-
-// Deliberately not a parser. These are ordinary content pages and the useful
-// text is prose, so stripping markup and keeping paragraph breaks gets the
-// report through without tying the app to any one site's markup — which is what
-// a CSS-selector scraper would do, and what would break first.
+// Drops sidebars and the masthead before the shared text pass. This lives here
+// rather than in htmlText.js because it is a policy about article pages, not
+// about markup: the buoy reader wants its whole page.
 //
-// `stripChrome` also drops sidebars and the masthead. Only the *first* <header>
-// goes: that one is the site masthead, while every later <header> is an
-// article's own headline block — and that headline is often the only dated line
-// the report has.
-function htmlToText(html, { stripChrome = false } = {}) {
-  const source = stripChrome
-    ? html
-      .replace(/<header\b[\s\S]*?<\/header>/i, ' ')
-      .replace(/<(aside|form)\b[\s\S]*?<\/\1>/gi, ' ')
-    : html
-
-  return decodeEntities(
-    source
-      .replace(/<!--[\s\S]*?-->/g, ' ')
-      .replace(/<(script|style|noscript|svg|head|nav|footer|template|iframe)\b[\s\S]*?<\/\1>/gi, ' ')
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(p|div|li|h[1-6]|tr|section|article|blockquote)\s*>/gi, '\n')
-      .replace(/<[^>]+>/g, ' '),
-  )
-    .replace(/[ \t\r\f\v]+/g, ' ')
-    .replace(/ ?\n ?/g, '\n')
-    .replace(/\n{2,}/g, '\n')
-    .trim()
+// Only the *first* <header> goes: that one is the site masthead, while every
+// later <header> is an article's own headline block — and that headline is
+// often the only dated line the report has.
+function stripChrome(html) {
+  return html
+    .replace(/<header\b[\s\S]*?<\/header>/i, ' ')
+    .replace(/<(aside|form)\b[\s\S]*?<\/\1>/gi, ' ')
 }
 
 // Archive pages repeat the same menu labels, category chips and "Read More"
@@ -127,7 +96,7 @@ function pageToText(html) {
     if (text.length >= MIN_TEXT_CHARS) return text
   }
 
-  return dropRepeatedLines(htmlToText(html, { stripChrome: true }))
+  return dropRepeatedLines(htmlToText(stripChrome(html)))
 }
 
 // CDATA is how WordPress and most other feed generators wrap post HTML.
