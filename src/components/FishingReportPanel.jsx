@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { marinas, fishingLinks, soundSpecies } from '../data'
 import { degreesToCardinal } from '../utils'
 import { useConditions } from '../hooks/useConditions'
+import FishingSummary from './FishingSummary'
 
 const ICONS = {
   fish: (
@@ -120,6 +121,8 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
           </p>
         </div>
       </div>
+
+      <FishingSummary />
 
       <section className="cond-card">
         <header className="cond-card-head">

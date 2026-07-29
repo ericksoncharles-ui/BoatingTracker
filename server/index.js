@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import Anthropic from '@anthropic-ai/sdk'
+import { getFishingSummary } from './fishingSummary.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
@@ -100,6 +101,30 @@ app.post('/api/briefing', rateLimit, async (req, res) => {
     // Log server-side only — error bodies can echo request details back.
     console.error('Briefing request failed:', error?.message || error)
     res.status(502).json({ error: 'Could not generate a briefing.' })
+  }
+})
+
+// Reads the fishing report pages the Fishing tab links to and returns one
+// aggregate summary. The heavy lifting (fetching, caching, prompting) lives in
+// fishingSummary.js; this route only maps failures onto status codes, and the
+// client falls back to its own copy on anything but a 200.
+app.get('/api/fishing-summary', rateLimit, async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'Fishing summary service is not configured.' })
+  }
+
+  try {
+    const { payload, cached } = await getFishingSummary()
+    // A cached summary is minutes old at most, but the reports behind it change
+    // weekly — let a proxy hold it briefly rather than re-scraping per visitor.
+    res.set('Cache-Control', 'public, max-age=300')
+    res.json({ ...payload, cached })
+  } catch (error) {
+    if (error instanceof Anthropic.RateLimitError) {
+      return res.status(429).json({ error: 'Summary service is busy. Try again shortly.' })
+    }
+    console.error('Fishing summary failed:', error?.message || error)
+    res.status(502).json({ error: 'Could not summarize the fishing reports.' })
   }
 })
 

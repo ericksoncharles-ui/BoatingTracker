@@ -25,7 +25,7 @@ In production, build once and let the API server serve the built app too:
 
 ```bash
 npm run build
-npm start        # serves dist/ and /api/briefing on :3001
+npm start        # serves dist/ and the /api routes on :3001
 ```
 
 ## Why the briefing call is server-side
@@ -49,3 +49,20 @@ Two things follow from that design:
 
 If the briefing call fails for any reason — no key configured, API error, rate
 limit — the UI falls back to a locally generated briefing and drops the "AI" badge.
+
+## The fishing report summary
+
+The Fishing Reports tab leads with one aggregate summary of the tackle-shop and
+regional report pages it links to. `GET /api/fishing-summary` fetches those pages,
+strips them to text, and has Claude summarize what the reports actually say —
+which species, where, and on what.
+
+That also has to be server-side: the report sites send no CORS headers, so the
+browser can't fetch them at all. The result is cached for 30 minutes (the reports
+themselves are weekly), and a stale summary is served for up to 12 hours if a
+refresh fails. Sources that can't be reached are reported to the UI and shown
+dimmed rather than silently dropped, and if the whole call fails the card
+degrades to a line pointing at the source links.
+
+Regulation links (CT DEEP, NY DEC) are deliberately left out of the summary —
+seasons and bag limits should be read at the source, not paraphrased by a model.

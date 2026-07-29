@@ -1990,6 +1990,69 @@ body {
 
 /* ── Fishing tab ────────────────────────────────────── */
 
+.fishing-summary-card {
+  border-left: 3px solid var(--gold);
+}
+
+/* The lead card on the tab, so it spans the desktop columns like the header and
+   alerts do — but the prose itself stays at a readable measure. */
+.conditions-layout .fishing-summary-card {
+  grid-column: 1 / -1;
+}
+
+.fishing-summary-text {
+  max-width: 68ch;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: #CBD5E0;
+}
+
+.fishing-summary-text + .fishing-summary-text {
+  margin-top: 8px;
+}
+
+.fishing-summary-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.fishing-summary-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: #C8D6E5;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.fishing-summary-source:hover {
+  border-color: var(--sea);
+}
+
+.fishing-summary-source .source-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* A source the server could not reach is still worth showing — the angler can
+   open it themselves, and it explains a thin summary. */
+.fishing-summary-source.source-missing {
+  color: #8FA6C4;
+}
+
+.fishing-summary-source.source-missing .source-dot {
+  background: #6F86A6;
+}
+
 .fishing-panel .species-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
