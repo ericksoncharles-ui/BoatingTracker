@@ -27,33 +27,6 @@ export function calcBearing(lat1, lng1, lat2, lng2) {
   return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360
 }
 
-// Ranges a Long Island Sound observation can plausibly fall in, in this app's
-// units. A mis-typed dataset column or a misread page would otherwise sail
-// straight into the UI as a believable number, and a believable wrong sea state
-// is worse than a missing one. Shared by every reader of observed conditions so
-// the two sources can't disagree about what counts as real.
-export const PLAUSIBLE_READING_RANGES = {
-  waveHeightFt: [0, 50],
-  wavePeriodS: [0, 30],
-  waveMeanPeriodS: [0, 30],
-  windKt: [0, 150],
-  gustKt: [0, 200],
-  airTempF: [-30, 130],
-  waterTempF: [20, 100],
-  pressureInHg: [25, 33],
-}
-
-/**
- * Pass a reading through if it is a real number inside its plausible range,
- * otherwise drop it to null. Fields with no range defined are passed through.
- */
-export function keepPlausibleReading(field, value) {
-  if (value == null || typeof value !== 'number' || !Number.isFinite(value)) return null
-  const range = PLAUSIBLE_READING_RANGES[field]
-  if (!range) return value
-  return value >= range[0] && value <= range[1] ? value : null
-}
-
 const COMPASS_POINTS = [
   'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
   'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',

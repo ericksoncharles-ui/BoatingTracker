@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url'
 import express from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import { getFishingSummary } from './fishingSummary.js'
-import { getSeaState } from './uconnSeaState.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
@@ -137,31 +136,6 @@ app.get('/api/fishing-summary', rateLimit, async (req, res) => {
       reason: error?.reason || 'failed',
       sources: error?.sources,
     })
-  }
-})
-
-// Reads the UConn LISICOS buoys' own observation pages and returns their latest
-// sea state. The buoys are the same ones the client reads over ERDDAP, so a
-// failure here is not fatal: the Conditions tab falls back to the ERDDAP feed
-// and then to a wind-driven estimate. 503 means the key is missing, which the
-// client treats as "feature off" rather than an error.
-app.get('/api/sea-state', rateLimit, async (req, res) => {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(503).json({ error: 'Sea state service is not configured.' })
-  }
-
-  try {
-    const { payload, cached } = await getSeaState()
-    // Shorter than the fishing summary's window: buoys report every few minutes
-    // and this is what somebody checks before leaving the dock.
-    res.set('Cache-Control', 'public, max-age=120')
-    res.json({ ...payload, cached })
-  } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
-      return res.status(429).json({ error: 'Sea state service is busy. Try again shortly.' })
-    }
-    console.error('Sea state read failed:', error?.message || error)
-    res.status(502).json({ error: 'Could not read the buoy conditions.' })
   }
 })
 

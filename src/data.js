@@ -261,86 +261,16 @@ export const noWakeZones = [
   { id: 'nwz-thimble', name: 'Thimble Islands', lat: 41.2420, lng: -72.7740, radiusNM: 0.3, speedLimit: 5 },
 ]
 
-// UConn LISICOS's Long Island Sound wave buoys, which report into the national
-// observing network under NDBC station ids. Listed west to east; erddapBuoy.js
-// walks them nearest-first because any one of them can go quiet — WLIS in
-// particular reports intermittently — and a reading from the next buoy up the
-// Sound beats a wind-driven guess. Each lat/lng is the NDBC mooring position,
-// which erddapBuoy.js checks against the position ERDDAP returns so a dataset
-// change can't silently feed us a different buoy's readings. The tolerance is
-// 5 NM because the closest pair (Execution Rocks and WLIS) sit only ~8 NM
-// apart — a looser check couldn't tell neighbors from each other.
-// The UConn LISICOS buoys, with the pages `/api/sea-state` reads them from.
-//
-// `sources` is tried in order and the first page that comes back readable wins.
-// UConn's own station panel is listed first because it is the buoy's operator
-// and publishes the freshest numbers; the NDBC station page for the same hull
-// is the backstop, since NDBC redistributes these buoys and its page URLs have
-// been stable for years. Only the WLIS panel URL is confirmed (it is the one
-// linked from the Conditions tab) — the other three follow LISICOS's own naming
-// pattern, and a wrong guess costs nothing but a fall through to NDBC.
-export const LIS_WAVE_STATIONS = [
-  {
-    id: '44022',
-    name: 'Execution Rocks',
-    label: 'Execution Rocks buoy',
-    operator: 'UConn LISICOS',
-    lat: 40.883,
-    lng: -73.728,
-    toleranceNM: 5,
-    sources: [
-      { label: 'UConn LISICOS', url: 'https://lisicos.uconn.edu/stn_exrx.php?id=exrx_wv_panel' },
-      { label: 'NDBC 44022', url: 'https://www.ndbc.noaa.gov/station_page.php?station=44022' },
-    ],
-  },
-  {
-    id: '44040',
-    name: 'WLIS',
-    label: 'Western Long Island Sound buoy',
-    operator: 'UConn LISICOS',
-    lat: 40.956,
-    lng: -73.580,
-    toleranceNM: 5,
-    sources: [
-      { label: 'UConn LISICOS', url: 'https://lisicos.uconn.edu/stn_wlis.php?id=wlis_wv_panel' },
-      { label: 'NDBC 44040', url: 'https://www.ndbc.noaa.gov/station_page.php?station=44040' },
-    ],
-  },
-  {
-    id: '44039',
-    name: 'CLIS',
-    label: 'Central Long Island Sound buoy',
-    operator: 'UConn LISICOS',
-    lat: 41.138,
-    lng: -72.655,
-    toleranceNM: 5,
-    sources: [
-      { label: 'UConn LISICOS', url: 'https://lisicos.uconn.edu/stn_clis.php?id=clis_wv_panel' },
-      { label: 'NDBC 44039', url: 'https://www.ndbc.noaa.gov/station_page.php?station=44039' },
-    ],
-  },
-  {
-    id: '44060',
-    name: 'ELIS',
-    label: 'Eastern Long Island Sound buoy',
-    operator: 'UConn LISICOS',
-    lat: 41.263,
-    lng: -72.067,
-    toleranceNM: 5,
-    sources: [
-      { label: 'UConn LISICOS', url: 'https://lisicos.uconn.edu/stn_elis.php?id=elis_wv_panel' },
-      { label: 'NDBC 44060', url: 'https://www.ndbc.noaa.gov/station_page.php?station=44060' },
-    ],
-  },
-]
-
 // Long Island Sound bounding box, used to trim NOAA's nationwide tide-station
 // list down to stations that could plausibly serve a trip on the Sound.
 export const LIS_BBOX = { minLat: 40.5, maxLat: 41.7, minLng: -74.2, maxLng: -71.6 }
 
-// Outbound links to the authoritative UConn LISICOS pages. Only URLs that have
-// been confirmed to exist are listed — the per-station URL pattern looks
-// predictable, but a dead link is worse than a missing one.
+// Outbound reference links to UConn LISICOS's own buoy panels — the app no
+// longer reads these itself (Sea State is computed from wind and tide), so
+// this is purely "go look at the instruments yourself" for a skipper who
+// wants the raw plots. Only URLs that have been confirmed to exist are
+// listed — the per-station URL pattern looks predictable, but a dead link is
+// worse than a missing one.
 export const lisicosLinks = [
   {
     id: 'wlis-waves',

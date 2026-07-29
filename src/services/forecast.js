@@ -20,6 +20,22 @@ const SOUND_AXIS_DEG = 70
 const FETCH_ALONG_KM = 60
 const FETCH_ACROSS_KM = 18
 
+// The Sound's tidal wave enters from the ocean at its eastern end (through The
+// Race), so through most of the Sound flood current sets west, into the Sound,
+// and ebb sets east, back out — the same axis the fetch model uses. That is a
+// simplification (it reverses near the Hell Gate node at the western end) but
+// matches what boaters on the open Sound actually see.
+const FLOOD_SET_DEG = (SOUND_AXIS_DEG + 180) % 360
+const EBB_SET_DEG = SOUND_AXIS_DEG
+
+// How much wind running against the current can steepen (or, running with it,
+// ease) the estimate at full spring-like current strength. Wind against tide
+// shortens and steepens a sea; wind with tide lengthens and flattens it — a
+// well-known effect on the water, kept modest here since this is layered on
+// top of an already-approximate wind estimate.
+const WIND_AGAINST_TIDE_HEIGHT = 0.25
+const WIND_AGAINST_TIDE_PERIOD = 0.15
+
 function round(value, places = 1) {
   if (value == null || Number.isNaN(value)) return null
   const f = 10 ** places
@@ -56,15 +72,70 @@ function fetchMetresFor(windDirDeg) {
   return 1 / Math.sqrt((cos * cos) / (along * along) + (sin * sin) / (across * across))
 }
 
+function angleDiffDeg(a, b) {
+  const d = Math.abs(a - b) % 360
+  return d > 180 ? 360 - d : d
+}
+
+/**
+ * How strongly the tide is running right now, from 0 (slack, at a high or low)
+ * to 1 (maximum, at the midpoint between them). A simple harmonic tide's
+ * current is the rate of change of its height, so it peaks exactly halfway
+ * between extremes and vanishes at them — the same shape whether the extremes
+ * come from today's predictions or span midnight.
+ */
+function currentPhaseStrength(extremes, now = Date.now()) {
+  if (!Array.isArray(extremes) || extremes.length < 2) return 0
+  let prev = null
+  let next = null
+  for (const e of extremes) {
+    const t = e.at.getTime()
+    if (t <= now) prev = e
+    else if (!next) next = e
+  }
+  if (!prev || !next) return 0
+  const span = next.at.getTime() - prev.at.getTime()
+  if (span <= 0) return 0
+  const frac = (now - prev.at.getTime()) / span
+  return Math.sin(frac * Math.PI)
+}
+
+/**
+ * Height and period multipliers from wind running with or against the tidal
+ * current. `tide` is the payload from fetchTides (`{ rising, extremes }`);
+ * pass null/undefined to skip the adjustment entirely — the daily outlook does
+ * this since NOAA's predictions only reach a day or two ahead, not the full
+ * week it shows.
+ */
+function windTideMultipliers(windDirDeg, tide) {
+  if (windDirDeg == null || tide?.rising == null) return { heightMult: 1, periodMult: 1 }
+  const phase = currentPhaseStrength(tide.extremes)
+  if (phase === 0) return { heightMult: 1, periodMult: 1 }
+
+  const currentSetDeg = tide.rising ? FLOOD_SET_DEG : EBB_SET_DEG
+  const windTowardDeg = (windDirDeg + 180) % 360
+  // 0 when the wind blows the same way the current is setting (with the
+  // tide), 1 when it blows squarely into it (against the tide).
+  const opposition = angleDiffDeg(windTowardDeg, currentSetDeg) / 180
+  const effect = (opposition * 2 - 1) * phase // -phase (with tide) .. +phase (against tide)
+
+  return {
+    heightMult: 1 + effect * WIND_AGAINST_TIDE_HEIGHT,
+    periodMult: 1 - effect * WIND_AGAINST_TIDE_PERIOD,
+  }
+}
+
 /**
  * Fetch-limited significant wave height and peak period from wind speed, using
- * the simplified SMB relations. This is an estimate for when the buoy has no
- * wave data — never present it as a measurement.
+ * the simplified SMB relations, then adjusted for wind running with or against
+ * the tidal current. This is the app's only source for sea state — never
+ * present it as a measurement.
  *
- * Sanity check: 20 kt across the Sound gives roughly 2.4 ft at about 3.6 s,
- * which is the right ballpark for Long Island Sound chop.
+ * Sanity check: 20 kt across the Sound gives roughly 2.4 ft at about 3.6 s
+ * before the tide adjustment, which is the right ballpark for Long Island
+ * Sound chop.
  */
-export function estimateWindWaves(windKt, windDirDeg) {
+export function estimateWindWaves(windKt, windDirDeg, tide) {
   if (windKt == null || !Number.isFinite(windKt)) return null
   const fetchM = fetchMetresFor(windDirDeg)
   const u = windKt * KT_TO_MS
@@ -73,10 +144,12 @@ export function estimateWindWaves(windKt, windDirDeg) {
   }
   const heightM = 0.0016 * u * Math.sqrt(fetchM / G)
   const periodS = 0.286 * (u / G) * Math.cbrt((G * fetchM) / (u * u))
+  const { heightMult, periodMult } = windTideMultipliers(windDirDeg, tide)
   return {
-    heightFt: round(heightM * 3.28084, 1),
-    periodS: round(periodS, 1),
+    heightFt: round(heightM * heightMult * 3.28084, 1),
+    periodS: round(periodS * periodMult, 1),
     fetchNM: round(fetchM * M_TO_NM, 0),
+    tideEffect: tide?.rising == null ? null : heightMult > 1.02 ? 'against' : heightMult < 0.98 ? 'with' : null,
     estimated: true,
   }
 }

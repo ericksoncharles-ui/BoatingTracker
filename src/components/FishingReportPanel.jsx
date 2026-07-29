@@ -97,10 +97,9 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
     marinas.find((m) => m.id === fallbackMarinaId) || marinas.find((m) => m.id === 'stamford') || marinas[0]
 
   const conditions = useConditions({ lat: marina.lat, lng: marina.lng, enabled: true })
-  const { tides, buoy, forecast, loading } = conditions
+  const { tides, forecast, loading } = conditions
 
   const tideData = tides.status === 'ok' ? tides.data : null
-  const buoyData = buoy.status === 'ok' || buoy.status === 'empty' ? buoy.data : null
   const currentWeather = forecast.status === 'ok' ? forecast.data.current : null
   const biteWindow = useBiteWindow(tideData)
 
@@ -180,11 +179,6 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
                 sub={nextChange ? `${tideData.rising ? 'high' : 'low'} at ${formatClock(nextChange.at)}` : null}
               />
               <Metric
-                label="Water Temp"
-                value={buoyData?.readings?.waterTempF?.toFixed(0)}
-                unit="°F"
-              />
-              <Metric
                 label="Wind"
                 value={currentWeather?.windKt?.toFixed(0)}
                 unit="kt"
@@ -208,7 +202,6 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
             {tideData?.station && (
               <p className="cond-note">
                 Tide: {tideData.station.name} ({tideData.station.distanceNM} NM away)
-                {buoyData?.station && <> · Water temp: {buoyData.station.name}</>}
               </p>
             )}
           </>
