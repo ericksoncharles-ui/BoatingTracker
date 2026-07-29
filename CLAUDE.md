@@ -149,8 +149,20 @@ links are deliberately excluded — those get read at the source, not paraphrase
   refresh fails, so one dead source site doesn't blank the card.
 - A source that can't be fetched is reported to the client as `unavailable`
   rather than dropped — the card shows it dimmed and still links out.
-- The HTML→text pass is deliberately generic (strip tags, keep paragraph
-  breaks). Don't replace it with site-specific selectors; those break first.
+- **Every linked URL is an archive index** (a contributor, a region, an area),
+  so its HTML is a mega-menu wrapped around teasers — the report bodies are not
+  on it. `fetchSource` therefore tries `<url>/feed/` first and falls back to the
+  page. RSS/Atom are formats rather than one site's markup, so this keeps the
+  generic-extraction rule while skipping the chrome entirely.
+- The HTML→text pass is deliberately generic (scope to the `<article>`/`<main>`
+  landmarks, strip tags, keep paragraph breaks, drop repeated menu lines). Don't
+  replace it with site-specific selectors; those break first. Chrome stripping
+  removes only the *first* `<header>` — later ones are article headlines, and
+  those carry the report's date.
+- `npm run fishing:probe` prints what each source actually yields (`feed` vs
+  `page`, char count, a preview) without spending an API call. Reach for it
+  first when the card reports `no_reports`: if the preview is menus and category
+  names, the extraction is what's broken, not the model.
 - If the whole call fails, the card degrades to a one-line note pointing at the
   links. Same rule as the briefing: the tab must work with no API key.
 - Failures carry a `reason` (`not_configured`, `sources_unreachable`,

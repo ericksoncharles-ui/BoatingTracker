@@ -22,6 +22,16 @@ const STALE_MS = 12 * 60 * 60 * 1000
 const FETCH_TIMEOUT_MS = 12000
 const MAX_BYTES_PER_SOURCE = 2 * 1024 * 1024
 const MAX_CHARS_PER_SOURCE = 6000
+const MIN_TEXT_CHARS = 200
+
+// Every linked report is an archive page — a contributor, a region, an area —
+// so its feed lists the recent posts. Six covers a few weeks of weekly reports
+// without letting one chatty source crowd the others out of the prompt.
+const MAX_FEED_ITEMS = 6
+const MAX_CHARS_PER_ITEM = 1500
+
+const HTML_ACCEPT = 'text/html,application/xhtml+xml'
+const FEED_ACCEPT = 'application/rss+xml,application/atom+xml,application/xml;q=0.9,text/xml;q=0.9'
 
 // A plain fetch with no User-Agent gets blocked by several of these sites.
 const USER_AGENT =
@@ -55,11 +65,22 @@ function decodeEntities(text) {
 // text is prose, so stripping markup and keeping paragraph breaks gets the
 // report through without tying the app to any one site's markup — which is what
 // a CSS-selector scraper would do, and what would break first.
-function htmlToText(html) {
+//
+// `stripChrome` also drops sidebars and the masthead. Only the *first* <header>
+// goes: that one is the site masthead, while every later <header> is an
+// article's own headline block — and that headline is often the only dated line
+// the report has.
+function htmlToText(html, { stripChrome = false } = {}) {
+  const source = stripChrome
+    ? html
+      .replace(/<header\b[\s\S]*?<\/header>/i, ' ')
+      .replace(/<(aside|form)\b[\s\S]*?<\/\1>/gi, ' ')
+    : html
+
   return decodeEntities(
-    html
+    source
       .replace(/<!--[\s\S]*?-->/g, ' ')
-      .replace(/<(script|style|noscript|svg|head|nav|footer)\b[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<(script|style|noscript|svg|head|nav|footer|template|iframe)\b[\s\S]*?<\/\1>/gi, ' ')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/(p|div|li|h[1-6]|tr|section|article|blockquote)\s*>/gi, '\n')
       .replace(/<[^>]+>/g, ' '),
@@ -70,34 +91,154 @@ function htmlToText(html) {
     .trim()
 }
 
-async function fetchSource(source, signal) {
+// Archive pages repeat the same menu labels, category chips and "Read More"
+// furniture around every teaser. Collapsing the repeats is what keeps the
+// excerpt budget on prose instead of on the site's navigation.
+function dropRepeatedLines(text) {
+  const seen = new Set()
+  return text
+    .split('\n')
+    .filter((line) => {
+      const key = line.trim().toLowerCase()
+      if (!key) return false
+      // Long lines are sentences, not furniture — keep them even if repeated.
+      if (key.length > 80) return true
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .join('\n')
+}
+
+// <article> and <main> are HTML5 landmarks, not per-site selectors: when a page
+// marks its articles or its main region, everything outside that is chrome.
+function pageToText(html) {
+  const articles = html.match(/<article\b[\s\S]*?<\/article>/gi)
+  const main = html.match(/<main\b[\s\S]*?<\/main>/i)
+
+  // Scoping to a landmark already excludes the masthead, so chrome stripping
+  // stays off inside it and the per-article headlines survive. A landmark that
+  // yields too little text was decorative — try the next one.
+  for (const region of [articles?.join('\n'), main?.[0]]) {
+    if (!region) continue
+    const text = dropRepeatedLines(htmlToText(region))
+    if (text.length >= MIN_TEXT_CHARS) return text
+  }
+
+  return dropRepeatedLines(htmlToText(html, { stripChrome: true }))
+}
+
+// CDATA is how WordPress and most other feed generators wrap post HTML.
+function unwrapCdata(value) {
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+}
+
+function tagContent(block, names) {
+  for (const name of names) {
+    const match = block.match(new RegExp(`<${name}\\b[^>]*>([\\s\\S]*?)</${name}\\s*>`, 'i'))
+    if (match) {
+      const value = unwrapCdata(match[1]).trim()
+      if (value) return value
+    }
+  }
+  return ''
+}
+
+function formatFeedDate(raw) {
+  if (!raw) return ''
+  const at = new Date(raw)
+  if (Number.isNaN(at.getTime())) return ''
+  return at.toISOString().slice(0, 10)
+}
+
+// RSS and Atom are formats, not markup belonging to one site, so reading the
+// feed keeps the generic-extraction rule while skipping the chrome entirely.
+// Dates matter here: a report is only useful if the summary can tell a post
+// from last week apart from one from last season.
+function feedToText(xml) {
+  const blocks = xml.match(/<(item|entry)\b[\s\S]*?<\/\1>/gi) || []
+
+  return blocks
+    .slice(0, MAX_FEED_ITEMS)
+    .map((block) => {
+      const title = htmlToText(tagContent(block, ['title']))
+      const when = formatFeedDate(tagContent(block, ['pubDate', 'published', 'updated', 'dc:date']))
+      const body = htmlToText(
+        tagContent(block, ['content:encoded', 'content', 'description', 'summary']),
+      ).slice(0, MAX_CHARS_PER_ITEM)
+
+      if (!title && !body) return ''
+      const heading = when ? `${title} (${when})` : title
+      return [heading, body].filter(Boolean).join('\n')
+    })
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+// WordPress exposes a feed for every archive URL by appending /feed/, and all
+// of these sources are WordPress. Query strings are dropped — the feed is the
+// archive itself, not a filtered view of it.
+function feedUrlFor(url) {
+  const parsed = new URL(url)
+  const base = parsed.pathname.endsWith('/') ? parsed.pathname : `${parsed.pathname}/`
+  return `${parsed.origin}${base}feed/`
+}
+
+async function fetchDocument(url, signal, accept) {
   const timeout = AbortSignal.timeout(FETCH_TIMEOUT_MS)
-  const response = await fetch(source.url, {
+  const response = await fetch(url, {
     redirect: 'follow',
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     headers: {
       'User-Agent': USER_AGENT,
-      Accept: 'text/html,application/xhtml+xml',
+      Accept: accept,
       'Accept-Language': 'en-US,en;q=0.9',
     },
   })
 
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
-  const contentType = response.headers.get('content-type') || ''
+  const buffer = await response.arrayBuffer()
+  if (buffer.byteLength > MAX_BYTES_PER_SOURCE) throw new Error('Response too large')
+
+  return {
+    contentType: response.headers.get('content-type') || '',
+    body: new TextDecoder('utf-8').decode(buffer),
+  }
+}
+
+// Returns { text, via }. The feed is tried first because every linked URL is an
+// archive index: its HTML is a menu wrapped around teasers, while its feed is
+// the posts themselves. The page is the fallback for a source with no feed.
+export async function fetchSource(source, signal) {
+  const notes = []
+
+  try {
+    const { contentType, body } = await fetchDocument(feedUrlFor(source.url), signal, FEED_ACCEPT)
+    if (/xml|rss|atom/i.test(contentType) || /<(rss|feed)\b/i.test(body)) {
+      const text = feedToText(body)
+      if (text.length >= MIN_TEXT_CHARS) {
+        return { text: text.slice(0, MAX_CHARS_PER_SOURCE), via: 'feed' }
+      }
+      notes.push('feed listed no readable posts')
+    } else {
+      notes.push('feed URL did not return a feed')
+    }
+  } catch (error) {
+    notes.push(`feed: ${error.message}`)
+  }
+
+  const { contentType, body } = await fetchDocument(source.url, signal, HTML_ACCEPT)
   if (!/text\/html|application\/xhtml/i.test(contentType)) {
     throw new Error(`Unexpected content type: ${contentType || 'unknown'}`)
   }
 
-  const buffer = await response.arrayBuffer()
-  if (buffer.byteLength > MAX_BYTES_PER_SOURCE) {
-    throw new Error('Response too large')
+  const text = pageToText(body)
+  if (text.length < MIN_TEXT_CHARS) {
+    throw new Error(`No readable report text (${notes.join('; ') || 'page had no prose'})`)
   }
 
-  const text = htmlToText(new TextDecoder('utf-8').decode(buffer))
-  if (text.length < 200) throw new Error('No readable report text')
-
-  return text.slice(0, MAX_CHARS_PER_SOURCE)
+  return { text: text.slice(0, MAX_CHARS_PER_SOURCE), via: 'page' }
 }
 
 async function collectSources(signal) {
@@ -108,11 +249,11 @@ async function collectSources(signal) {
   return SOURCES.map((source, i) => {
     const result = settled[i]
     if (result.status === 'fulfilled') {
-      return { ...source, status: 'ok', detail: null, text: result.value }
+      return { ...source, status: 'ok', detail: null, ...result.value }
     }
     const detail = result.reason?.message || String(result.reason)
     console.warn(`Fishing source ${source.id} unavailable: ${detail}`)
-    return { ...source, status: 'unavailable', detail, text: null }
+    return { ...source, status: 'unavailable', detail, text: null, via: null }
   })
 }
 
@@ -122,8 +263,9 @@ function buildPrompt(reachable) {
     .join('\n\n')
 
   return [
-    'Below are page excerpts scraped from fishing report sites covering Long Island Sound.',
-    'They are raw page text, so they contain navigation and boilerplate alongside the reports.',
+    'Below are excerpts from fishing report sites covering Long Island Sound. Each excerpt is',
+    'either recent posts from the site\'s feed (dated headline followed by the post text) or raw',
+    'page text, so some navigation and boilerplate is mixed in.',
     '',
     excerpts,
     '',
@@ -131,12 +273,15 @@ function buildPrompt(reachable) {
     'finding on Long Island Sound: which species are being caught, where (named spots, reefs,',
     'harbors, or general areas), and any bait, depth, or timing patterns the reports mention.',
     'Attribute claims to the reporting source by name when only one source says it, and call out',
-    'where the sources agree. Use nautical, plain language for a boater reading at the helm.',
+    'where the sources agree. Prefer the most recent reports when dates conflict, and say how',
+    'recent the reports are if the dates make that clear. Use nautical, plain language for a',
+    'boater reading at the helm.',
     '',
     'Ground every statement in the excerpts above — do not add species, spots, or seasonal',
-    'knowledge of your own. If an excerpt has no usable fishing report in it (only navigation or',
-    'boilerplate), ignore it rather than guessing. If none of the excerpts contain a usable',
-    'report, reply with exactly: NO_REPORTS',
+    'knowledge of your own. A dated headline with a short teaser still counts as a report: work',
+    'with what it says rather than discarding it. If an excerpt has no usable fishing report in',
+    'it (only navigation or boilerplate), ignore it rather than guessing. If none of the excerpts',
+    'contain a usable report, reply with exactly: NO_REPORTS',
     'Do not restate size, bag, or season limits — those belong to the state regulators.',
     'Reply with the summary text only: no preamble, no headings, no bullet points.',
   ].join('\n')
@@ -164,8 +309,8 @@ async function summarize(reachable) {
 
   const text = response.content.find((block) => block.type === 'text')?.text?.trim() ?? ''
   if (!text || text === 'NO_REPORTS') {
-    // The pages loaded but held no readable report — usually a site that builds
-    // its reports in the browser, so a plain fetch only sees the shell.
+    // The sources loaded but held no readable report — a site that publishes no
+    // feed and builds its reports in the browser leaves only the page shell.
     throw new FishingSummaryError('No usable report text in the sources.', { reason: 'no_reports' })
   }
   return text
