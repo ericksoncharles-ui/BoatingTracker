@@ -126,6 +126,11 @@ the prompt and calls the Anthropic API with `ANTHROPIC_API_KEY` (see
 client bundle). The endpoints accept data, never prompt text, so they can't be
 used as a free Claude proxy, and they share a per-IP rate limit.
 
+Both endpoints run `claude-haiku-4-5`. It rejects the `effort` parameter and
+doesn't think unless handed a `budget_tokens`, so neither call passes
+`output_config` or `thinking` — copying those in from newer-model examples
+returns a 400.
+
 When the key is absent or the request fails, it silently falls back to
 `generateFallbackBriefing`, a template-string summary. Keep that fallback
 working — the app must be fully usable with no API key.

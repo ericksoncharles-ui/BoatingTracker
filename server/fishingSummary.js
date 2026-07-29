@@ -138,11 +138,11 @@ function getClient() {
 
 async function summarize(reachable) {
   const response = await getClient().messages.create({
-    model: 'claude-opus-5',
-    // Thinking is on by default on Opus 5 and max_tokens caps thinking plus
-    // response text together, so a few sentences still needs real headroom.
-    max_tokens: 3000,
-    output_config: { effort: 'low' },
+    // Haiku 4.5 does not think unless given a thinking budget, and it rejects
+    // the effort parameter outright — so neither knob appears here. max_tokens
+    // is therefore a straight ceiling on the summary itself.
+    model: 'claude-haiku-4-5',
+    max_tokens: 1000,
     messages: [{ role: 'user', content: buildPrompt(reachable) }],
   })
 

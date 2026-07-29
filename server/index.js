@@ -80,12 +80,11 @@ app.post('/api/briefing', rateLimit, async (req, res) => {
 
   try {
     const response = await getClient().messages.create({
-      model: 'claude-sonnet-5',
+      // Haiku 4.5 does not think unless given a thinking budget, and it rejects
+      // the effort parameter outright — so neither knob appears here. A 2-3
+      // sentence briefing wants neither anyway.
+      model: 'claude-haiku-4-5',
       max_tokens: 300,
-      // A 2-3 sentence briefing needs no reasoning, and max_tokens caps thinking
-      // plus response text together — leaving it on would truncate the answer.
-      thinking: { type: 'disabled' },
-      output_config: { effort: 'low' },
       messages: [{ role: 'user', content: buildPrompt(req.body || {}) }],
     })
 
