@@ -10,8 +10,10 @@ draft), and gets back distance, travel time, fuel usage, no-wake-zone delays,
 draft/shoal warnings, and nearby points of interest — plotted over a NOAA
 nautical chart.
 
-There is no backend and no database. All navigation data is hardcoded in
-`src/data.js`, and every calculation happens client-side.
+There is no database. All navigation data is hardcoded in `src/data.js`, and
+every navigation calculation happens client-side. The only server (`server/`) is
+a small Express process that holds the Anthropic key and reaches the third-party
+pages the browser can't fetch itself.
 
 It is installable as a PWA (`public/manifest.json`, iOS meta tags in
 `index.html`) and is expected to be usable on a phone at the helm.
@@ -48,6 +50,9 @@ src/hooks/useTripCalculator.js   Owns all form state, orchestrates utils.js
 src/components/Sidebar.jsx       Inputs + results panel
 src/components/TripMap.jsx       Leaflet map, chart layers, live GPS
 src/components/TripBriefing.jsx  Optional Claude-generated briefing
+src/components/FishingSummary.jsx  Aggregate summary of the linked fishing reports
+server/index.js       Express: /api/briefing, /api/fishing-summary, serves dist/
+server/fishingSummary.js  Fetches + summarizes the fishing report sources
 ```
 
 **Where to make a change:**
@@ -115,15 +120,38 @@ Getting these wrong produces plausible-looking but wrong navigation output.
 
 ## AI briefing
 
-`TripBriefing.jsx` calls the Anthropic API **directly from the browser** using
-`VITE_ANTHROPIC_API_KEY` (see `.env.example`) with `dangerouslyAllowBrowser:
-true`. This ships the key to the client, so it is fine for local use only — do
-not deploy this publicly with a real key. If briefings need to work in
-production, move the call behind a server endpoint.
+`TripBriefing.jsx` POSTs trip values to `/api/briefing`; `server/index.js` builds
+the prompt and calls the Anthropic API with `ANTHROPIC_API_KEY` (see
+`.env.example` — **not** `VITE_`-prefixed, or Vite would inline it into the
+client bundle). The endpoints accept data, never prompt text, so they can't be
+used as a free Claude proxy, and they share a per-IP rate limit.
+
+Both endpoints run `claude-haiku-4-5`. It rejects the `effort` parameter and
+doesn't think unless handed a `budget_tokens`, so neither call passes
+`output_config` or `thinking` — copying those in from newer-model examples
+returns a 400.
 
 When the key is absent or the request fails, it silently falls back to
 `generateFallbackBriefing`, a template-string summary. Keep that fallback
 working — the app must be fully usable with no API key.
+
+## Fishing report summary
+
+`FishingSummary.jsx` calls `/api/fishing-summary`, which fetches the shop and
+aggregate pages from `fishingLinks` (`server/fishingSummary.js` imports that
+array from `src/data.js`, so the links stay a single source of truth), strips the
+HTML to text, and has Claude write one aggregate summary of them. Regulation
+links are deliberately excluded — those get read at the source, not paraphrased.
+
+- Fetching happens server-side because the report sites send no CORS headers.
+- Results are cached 30 min, and a stale cache (up to 12 h) is served when a
+  refresh fails, so one dead source site doesn't blank the card.
+- A source that can't be fetched is reported to the client as `unavailable`
+  rather than dropped — the card shows it dimmed and still links out.
+- The HTML→text pass is deliberately generic (strip tags, keep paragraph
+  breaks). Don't replace it with site-specific selectors; those break first.
+- If the whole call fails, the card degrades to a one-line note pointing at the
+  links. Same rule as the briefing: the tab must work with no API key.
 
 ## Conventions
 

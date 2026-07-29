@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import Anthropic from '@anthropic-ai/sdk'
+import { getFishingSummary } from './fishingSummary.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
@@ -79,12 +80,11 @@ app.post('/api/briefing', rateLimit, async (req, res) => {
 
   try {
     const response = await getClient().messages.create({
-      model: 'claude-sonnet-5',
+      // Haiku 4.5 does not think unless given a thinking budget, and it rejects
+      // the effort parameter outright — so neither knob appears here. A 2-3
+      // sentence briefing wants neither anyway.
+      model: 'claude-haiku-4-5',
       max_tokens: 300,
-      // A 2-3 sentence briefing needs no reasoning, and max_tokens caps thinking
-      // plus response text together — leaving it on would truncate the answer.
-      thinking: { type: 'disabled' },
-      output_config: { effort: 'low' },
       messages: [{ role: 'user', content: buildPrompt(req.body || {}) }],
     })
 
@@ -100,6 +100,30 @@ app.post('/api/briefing', rateLimit, async (req, res) => {
     // Log server-side only — error bodies can echo request details back.
     console.error('Briefing request failed:', error?.message || error)
     res.status(502).json({ error: 'Could not generate a briefing.' })
+  }
+})
+
+// Reads the fishing report pages the Fishing tab links to and returns one
+// aggregate summary. The heavy lifting (fetching, caching, prompting) lives in
+// fishingSummary.js; this route only maps failures onto status codes, and the
+// client falls back to its own copy on anything but a 200.
+app.get('/api/fishing-summary', rateLimit, async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'Fishing summary service is not configured.' })
+  }
+
+  try {
+    const { payload, cached } = await getFishingSummary()
+    // A cached summary is minutes old at most, but the reports behind it change
+    // weekly — let a proxy hold it briefly rather than re-scraping per visitor.
+    res.set('Cache-Control', 'public, max-age=300')
+    res.json({ ...payload, cached })
+  } catch (error) {
+    if (error instanceof Anthropic.RateLimitError) {
+      return res.status(429).json({ error: 'Summary service is busy. Try again shortly.' })
+    }
+    console.error('Fishing summary failed:', error?.message || error)
+    res.status(502).json({ error: 'Could not summarize the fishing reports.' })
   }
 })
 
