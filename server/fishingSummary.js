@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { fishingLinks } from '../src/data.js'
+import { htmlToText } from './htmlText.js'
 
 // The Fishing tab links out to weekly reports; this turns those pages into one
 // aggregate read. It runs server-side because the report sites send no CORS
@@ -26,38 +27,6 @@ const MAX_CHARS_PER_SOURCE = 6000
 // A plain fetch with no User-Agent gets blocked by several of these sites.
 const USER_AGENT =
   'Mozilla/5.0 (compatible; SoundCaptain/1.0; +https://github.com/ericksoncharles-ui/BoatingTracker)'
-
-const NAMED_ENTITIES = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
-  rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“',
-  ndash: '–', mdash: '—', hellip: '…', deg: '°',
-}
-
-function decodeEntities(text) {
-  return text
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
-    .replace(/&([a-z]+);/gi, (match, name) => NAMED_ENTITIES[name.toLowerCase()] ?? match)
-}
-
-// Deliberately not a parser. These are ordinary content pages and the useful
-// text is prose, so stripping markup and keeping paragraph breaks gets the
-// report through without tying the app to any one site's markup — which is what
-// a CSS-selector scraper would do, and what would break first.
-function htmlToText(html) {
-  return decodeEntities(
-    html
-      .replace(/<!--[\s\S]*?-->/g, ' ')
-      .replace(/<(script|style|noscript|svg|head|nav|footer)\b[\s\S]*?<\/\1>/gi, ' ')
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(p|div|li|h[1-6]|tr|section|article|blockquote)\s*>/gi, '\n')
-      .replace(/<[^>]+>/g, ' '),
-  )
-    .replace(/[ \t\r\f\v]+/g, ' ')
-    .replace(/ ?\n ?/g, '\n')
-    .replace(/\n{2,}/g, '\n')
-    .trim()
-}
 
 async function fetchSource(source, signal) {
   const timeout = AbortSignal.timeout(FETCH_TIMEOUT_MS)

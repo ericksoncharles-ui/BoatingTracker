@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchBuoyConditions } from '../services/erddapBuoy'
+import { fetchUconnSeaState } from '../services/uconnSeaState'
 import { fetchTides } from '../services/noaaTides'
 import { fetchForecast } from '../services/forecast'
 import { fetchMarineAlerts } from '../services/nwsAlerts'
 
-// Pulls the four condition sources together for one position.
+// Pulls the condition sources together for one position.
 //
 // Each section carries its own status so a single dead API degrades one card
 // instead of blanking the screen, and the last good payload is cached so the
 // panel still says something useful when the signal drops offshore.
+//
+// `uconn` and `buoy` are the same four buoys read two ways — off UConn's own
+// pages via /api/sea-state, and off the ERDDAP mirrors of the national network.
+// Both are fetched every refresh because either can be silent while the other
+// reports, and the panel prefers whichever has waves.
 
 const CACHE_PREFIX = 'bt.conditions.v1.'
 const STALE_MS = 10 * 60 * 1000
 
 const IDLE = { status: 'idle', data: null, error: null }
-const SECTION_KEYS = ['tides', 'buoy', 'forecast', 'alerts']
+const SECTION_KEYS = ['tides', 'buoy', 'uconn', 'forecast', 'alerts']
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
 
@@ -64,6 +70,7 @@ export function useConditions({ lat, lng, enabled = true }) {
   const [sections, setSections] = useState({
     tides: IDLE,
     buoy: IDLE,
+    uconn: IDLE,
     forecast: IDLE,
     alerts: IDLE,
   })
@@ -117,6 +124,13 @@ export function useConditions({ lat, lng, enabled = true }) {
         data,
         error: null,
       })),
+      track('uconn', fetchUconnSeaState({ here: { lat, lng }, signal }), (data) => ({
+        // 'off' is a server with no API key — the sea state simply comes from
+        // the ERDDAP reader instead, which is not a failure of anything.
+        status: data.status === 'off' ? 'off' : data.status === 'empty' ? 'empty' : 'ok',
+        data: data.status === 'off' ? null : data,
+        error: null,
+      })),
       track('forecast', fetchForecast({ lat, lng, signal }), (data) => ({
         status: 'ok',
         data,
@@ -132,7 +146,12 @@ export function useConditions({ lat, lng, enabled = true }) {
     if (signal.aborted) return
 
     const current = sectionsRef.current
-    const allFailed = SECTION_KEYS.every((key) => current[key].status === 'error')
+    // A section that is switched off (no API key behind it) never had a chance
+    // to fail, so counting it would stop the panel from reporting a genuine
+    // everything-is-down.
+    const attempted = SECTION_KEYS.filter((key) => current[key].status !== 'off')
+    const allFailed =
+      attempted.length > 0 && attempted.every((key) => current[key].status === 'error')
 
     if (allFailed) {
       setFailedAt(Date.now())
