@@ -1771,6 +1771,19 @@ body {
   opacity: 0.42;
 }
 
+/* Day heading inside the list — the predictions cover today and tomorrow. */
+.cond-tide-list li.cond-tide-day {
+  display: block;
+  padding: 9px 2px 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sea);
+  border-bottom: none;
+  opacity: 1;
+}
+
 .cond-tide-kind {
   font-size: 0.62rem;
   font-weight: 700;

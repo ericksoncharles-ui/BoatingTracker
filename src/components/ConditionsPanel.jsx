@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { marinas, lisicosLinks } from '../data'
 import { degreesToCardinal } from '../utils'
 import { useGeolocation } from '../hooks/useGeolocation'
@@ -191,8 +191,12 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   const conditions = useConditions({ lat: place.lat, lng: place.lng, enabled: !waitingForGeo })
   const { tides, forecast, alerts, refresh, updatedAt, cachedAt, failedAt, loading } = conditions
 
-  const currentWeather = forecast.status === 'ok' ? forecast.data.current : null
-  const tideData = tides.status === 'ok' ? tides.data : null
+  // Read the payload rather than the status: a section that failed to refresh
+  // hangs on to the last numbers it had, and those beat an empty card at the
+  // helm. The card still shows the error above them, and the footer says how
+  // old the panel is.
+  const currentWeather = forecast.data?.current ?? null
+  const tideData = tides.data ?? null
 
   // Sea state is always computed from wind and tide — there is no live buoy
   // reader. estimateWindWaves folds in a wind-against-tide chop adjustment
@@ -214,7 +218,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   // and the seas that combination would build. `daily` is optional so a payload
   // cached before this section existed still renders.
   const dailyOutlook = useMemo(() => {
-    const days = forecast.status === 'ok' ? forecast.data.daily : null
+    const days = forecast.data?.daily
     if (!days?.length) return []
     return days.map((day) => {
       const seas = estimateWindWaves(day.windKt, day.windDirDeg)
@@ -227,7 +231,10 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     })
   }, [forecast])
 
-  const activeAlerts = alerts.status === 'ok' ? alerts.data : []
+  // Kept visible through a failed refresh too. A cleared warning still showing
+  // is a false alarm; a live gale warning going missing because api.weather.gov
+  // blipped is the worse of the two.
+  const activeAlerts = alerts.data ?? []
 
   const locationNote = {
     gps: 'Using your location',
@@ -375,17 +382,34 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
             <TideChart curve={tideData.curve} extremes={tideData.extremes} />
 
+            {tideData.curveInterpolated && (
+              <p className="cond-provenance">
+                This station reports highs and lows only — the curve between them is drawn
+                from those, not measured hourly.
+              </p>
+            )}
+
             {tideData.extremes.length > 0 && (
               <ul className="cond-tide-list">
-                {tideData.extremes.map((e) => (
-                  <li key={`${e.kind}-${e.at.getTime()}`} className={e.at.getTime() < Date.now() ? 'cond-past' : undefined}>
-                    <span className={`cond-tide-kind cond-tide-${e.kind}`}>
-                      {e.kind === 'high' ? 'High' : 'Low'}
-                    </span>
-                    <span>{formatClock(e.at)}</span>
-                    <span className="cond-tide-height">{e.heightFt.toFixed(1)} ft</span>
-                  </li>
-                ))}
+                {tideData.extremes.map((e, i) => {
+                  // The list runs through tomorrow, so it holds two of
+                  // everything and has to say which day each belongs to —
+                  // otherwise two 3:14 highs look like a duplicated row.
+                  const prev = tideData.extremes[i - 1]
+                  const newDay = !prev || startOfDay(prev.at) !== startOfDay(e.at)
+                  return (
+                    <Fragment key={`${e.kind}-${e.at.getTime()}`}>
+                      {newDay && <li className="cond-tide-day">{formatDayLabel(e.at)}</li>}
+                      <li className={e.at.getTime() < Date.now() ? 'cond-past' : undefined}>
+                        <span className={`cond-tide-kind cond-tide-${e.kind}`}>
+                          {e.kind === 'high' ? 'High' : 'Low'}
+                        </span>
+                        <span>{formatClock(e.at)}</span>
+                        <span className="cond-tide-height">{e.heightFt.toFixed(1)} ft</span>
+                      </li>
+                    </Fragment>
+                  )
+                })}
               </ul>
             )}
           </>
@@ -426,7 +450,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
               />
             </div>
 
-            {forecast.data.hourly.length > 0 && (
+            {forecast.data.hourly?.length > 0 && (
               <>
                 <h4 className="cond-subhead">Next 24 hours</h4>
                 <ul className="cond-hourly">

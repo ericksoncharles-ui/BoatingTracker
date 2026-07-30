@@ -25,6 +25,9 @@ npm install
 npm run dev      # Vite dev server
 npm run build    # production build to dist/
 npm run preview  # serve the build
+
+npm run tides:probe    # which NOAA station each location resolves to
+npm run fishing:probe  # what each fishing source actually yields
 ```
 
 There are **no tests and no linter configured**. Verify changes by running
@@ -178,6 +181,40 @@ links are deliberately excluded — those get read at the source, not paraphrase
   the client adds `unreachable` when the API server itself doesn't answer. Keep
   that mapping in sync — a generic "something went wrong" is what this replaced.
 
+## Tides
+
+`src/services/noaaTides.js` discovers station ids from NOAA's own metadata API
+rather than hardcoding them — a wrong id would silently show another harbour's
+tides, which is worse than no tides.
+
+- **CO-OPS has two classes of prediction station, and the difference is load-bearing.**
+  A *harmonic* (reference) station has tidal constants, so NOAA will serve a
+  continuous water level at any interval. A *subordinate* station has none — its
+  predictions are a reference station's highs and lows shifted in time and scaled
+  in height — so NOAA publishes only `interval=hilo` and **rejects any other
+  interval**. Most of the Sound's small harbors are subordinate.
+- Therefore the hourly curve request (`fetchCurveRows`) is **optional and must
+  stay that way**. Putting it back into the `Promise.all` alongside the extremes
+  means every subordinate station's Tides card dies with an error instead of
+  showing tides. That was a real bug, not a hypothetical.
+- When there's no hourly series, `interpolateCurve` fills the curve in between
+  NOAA's extremes with a half cosine — the shape behind the rule of twelfths, so
+  it's how a skipper already reads a printed tide table. The payload sets
+  `curveInterpolated` and the card says so. Don't drop that flag.
+- Predictions deliberately span **today and tomorrow**, so an evening high still
+  leaves a "next high" to show. That means the extremes list holds two of
+  everything and needs its day headings, and `TideChart` windows to the day
+  around now rather than squeezing 48 hours into 320px.
+- Errors arrive as HTTP 200 with an `{ error: { message } }` body, which is why
+  `coopsJson` checks the body and not just the status.
+- `npm run tides:probe` prints, per dropdown location, which station it resolves
+  to, whether that station is harmonic or subordinate, and whether `hilo` and `h`
+  actually return rows. Reach for it first when a Tides card errors.
+- **Known limitation:** `LIS_BBOX` reaches into the Hudson, the East River and the
+  south shore of Long Island, and `pickNearestStation` measures straight-line
+  distance with no regard for land in between. No current dropdown entry
+  misresolves, but a GPS fix near the west end can.
+
 ## Sea state estimate
 
 There is no live buoy reader — the Sea State card is always computed,
@@ -216,6 +253,11 @@ reason.
 
 - ES modules, function components, hooks only. No class components.
 - Keep `utils.js` free of React imports so the math stays testable.
+- In `useConditions`, the code after `await Promise.allSettled(...)` must decide
+  what to cache from what the settle callbacks produced, **not** by reading state
+  back through a ref. React renders those updates in a later task, so a ref
+  assigned during render still holds the `loading` pass at that point — which is
+  how the conditions cache silently stored nothing for a while.
 - Two-space indent, no semicolons, single quotes — match surrounding code.
 - Comments in this codebase explain *nautical reasoning* (why a corridor is 6 NM,
   why iOS needs a warm-up geolocation call), not what the code does. Follow that.
