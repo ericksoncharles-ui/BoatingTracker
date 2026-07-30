@@ -127,32 +127,6 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
         <header className="cond-card-head">
           <h3>
             <span className="cond-card-icon">{ICONS.fish}</span>
-            Running Now — {MONTH_NAMES[monthIdx]}
-          </h3>
-        </header>
-
-        {runningNow.length === 0 ? (
-          <p className="cond-note">A quieter stretch on the Sound for these species — check the reports below.</p>
-        ) : (
-          <div className="species-grid">
-            {runningNow.map((s) => (
-              <div className="species-card" key={s.id}>
-                <span className="species-name">{s.name}</span>
-                <span className="species-note">{s.note}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        <p className="cond-note">
-          General seasonal timing, not a live report — conditions shift year to year. Check current
-          regulations before you keep anything.
-        </p>
-      </section>
-
-      <section className="cond-card">
-        <header className="cond-card-head">
-          <h3>
-            <span className="cond-card-icon">{ICONS.fish}</span>
             Bite Conditions
           </h3>
           {biteWindow && (
@@ -206,6 +180,32 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
             )}
           </>
         )}
+      </section>
+
+      <section className="cond-card">
+        <header className="cond-card-head">
+          <h3>
+            <span className="cond-card-icon">{ICONS.fish}</span>
+            Running Now — {MONTH_NAMES[monthIdx]}
+          </h3>
+        </header>
+
+        {runningNow.length === 0 ? (
+          <p className="cond-note">A quieter stretch on the Sound for these species — check the reports below.</p>
+        ) : (
+          <div className="species-grid">
+            {runningNow.map((s) => (
+              <div className="species-card" key={s.id}>
+                <span className="species-name">{s.name}</span>
+                <span className="species-note">{s.note}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="cond-note">
+          General seasonal timing, not a live report — conditions shift year to year. Check current
+          regulations before you keep anything.
+        </p>
       </section>
 
       <section className="cond-card fishing-links-card">

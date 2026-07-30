@@ -49,6 +49,43 @@ const BRAND_ICON = (
 // twice on every load — so it is mounted only in the tree the breakpoint shows.
 const MOBILE_QUERY = '(max-width: 768px)'
 
+// The sheet rests at one of these heights, tallest last. A released drag used to
+// spring back to one fixed height, which made a long trip summary — five
+// screens of it inside a half-height sheet — impossible to read; dragging up has
+// to stick. Collapsed still goes fully out of the way of the chart.
+const SHEET_SNAPS = ['collapsed', 'half', 'full']
+
+// Rough stand-ins for the heights CSS gives those snaps (--sheet-half-h,
+// --sheet-full-h). Close enough to decide which snap a release landed nearest;
+// CSS then animates to the exact height, including the safe-area insets that
+// JS can't read.
+const SNAP_FRACTIONS = { collapsed: 0, half: 0.55, full: 0.88 }
+
+// Shorter than this and a drag is a nudge that settles back where it came from.
+// Past it, the sheet moves a step the way the finger went even if it stopped
+// nearer the height it started at.
+const SNAP_FLICK_PX = 48
+
+// Mirrors the sheet's height transition in App.css — anything that measures the
+// sheet right after a snap has to wait for it.
+const SHEET_TRANSITION_MS = 360
+
+function snapNearest(viewportHeight, height) {
+  return SHEET_SNAPS.reduce((best, name) => (
+    Math.abs(SNAP_FRACTIONS[name] * viewportHeight - height) <
+    Math.abs(SNAP_FRACTIONS[best] * viewportHeight - height) ? name : best
+  ))
+}
+
+function snapForRelease(viewportHeight, height, startHeight) {
+  const settled = snapNearest(viewportHeight, height)
+  const travel = height - startHeight
+  if (Math.abs(travel) < SNAP_FLICK_PX) return settled
+  if (settled !== snapNearest(viewportHeight, startHeight)) return settled
+  const next = SHEET_SNAPS.indexOf(settled) + (travel > 0 ? 1 : -1)
+  return SHEET_SNAPS[Math.min(SHEET_SNAPS.length - 1, Math.max(0, next))]
+}
+
 function useIsMobileLayout() {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
 
@@ -68,9 +105,10 @@ export default function App() {
   const isMobileLayout = useIsMobileLayout()
   const startMarina = marinas.find((m) => m.id === trip.startId)
   const [activeTab, setActiveTab] = useState('planner')
-  const [sheetOpen, setSheetOpen] = useState(true)
+  const [sheetSnap, setSheetSnap] = useState('half')
   const [sheetDrag, setSheetDrag] = useState(null)
   const sheetRef = useRef(null)
+  const sheetContentRef = useRef(null)
   const startYRef = useRef(0)
   const startHeightRef = useRef(0)
 
@@ -84,23 +122,40 @@ export default function App() {
   const handleTouchMove = (e) => {
     if (sheetDrag === null) return
     const delta = startYRef.current - e.touches[0].clientY
-    const newHeight = Math.max(60, Math.min(window.innerHeight * 0.92, startHeightRef.current + delta))
-    setSheetDrag(newHeight)
+    const max = SNAP_FRACTIONS.full * window.innerHeight
+    setSheetDrag(Math.max(0, Math.min(max, startHeightRef.current + delta)))
   }
 
   const handleTouchEnd = () => {
     if (sheetDrag === null) return
-    const threshold = window.innerHeight * 0.25
-    if (sheetDrag < threshold) {
-      setSheetOpen(false)
-    } else {
-      setSheetOpen(true)
-    }
+    setSheetSnap(snapForRelease(window.innerHeight, sheetDrag, startHeightRef.current))
     setSheetDrag(null)
   }
 
+  // A gesture the browser takes over mid-drag — a system edge swipe — must not
+  // leave the inline drag height behind: it overrides the snap classes, so the
+  // sheet would be stuck at whatever height the finger was last at.
+  const handleTouchCancel = () => {
+    setSheetDrag(null)
+  }
+
+  // Planning is the one thing the sheet exists for, and at half height its
+  // answer starts below the fold — the summary used to appear as a sliver at the
+  // bottom edge. Open the sheet all the way and put the summary at the top of
+  // it.
   useEffect(() => {
-    if (trip.tripResult) setSheetOpen(true)
+    if (!trip.tripResult) return
+    setSheetSnap('full')
+    const content = sheetContentRef.current
+    const summary = content?.querySelector('.sidebar-results')
+    if (!summary) return
+    // Scrolling before the sheet has finished growing lands the scroll inside
+    // the box it had at half height.
+    const timer = setTimeout(() => {
+      const offset = summary.getBoundingClientRect().top - content.getBoundingClientRect().top
+      content.scrollTo({ top: content.scrollTop + offset, behavior: 'smooth' })
+    }, SHEET_TRANSITION_MS)
+    return () => clearTimeout(timer)
   }, [trip.tripResult])
 
   return (
@@ -206,7 +261,7 @@ export default function App() {
 
         <div
           ref={sheetRef}
-          className={`mobile-sheet ${sheetOpen ? 'sheet-open' : 'sheet-collapsed'} ${activeTab === 'chart' || activeTab === 'conditions' || activeTab === 'fishing' ? 'sheet-hidden' : ''}`}
+          className={`mobile-sheet sheet-${sheetSnap} ${activeTab === 'chart' || activeTab === 'conditions' || activeTab === 'fishing' ? 'sheet-hidden' : ''}`}
           style={sheetDrag !== null ? { height: `${sheetDrag}px`, transition: 'none' } : undefined}
         >
           <div
@@ -214,10 +269,11 @@ export default function App() {
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchCancel}
           >
             <div className="sheet-handle-bar" />
           </div>
-          <div className="sheet-content">
+          <div className="sheet-content" ref={sheetContentRef}>
             <Sidebar
               startId={trip.startId}
               setStartId={trip.setStartId}
@@ -256,28 +312,33 @@ export default function App() {
         <nav className="mobile-tab-bar">
           <button
             className={`mobile-tab ${activeTab === 'planner' ? 'mobile-tab-active' : ''}`}
-            onClick={() => { setActiveTab('planner'); setSheetOpen(true) }}
+            // Tapping Planner is also how a collapsed sheet comes back, so it
+            // lifts the sheet off the floor without overriding a height the
+            // skipper chose.
+            onClick={() => { setActiveTab('planner'); setSheetSnap((snap) => (snap === 'collapsed' ? 'half' : snap)) }}
           >
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
             <span>Planner</span>
           </button>
           <button
             className={`mobile-tab ${activeTab === 'chart' ? 'mobile-tab-active' : ''}`}
-            onClick={() => { setActiveTab('chart'); setSheetOpen(false) }}
+            // The other tabs slide the sheet away with .sheet-hidden rather than
+            // collapsing it, so coming back to the planner finds it where it was.
+            onClick={() => setActiveTab('chart')}
           >
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
             <span>Chart</span>
           </button>
           <button
             className={`mobile-tab ${activeTab === 'conditions' ? 'mobile-tab-active' : ''}`}
-            onClick={() => { setActiveTab('conditions'); setSheetOpen(false) }}
+            onClick={() => setActiveTab('conditions')}
           >
             {CONDITIONS_ICON}
             <span>Tides</span>
           </button>
           <button
             className={`mobile-tab ${activeTab === 'fishing' ? 'mobile-tab-active' : ''}`}
-            onClick={() => { setActiveTab('fishing'); setSheetOpen(false) }}
+            onClick={() => setActiveTab('fishing')}
           >
             {FISHING_ICON}
             <span>Fishing</span>

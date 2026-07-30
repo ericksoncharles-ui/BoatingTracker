@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { marinas, placeRegions } from '../data'
 
 // The list spans working harbors, open anchorages, and lighthouses you'd only
@@ -29,8 +30,36 @@ function matchesQuery(place, terms) {
 // Room to leave under the list: the mobile tab bar floats over the sheet, and
 // anything the list paints behind it can't be tapped.
 const BOTTOM_CHROME_PX = 80
+// Same idea at the top of the screen — the notch, and the brand badge floating
+// over the mobile chart.
+const TOP_CHROME_PX = 56
 const MIN_LIST_PX = 132
 const MAX_LIST_PX = 260
+const LIST_GAP_PX = 4
+
+// The list is rendered into document.body instead of alongside the field.
+//
+// On mobile the field lives in the bottom sheet's scroll box, which clips
+// anything positioned out of it: options placed above the field paint behind the
+// sheet and the map, where a tap lands on the chart instead of the harbor. Fixed
+// to the viewport, the list can use the whole screen between the two chrome
+// margins above — measured here, since the field itself may only have an inch of
+// unclipped room around it.
+function measurePlacement(field, side) {
+  const rect = field.getBoundingClientRect()
+  const below = window.innerHeight - rect.bottom - BOTTOM_CHROME_PX
+  const above = rect.top - TOP_CHROME_PX
+  const useAbove = side ?? (below < MIN_LIST_PX && above > below)
+  const room = Math.max(useAbove ? above : below, 0)
+  return {
+    above: useAbove,
+    left: Math.round(rect.left),
+    width: Math.round(rect.width),
+    top: useAbove ? undefined : Math.round(rect.bottom + LIST_GAP_PX),
+    bottom: useAbove ? Math.round(window.innerHeight - rect.top + LIST_GAP_PX) : undefined,
+    maxHeight: Math.max(MIN_LIST_PX, Math.min(MAX_LIST_PX, room)),
+  }
+}
 
 const SEARCH_ICON = (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -47,7 +76,7 @@ export default function PlacePicker({ label, labelIcon, value, onChange, placeho
   const [query, setQuery] = useState(null)
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [placement, setPlacement] = useState({ above: false, maxHeight: MAX_LIST_PX })
+  const [placement, setPlacement] = useState(null)
   const wrapRef = useRef(null)
   const fieldRef = useRef(null)
   const inputRef = useRef(null)
@@ -82,17 +111,31 @@ export default function PlacePicker({ label, labelIcon, value, onChange, placeho
     setActiveIndex(selectedIndex >= 0 ? selectedIndex : (flatPlaces.length > 0 ? 0 : -1))
   }, [open, flatPlaces, value])
 
-  // In the mobile bottom sheet the field can sit low enough that a downward
-  // list runs under the tab bar, so flip it above the input when there is more
-  // room up there. Measured before paint to avoid a visible jump.
+  // In the mobile bottom sheet the field can sit low enough that a downward list
+  // runs under the tab bar, so flip it above the input when there is more room up
+  // there. Measured before paint to avoid a visible jump.
   useLayoutEffect(() => {
     if (!open || !fieldRef.current) return
-    const rect = fieldRef.current.getBoundingClientRect()
-    const below = window.innerHeight - rect.bottom - BOTTOM_CHROME_PX
-    const above = rect.top - 8
-    const useAbove = below < MIN_LIST_PX && above > below
-    const room = useAbove ? above : below
-    setPlacement({ above: useAbove, maxHeight: Math.max(MIN_LIST_PX, Math.min(MAX_LIST_PX, room)) })
+    // Which side the list opens on is settled once per open. Re-deciding it
+    // while the sheet scrolls under the list would flip it past the finger
+    // mid-gesture; only the anchor moves after that.
+    let side = null
+    const update = () => {
+      if (!fieldRef.current) return
+      const next = measurePlacement(fieldRef.current, side)
+      side = next.above
+      setPlacement(next)
+    }
+    update()
+    // A fixed list is pinned to the viewport, but the field it points at rides
+    // the sheet's scroll box — hence the capture phase, which catches scrolls on
+    // that box rather than only on the window.
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
   }, [open, groups])
 
   useEffect(() => {
@@ -104,7 +147,12 @@ export default function PlacePicker({ label, labelIcon, value, onChange, placeho
   useEffect(() => {
     if (!open) return
     const onPointerDown = (event) => {
-      if (wrapRef.current && !wrapRef.current.contains(event.target)) close()
+      // The list is portaled out of the wrapper, so it has to be asked
+      // separately — otherwise pressing an option reads as an outside press and
+      // closes the list before the click can land on it.
+      if (wrapRef.current?.contains(event.target)) return
+      if (listRef.current?.contains(event.target)) return
+      close()
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
@@ -188,10 +236,16 @@ export default function PlacePicker({ label, labelIcon, value, onChange, placeho
         )}
       </div>
 
-      {open && (
+      {open && placement && createPortal(
         <div
-          className={`place-picker-list${placement.above ? ' place-picker-list-above' : ''}`}
-          style={{ maxHeight: `${placement.maxHeight}px` }}
+          className="place-picker-list"
+          style={{
+            left: `${placement.left}px`,
+            width: `${placement.width}px`,
+            top: placement.top != null ? `${placement.top}px` : undefined,
+            bottom: placement.bottom != null ? `${placement.bottom}px` : undefined,
+            maxHeight: `${placement.maxHeight}px`,
+          }}
           ref={listRef}
           id={listId}
           role="listbox"
@@ -222,7 +276,8 @@ export default function PlacePicker({ label, labelIcon, value, onChange, placeho
               })}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
