@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { marinas, lisicosLinks } from '../data'
+import { marinas, placeRegions, lisicosLinks } from '../data'
 import { degreesToCardinal } from '../utils'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { useConditions } from '../hooks/useConditions'
@@ -203,16 +203,19 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   // whenever tide data is available; without it, this is a plain wind estimate.
   const seaState = useMemo(() => {
     if (currentWeather?.windKt == null) return null
-    const estimate = estimateWindWaves(currentWeather.windKt, currentWeather.windDirDeg, tideData)
+    const estimate = estimateWindWaves(currentWeather.windKt, currentWeather.windDirDeg, tideData, place)
     if (!estimate) return null
     return {
       heightFt: estimate.heightFt,
       periodS: estimate.periodS,
       fetchNM: estimate.fetchNM,
+      // Which water body's fetch this used. Worth naming on the card: the same
+      // wind builds a very different sea in Wickford and off Nantucket.
+      waterBody: estimate.waterBody,
       tideEffect: estimate.tideEffect,
       dirDeg: currentWeather.windDirDeg,
     }
-  }, [currentWeather, tideData])
+  }, [currentWeather, tideData, place.lat, place.lng])
 
   // The multi-day outlook is wind-first: peak wind, gusts, dominant direction
   // and the seas that combination would build. `daily` is optional so a payload
@@ -221,7 +224,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
     const days = forecast.data?.daily
     if (!days?.length) return []
     return days.map((day) => {
-      const seas = estimateWindWaves(day.windKt, day.windDirDeg)
+      const seas = estimateWindWaves(day.windKt, day.windDirDeg, null, place)
       return {
         ...day,
         band: windBand(day.windKt),
@@ -229,7 +232,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
         seasFt: seas?.heightFt ?? null,
       }
     })
-  }, [forecast])
+  }, [forecast, place.lat, place.lng])
 
   // Kept visible through a failed refresh too. A cleared warning still showing
   // is a false alarm; a live gale warning going missing because api.weather.gov
@@ -287,8 +290,14 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
           }}
         >
           <option value="">My location{geo.error ? ' (unavailable)' : ''}</option>
-          {marinas.map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
+          {/* Grouped by region — the list runs to ninety places now, and a flat
+              one makes finding Nantucket a scroll rather than a glance. */}
+          {placeRegions.map((region) => (
+            <optgroup key={region} label={region}>
+              {marinas.filter((m) => m.region === region).map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>
@@ -327,7 +336,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
             <p className="cond-provenance cond-provenance-warn">
               Estimated from wind{tideData ? ' and tide' : ''} — not measured
-              {seaState.fetchNM != null && <> · {seaState.fetchNM} NM fetch</>}
+              {seaState.fetchNM != null && <> · {seaState.fetchNM} NM fetch in {seaState.waterBody}</>}
               {seaState.tideEffect === 'against' && <> · wind against the tide, chop increased</>}
               {seaState.tideEffect === 'with' && <> · wind with the tide, chop eased</>}
             </p>

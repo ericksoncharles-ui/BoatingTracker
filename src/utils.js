@@ -139,36 +139,173 @@ export function calcTripDetails(distanceNM, speedKnots, fuelBurnGPH, tankGallons
   }
 }
 
+// Width of navigable water either side of a channel leg, where the leg's own
+// waypoints don't say. Six miles is the open Sound; a waypoint in a bay or a
+// hole carries a narrower corridorNM of its own (see navigationSpine).
+const DEFAULT_CORRIDOR_NM = 6
+
+// A direct approach-to-approach line this short skips the channel graph
+// entirely: two harbors on the same shore don't need a mid-Sound waypoint
+// between them. It only skips the *graph*, never the land check — six miles
+// separates Orient Point from Greenport with the North Fork in between.
+const SHORT_HOP_NM = 10
+
+const dist = (a, b) => calcDistanceNM(a.lat, a.lng, b.lat, b.lng)
+
 /**
- * Build the most direct practical route between two marinas.
+ * Turn the spine and its branches into an undirected graph of channel
+ * waypoints.
  *
- * The navigation spine marks safe open water down the middle of the Sound.
- * Rather than always riding the spine between the nearest snap points (which
- * produces dog-legs and overshoot), evaluate every spine entry/exit pair plus
- * the direct approach-to-approach line, and take whichever is shortest.
- * Cross-Sound hops are open water, so the direct line is valid whenever it
- * beats the spine path.
+ * A single west-to-east chain was enough while this only planned trips on the
+ * Sound. It is not enough for Narragansett Bay, which splits either side of
+ * Conanicut Island, or for Buzzards Bay, which is reached from Vineyard Sound
+ * only through a hole in the Elizabeth Islands. So branches hang off the spine
+ * (`from`) and may rejoin it (`to`), and the route is the shortest walk through
+ * whatever that produces.
+ *
+ * A `from`/`to` naming a waypoint that doesn't exist leaves the branch
+ * unreachable rather than throwing — route:probe reports those.
  */
-export function buildRouteWaypoints(start, dest, spine) {
+export function buildChannelGraph(spine, branches = []) {
+  const nodes = []
+  const adj = []
+  const byId = new Map()
+
+  const addNode = (wp) => {
+    const idx = nodes.length
+    nodes.push({
+      id: wp.id,
+      lat: wp.lat,
+      lng: wp.lng,
+      corridorNM: wp.corridorNM ?? DEFAULT_CORRIDOR_NM,
+    })
+    adj.push([])
+    byId.set(wp.id, idx)
+    return idx
+  }
+
+  const link = (a, b) => {
+    if (a == null || b == null || a === b) return
+    const d = dist(nodes[a], nodes[b])
+    adj[a].push({ to: b, d })
+    adj[b].push({ to: a, d })
+  }
+
+  let previous = null
+  for (const wp of spine) {
+    const idx = addNode(wp)
+    link(previous, idx)
+    previous = idx
+  }
+
+  for (const branch of branches) {
+    let anchor = byId.get(branch.from)
+    for (const wp of branch.waypoints) {
+      const idx = addNode(wp)
+      link(anchor, idx)
+      anchor = idx
+    }
+    if (branch.to != null) link(anchor, byId.get(branch.to))
+  }
+
+  // Every leg, with the width of water around it — the narrower end governs,
+  // since that is the constraint a boat on the leg actually meets.
+  const legs = []
+  for (let a = 0; a < adj.length; a++) {
+    for (const edge of adj[a]) {
+      if (edge.to > a) {
+        legs.push({
+          a: nodes[a],
+          b: nodes[edge.to],
+          widthNM: Math.min(nodes[a].corridorNM, nodes[edge.to].corridorNM),
+        })
+      }
+    }
+  }
+
+  return { nodes, adj, legs }
+}
+
+/**
+ * Shortest distances from one node to every other, over the channel graph.
+ * Dense Dijkstra: the graph is a few dozen waypoints, so the scan costs less
+ * than a heap would.
+ */
+function channelDistances(adj, source) {
+  const distances = new Array(adj.length).fill(Infinity)
+  const previous = new Array(adj.length).fill(-1)
+  const settled = new Array(adj.length).fill(false)
+  distances[source] = 0
+
+  for (;;) {
+    let u = -1
+    let bestDist = Infinity
+    for (let i = 0; i < adj.length; i++) {
+      if (!settled[i] && distances[i] < bestDist) {
+        bestDist = distances[i]
+        u = i
+      }
+    }
+    if (u === -1) break
+    settled[u] = true
+    for (const edge of adj[u]) {
+      const through = distances[u] + edge.d
+      if (through < distances[edge.to]) {
+        distances[edge.to] = through
+        previous[edge.to] = u
+      }
+    }
+  }
+
+  return { distances, previous }
+}
+
+// A headland's radiusNM is a detection circle: the land plus enough margin that
+// a course shaving the tip still trips it (applyLandAvoidance adds another 0.3
+// NM on top). Rejecting a course outright is a stronger claim, so it goes on the
+// core of the circle — radius less that same margin — which is the part that is
+// unambiguously land. Without this, crossing the mouth of Huntington Bay half a
+// mile off the Eatons Neck beach reads as driving over the neck.
+const LAND_MARGIN_NM = 0.3
+
+/**
+ * True when a straight line from a to b runs over land — through the core of one
+ * of the keep-out circles in `headlands`. Endpoints themselves are ignored: an
+ * approach waypoint can legitimately sit close to the land it is the way around.
+ */
+function crossesLand(a, b, landAreas) {
+  for (const land of landAreas) {
+    const core = Math.max(0.15, land.radiusNM - LAND_MARGIN_NM)
+    const { distance, t } = distanceFromRoute(land.lat, land.lng, a.lat, a.lng, b.lat, b.lng)
+    if (t > 0.02 && t < 0.98 && distance < core) return true
+  }
+  return false
+}
+
+/**
+ * Build the most direct practical route between two places.
+ *
+ * The channel graph marks safe open water down the middle of the run. Rather
+ * than always riding it between the nearest snap points (which produces
+ * dog-legs and overshoot), evaluate the shortest walk through the graph from
+ * the nearest entry waypoints to the nearest exit ones, plus the direct
+ * approach-to-approach line, and take whichever is shortest. Open-water
+ * crossings are real, so the direct line wins whenever it beats the channel
+ * path and stays in navigable water.
+ */
+export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas = []) {
   const startApproach = start.approach || { lat: start.lat, lng: start.lng }
   const destApproach = dest.approach || { lat: dest.lat, lng: dest.lng }
 
-  const dist = (a, b) => calcDistanceNM(a.lat, a.lng, b.lat, b.lng)
-
-  // Cumulative along-spine distances for fast segment sums
-  const cum = [0]
-  for (let i = 1; i < spine.length; i++) {
-    cum[i] = cum[i - 1] + dist(spine[i - 1], spine[i])
-  }
-  const spineDist = (i, j) => Math.abs(cum[j] - cum[i])
+  const graph = buildChannelGraph(spine, branches)
+  const { nodes, adj, legs } = graph
 
   // A straight segment is considered safe open water when every point along it
-  // stays within CORRIDOR_NM of the spine (the Sound's deep mid-water channel).
-  // Headlands like Eatons Neck lie farther from the spine than this. Points
-  // within APPROACH_NM of either segment endpoint are exempt — endpoints are
-  // curated approach waypoints, so the water immediately around them is known
-  // navigable.
-  const CORRIDOR_NM = 6
+  // stays inside the corridor of some channel leg. Headlands like Eatons Neck,
+  // and the Elizabeth Islands two miles off the Vineyard Sound channel, lie
+  // outside every corridor. Points within APPROACH_NM of either segment
+  // endpoint are exempt — endpoints are curated approach waypoints, so the
+  // water immediately around them is known navigable.
   const APPROACH_NM = 2
   const inCorridor = (a, b) => {
     const legNM = dist(a, b)
@@ -180,60 +317,60 @@ export function buildRouteWaypoints(start, dest, spine) {
         lng: a.lng + (b.lng - a.lng) * t,
       }
       if (dist(p, a) <= APPROACH_NM || dist(p, b) <= APPROACH_NM) continue
-      let minDist = Infinity
-      for (let i = 0; i < spine.length - 1; i++) {
-        const { distance } = distanceFromRoute(
-          p.lat, p.lng,
-          spine[i].lat, spine[i].lng,
-          spine[i + 1].lat, spine[i + 1].lng
-        )
-        if (distance < minDist) minDist = distance
-      }
-      if (minDist > CORRIDOR_NM) return false
+      const covered = legs.some((leg) => {
+        const { distance } = distanceFromRoute(p.lat, p.lng, leg.a.lat, leg.a.lng, leg.b.lat, leg.b.lng)
+        return distance <= leg.widthNM
+      })
+      if (!covered) return false
     }
     return true
   }
 
-  // Entry/exit is limited to the nearest couple of spine points — long diagonal
-  // entry legs can cut across headlands (e.g. Eatons Neck), while the short
-  // hop out to the nearest channel points is a safe approach corridor.
+  // Entry/exit is limited to the nearest couple of channel waypoints — long
+  // diagonal entry legs can cut across headlands (e.g. Eatons Neck), while the
+  // short hop out to the nearest channel points is a safe approach corridor.
   const nearestIndices = (pt, count) =>
-    spine
-      .map((s, idx) => ({ idx, d: dist(pt, s) }))
+    nodes
+      .map((node, idx) => ({ idx, d: dist(pt, node) }))
       .sort((a, b) => a.d - b.d)
       .slice(0, count)
-      .map((e) => e.idx)
+      .map((entry) => entry.idx)
 
   const entryCandidates = nearestIndices(startApproach, 2)
   const exitCandidates = nearestIndices(destApproach, 2)
 
-  // Best route via the spine: enter at i, ride to j, exit
+  // Best route via the channels: enter at i, work through the graph, exit at j
   let best = { length: Infinity, points: [] }
   for (const i of entryCandidates) {
-    const entry = dist(startApproach, spine[i])
+    const { distances, previous } = channelDistances(adj, i)
+    const entry = dist(startApproach, nodes[i])
     for (const j of exitCandidates) {
-      const length = entry + spineDist(i, j) + dist(spine[j], destApproach)
+      const length = entry + distances[j] + dist(nodes[j], destApproach)
       if (length < best.length) {
-        const points = []
-        const step = i <= j ? 1 : -1
-        for (let k = i; k !== j + step; k += step) {
-          points.push([spine[k].lat, spine[k].lng])
+        const walked = []
+        for (let k = j; k !== -1; k = previous[k]) {
+          walked.unshift([nodes[k].lat, nodes[k].lng])
+          if (k === i) break
         }
-        best = { length, points }
+        best = { length, points: walked }
       }
     }
   }
 
-  // Direct open-water crossing beats the spine when it stays in the corridor.
-  // Short hops (< 10 NM between curated approach points) always go direct —
-  // nearby marinas on the same shore don't need the mid-Sound spine.
+  // Direct crossing beats the channels when it stays in a corridor, or when it
+  // is a short hop between harbors on the same shore. Either way it has to not
+  // run over land.
   const directDist = dist(startApproach, destApproach)
-  if (directDist < best.length && (directDist < 10 || inCorridor(startApproach, destApproach))) {
+  if (directDist < best.length && (directDist < SHORT_HOP_NM || inCorridor(startApproach, destApproach))
+      && !crossesLand(startApproach, destApproach, landAreas)) {
     best = { length: directDist, points: [] }
   }
 
   // Greedy shortcut pass: skip ahead past intermediate points whenever the
-  // straight chord stays inside the open-water corridor
+  // straight chord stays inside the open-water corridor and clear of land. The
+  // land check is what keeps a shortcut from cutting the corner off Cuttyhunk or
+  // Sakonnet Point — both sit a mile or two off a channel, well inside its
+  // corridor, which is exactly the width a shortcut is allowed to stray.
   const path = [
     startApproach,
     ...best.points.map(([lat, lng]) => ({ lat, lng })),
@@ -244,7 +381,7 @@ export function buildRouteWaypoints(start, dest, spine) {
   while (i < path.length - 1) {
     let next = i + 1
     for (let j = path.length - 1; j > i + 1; j--) {
-      if (inCorridor(path[i], path[j])) {
+      if (inCorridor(path[i], path[j]) && !crossesLand(path[i], path[j], landAreas)) {
         next = j
         break
       }
@@ -313,7 +450,12 @@ function insertHazardBypasses(waypoints, hazards, buffer) {
               lng: s.lng + ((vLng / len) * targetNM) / (60 * cosLat),
             }
           }
-          pts.splice(i + 1, 0, bypassPoint)
+          // A curated bypass can land on a waypoint the route already goes
+          // through — Quicks Hole is both a channel waypoint and the way around
+          // Nashawena. Inserting it again would leave a zero-length leg.
+          const duplicate =
+            dist(bypassPoint, pts[i]) < 0.05 || dist(bypassPoint, pts[i + 1]) < 0.05
+          if (!duplicate) pts.splice(i + 1, 0, bypassPoint)
           if (!avoided.some((x) => x.id === s.id)) avoided.push(s)
           changed = true
           break
@@ -342,17 +484,35 @@ export function applyLandAvoidance(waypoints, headlands) {
   return insertHazardBypasses(waypoints, headlands, 0.3)
 }
 
+// How far off the track something can be and still count as being on the way.
+// Roughly a detour a skipper would actually make for lunch.
+const POI_NEAR_ROUTE_NM = 12
+
 /**
- * Find POIs near the route, sorted by distance to the route midpoint.
+ * Find POIs along the route, nearest the track first.
+ *
+ * Measured against the plotted route rather than the straight line's midpoint:
+ * on a run from Stamford to Nantucket the midpoint is out in Rhode Island Sound
+ * and the Thimble Islands the boat passes on the way would never make the list.
+ * Anything more than POI_NEAR_ROUTE_NM off the track is dropped rather than
+ * padded in — a lighthouse fifty miles away is not a stop along the way.
  */
-export function findNearbyPOIs(start, end, allPOIs, maxCount = 5) {
-  const midLat = (start.lat + end.lat) / 2
-  const midLng = (start.lng + end.lng) / 2
+export function findNearbyPOIs(routeWaypoints, allPOIs, maxCount = 5) {
+  const withDistance = allPOIs.map((poi) => {
+    let nearest = Infinity
+    for (let i = 0; i < routeWaypoints.length - 1; i++) {
+      const { distance } = distanceFromRoute(
+        poi.lat, poi.lng,
+        routeWaypoints[i][0], routeWaypoints[i][1],
+        routeWaypoints[i + 1][0], routeWaypoints[i + 1][1]
+      )
+      if (distance < nearest) nearest = distance
+    }
+    return { ...poi, distFromRoute: Math.round(nearest * 10) / 10 }
+  })
 
-  const withDistance = allPOIs.map((poi) => ({
-    ...poi,
-    distFromRoute: calcDistanceNM(midLat, midLng, poi.lat, poi.lng),
-  }))
-
-  return withDistance.sort((a, b) => a.distFromRoute - b.distFromRoute).slice(0, maxCount)
+  return withDistance
+    .filter((poi) => poi.distFromRoute <= POI_NEAR_ROUTE_NM)
+    .sort((a, b) => a.distFromRoute - b.distFromRoute)
+    .slice(0, maxCount)
 }

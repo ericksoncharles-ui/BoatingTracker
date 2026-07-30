@@ -4,11 +4,16 @@ Guidance for Claude Code when working in this repository.
 
 ## What this app is
 
-A single-page **Long Island Sound boating trip planner**. The user picks a start
-and destination marina, enters boat specs (tank size, cruising speed, fuel burn,
-draft), and gets back distance, travel time, fuel usage, no-wake-zone delays,
-draft/shoal warnings, and nearby points of interest — plotted over a NOAA
-nautical chart.
+A single-page **southern New England boating trip planner**, home waters Long
+Island Sound. The user picks a start and destination, enters boat specs (tank
+size, cruising speed, fuel burn, draft), and gets back distance, travel time,
+fuel usage, no-wake-zone delays, draft/shoal warnings, and nearby points of
+interest — plotted over a NOAA nautical chart.
+
+Destinations run west to east through six regions: Long Island Sound, Peconic &
+Gardiners Bay, Block Island & Rhode Island Sound, Narragansett Bay, Buzzards Bay,
+and Vineyard & Nantucket Sound. The Sound is still the centre of gravity — the
+default view, the fishing links and the species calendar are all Sound-specific.
 
 There is no database. All navigation data is hardcoded in `src/data.js`, and
 every navigation calculation happens client-side. The only server (`server/`) is
@@ -28,7 +33,11 @@ npm run preview  # serve the build
 
 npm run tides:probe    # which NOAA station each location resolves to
 npm run fishing:probe  # what each fishing source actually yields
+npm run route:probe    # graph health, keep-out clearances, and sample routes
 ```
+
+`route:probe` takes a pair (`npm run route:probe -- newport cuttyhunk`) to print
+one route leg by leg, or `-- --all` for every cross-region pair.
 
 There are **no tests and no linter configured**. Verify changes by running
 `npm run dev` and exercising the UI. If you add tests, wire them into
@@ -47,7 +56,7 @@ index.html            PWA meta tags, manifest link
 src/main.jsx          React root
 src/App.jsx           Tab state + desktop/mobile layouts + bottom-sheet drag
 src/App.css           All styling (~1100 lines), CSS vars in :root
-src/data.js           Marinas, navigation spine, shoals, no-wake zones, POIs
+src/data.js           Places, navigation spine + branches, shoals, headlands, no-wake zones, POIs
 src/utils.js          Pure navigation/fuel math — no React
 src/hooks/useTripCalculator.js   Owns all form state, orchestrates utils.js
 src/hooks/useConditions.js       Fetches every live conditions source for one position
@@ -66,7 +75,9 @@ server/htmlText.js        HTML -> text pass for the fishing-summary page reader
 
 **Where to make a change:**
 
-- New marina / shoal / no-wake zone / POI → `src/data.js` only.
+- New marina / shoal / no-wake zone / POI → `src/data.js` only. A place in water
+  the channel graph doesn't reach needs a branch there too — then
+  `npm run route:probe` to see what the router does with it.
 - Change how a number is computed → `src/utils.js` (keep functions pure).
 - New input or result field → `useTripCalculator.js` + `Sidebar.jsx`.
 - Map layers, markers, GPS behavior → `TripMap.jsx`.
@@ -80,16 +91,43 @@ Getting these wrong produces plausible-looking but wrong navigation output.
 - **Units are nautical.** Distances in nautical miles, speed in knots, depth in
   feet at MLW, fuel in gallons and GPH. `calcDistanceNM` computes kilometers via
   Haversine and divides by 1.852 — don't "simplify" that away.
-- **Routes are not straight lines.** `buildRouteWaypoints` routes via the
-  `navigationSpine` in `data.js` (a west-to-east chain of mid-Sound waypoints
-  representing safe deep water), then greedily shortcuts any chord that stays
-  within `CORRIDOR_NM` (6 NM) of the spine. A direct crossing is only allowed
-  when it beats the spine path *and* is either under 10 NM or stays in the
-  corridor. These constants exist to keep routes off headlands like Eatons Neck.
+- **Routes are not straight lines.** `buildRouteWaypoints` walks a **channel
+  graph**: `navigationSpine` (the west-to-east trunk of mid-water waypoints, now
+  running from Throgs Neck to the Nantucket jetties) plus `navigationBranches`,
+  which hang off a waypoint (`from`) and may rejoin another (`to`). Shortest path
+  is Dijkstra over that graph; then a greedy pass shortcuts any chord that stays
+  inside a leg's corridor **and** clear of land. A single chain was enough for the
+  Sound; it cannot express Narragansett Bay splitting around Conanicut Island, or
+  Buzzards Bay reachable from Vineyard Sound only through a hole in the Elizabeth
+  Islands. Branches with a `to` are what make Quicks Hole and Woods Hole
+  shortcuts rather than cul-de-sacs.
+- **Corridor width is per-waypoint, not global.** `corridorNM` on a waypoint says
+  how far off its legs is still open water a route may cut across; absent means
+  6 NM, the open Sound. Vineyard Sound runs 0.8-1.2 because the Elizabeth Islands
+  sit a mile and a half off the channel, Plum Gut and Quicks Hole run 0.4-0.5.
+  Widening one of these is how routes start cutting corners across islands.
+- **A direct approach-to-approach line** wins when it beats the graph path and is
+  either under `SHORT_HOP_NM` (10 NM) or inside a corridor — but never if it
+  crosses land. The short-hop exemption skips the *graph*, never the land check:
+  Orient Point is six miles from Greenport with the North Fork in between.
+- **`headlands` is the land model**, and it does two jobs: rejecting a direct
+  chord that runs over land, and supplying a curated `bypass` for legs that pass
+  too close. `radiusNM` is a *detection* circle (land plus margin);
+  `applyLandAvoidance` adds 0.3 NM on top, and the hard rejection uses the core,
+  `radiusNM - 0.3`. Circles are drawn small and numerous along an island chain
+  because one big circle covers the channel either side of the land as well.
 - **Marinas have an `approach` waypoint** — an open-water point outside the
   harbor entrance. Routing runs between approach points; the marina coordinates
-  are only the first and last legs. Any new marina needs a sane `approach` and
-  `approachDepthFt` (controlling depth at MLW).
+  are only the first and last legs. Any new marina needs a sane `approach`,
+  a `region`, and `approachDepthFt` (controlling depth at MLW) *if* a published
+  controlling depth exists — the draft check is skipped when it is absent, which
+  is the honest outcome for an open roadstead. Put the approach outside any
+  headland or shoal circle unless the place *is* the hazard (a lighthouse).
+- **Two passages are deliberately not modelled**: the Sakonnet River and the Cape
+  Cod Canal. Bristol to New Bedford and Marion to Hyannis therefore route the long
+  way round, out of the bay and back up. That is the honest answer for a planner
+  with no bridge clearances or canal traffic rules in it — don't "fix" it with a
+  branch unless you add those.
 - **Shoal avoidance is draft-dependent.** `applyShoalAvoidance` only detours
   around hazards where `minDepthFt < draft + clearance` (default 2 ft clearance),
   and it deliberately leaves the first and last legs alone since those are
@@ -99,9 +137,18 @@ Getting these wrong produces plausible-looking but wrong navigation output.
   at 30% of cruise GPH (`calcTripDetails`).
 - **The fuel warning threshold is 70%** of tank capacity, used for both the
   sidebar warning and the gauge color.
+- **POIs are measured against the plotted route**, not the straight line's
+  midpoint, and anything more than 12 NM off the track is dropped rather than
+  padded in. On a run to Nantucket the midpoint is out in Rhode Island Sound.
 
 ## UI conventions
 
+- **Both place pickers group by region, then kind** (`PlacePicker`'s
+  `KIND_GROUPS` x `placeRegions`, and the Conditions tab's `<optgroup>`s). Region
+  order comes from the order the sections are declared in `data.js`, which is
+  west to east — keep it that way. The kind grouping is a safety feature, not
+  decoration: it is what tells the helm that "Greens Ledge Light" is not a place
+  to tie up.
 - **Desktop and mobile are separate DOM trees**, both rendered, toggled by
   `.desktop-only` / `.mobile-only` at the 768px breakpoint in `App.css`. A change
   to the planner UI usually needs to be made for both — `Sidebar` is rendered
@@ -187,6 +234,14 @@ links are deliberately excluded — those get read at the source, not paraphrase
 rather than hardcoding them — a wrong id would silently show another harbour's
 tides, which is worse than no tides.
 
+- **`TIDE_STATION_BBOX` in `data.js` bounds which stations are considered**, and
+  it reaches east past Nantucket because the destination list does. Widening it
+  again means **bumping `STATION_CACHE_KEY`** and adding the old key to
+  `LEGACY_STATION_CACHE_KEYS`: the cached list was filtered by the old box, so
+  without the bump a new destination resolves to a station in the old region for
+  the next thirty days — exactly the silent wrong answer runtime discovery is
+  meant to prevent.
+
 - **CO-OPS has two classes of prediction station, and the difference is load-bearing.**
   A *harmonic* (reference) station has tidal constants, so NOAA will serve a
   continuous water level at any interval. A *subordinate* station has none — its
@@ -221,17 +276,28 @@ There is no live buoy reader — the Sea State card is always computed,
 client-side, by `estimateWindWaves` in `src/services/forecast.js`. It takes the
 real Open-Meteo wind reading, never a guess at wind, and turns it into a
 significant wave height and period with the simplified SMB fetch-limited
-relations, using an elliptical fetch model of the Sound (`FETCH_ALONG_KM` /
-`FETCH_ACROSS_KM` around `SOUND_AXIS_DEG`, the Sound's WSW-ENE long axis).
+relations, using an elliptical fetch model of the water it is standing in.
+
+- **Fetch geometry is per water body** (`WATER_BODIES` in `forecast.js`), picked
+  from the position by bounding box, falling back to the nearest body's centre.
+  The Sound's 60 km of fetch cannot be reused off Nantucket, where a southerly
+  has the whole Atlantic behind it; `estimateWindWaves` called without a position
+  still answers for the Sound, which is what it always answered for.
+- **`floodSetDeg` is null wherever the current isn't a simple along-axis rule**,
+  which skips the wind-against-tide adjustment rather than inventing a phase.
+  Vineyard and Nantucket Sound are null for that reason — the tide there is about
+  three hours out of phase with Buzzards Bay and reverses through the holes.
 
 `ConditionsPanel.jsx` also passes it the real tide payload from `fetchTides`
-(`src/services/noaaTides.js`), which layers on a wind-against-tide adjustment:
+(`src/services/noaaTides.js`), which layers on a wind-against-tide adjustment
+wherever the water body declares a flood direction:
 
-- **Current is assumed to run along the Sound's axis** — flood (rising) sets
-  west, into the Sound from the ocean at its eastern end; ebb (falling) sets
-  east, back out. This is a simplification (it reverses near the Hell Gate node
-  at the western end) but matches what boaters see on the open Sound, and reuses
-  the same axis the fetch model already assumes.
+- **In the Sound, current is assumed to run along the Sound's axis** — flood
+  (rising) sets west, into the Sound from the ocean at its eastern end; ebb
+  (falling) sets east, back out. This is a simplification (it reverses near the
+  Hell Gate node at the western end) but matches what boaters see on the open
+  Sound, and reuses the same axis the fetch model already assumes. Narragansett
+  Bay floods north up the bay, Buzzards Bay north-east up the bay.
 - **Current strength is modelled as a sine wave between tide extremes** — slack
   (0) at a high or low, maximum at the midpoint between them — because a simple
   harmonic tide's current is the rate of change of its height, which peaks
