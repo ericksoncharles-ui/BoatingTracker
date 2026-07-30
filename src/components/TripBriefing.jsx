@@ -13,12 +13,12 @@ function watersPhrase(start, dest) {
 function generateFallbackBriefing(tripResult) {
   const { start, dest, distanceNM, travelTimeFormatted, cruisingSpeed, fuelPercentUsed, nearbyPOIs, needsFuelWarning } = tripResult
   const poiNote = nearbyPOIs.length > 0
-    ? ` — consider a stop near ${nearbyPOIs[0].name} along the way`
+    ? ` ${nearbyPOIs[0].name} lies near the route.`
     : ''
   const fuelNote = needsFuelWarning
-    ? `Keep an eye on fuel — you'll use about ${fuelPercentUsed}% of your tank, so consider a fuel stop.`
-    : `Fuel looks comfortable at ${fuelPercentUsed}% of tank capacity.`
-  return `Your trip from ${start.name} to ${dest.name} covers ${distanceNM} nautical miles ${watersPhrase(start, dest)}. At ${cruisingSpeed || tripResult.cruisingSpeed} knots, expect about ${travelTimeFormatted} of cruising${poiNote}. ${fuelNote}`
+    ? `Projected fuel usage is ${fuelPercentUsed}% of tank capacity — plan a fuel stop.`
+    : `Projected fuel usage is ${fuelPercentUsed}% of tank capacity.`
+  return `Passage from ${start.name} to ${dest.name}: ${distanceNM} nautical miles ${watersPhrase(start, dest)}. Estimated transit time is ${travelTimeFormatted} at ${cruisingSpeed || tripResult.cruisingSpeed} knots cruising speed.${poiNote} ${fuelNote}`
 }
 
 const BUTTON_LABEL = {

@@ -74,14 +74,16 @@ function buildPrompt(trip) {
       : `from ${startRegion} to ${destRegion || startRegion}`
 
   return [
-    'You are a friendly harbor master. Give a 2-3 sentence trip briefing for a boating trip',
-    `from ${text(trip.startName) || 'the marina'} to ${text(trip.destName) || 'the destination'},`,
+    'You are a navigator preparing a pre-departure trip brief for another captain.',
+    'Write 2-3 sentences, factual and technical in register — no jokes, no exclamation points,',
+    'no nautical flourishes for their own sake. State figures plainly, as a mate reading off a passage plan would.',
+    `Passage: ${text(trip.startName) || 'the marina'} to ${text(trip.destName) || 'the destination'},`,
     `${number(trip.distanceNM, 10000)} nautical miles ${waters}.`,
-    `Travel time is about ${text(trip.travelTimeFormatted, 40) || 'a short run'} at`,
+    `Estimated transit time is ${text(trip.travelTimeFormatted, 40) || 'unspecified'} at`,
     `${number(trip.cruisingSpeed, 100)} knots cruising speed.`,
-    `Fuel usage is ${number(trip.fuelPercentUsed, 1000)}% of tank.`,
-    poiNames ? `Nearby points of interest: ${poiNames}.` : '',
-    'Recommend one anchorage, mention fuel confidence, and keep it nautical and friendly.',
+    `Projected fuel usage is ${number(trip.fuelPercentUsed, 1000)}% of tank capacity.`,
+    poiNames ? `Points of interest along the route: ${poiNames}.` : '',
+    'Note one anchorage or stopping point if relevant, and state fuel margin plainly. Do not editorialize.',
   ].filter(Boolean).join(' ')
 }
 
