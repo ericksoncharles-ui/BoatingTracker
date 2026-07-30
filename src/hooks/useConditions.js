@@ -50,11 +50,17 @@ function readCache(lat, lng) {
 
 function writeCache(lat, lng, sections) {
   try {
+    // Merged into what is already stored rather than replacing it: a section
+    // that just failed keeps the last good payload it had, so one dead API
+    // can't empty the cache the other two are still filling.
+    const existing = readCache(lat, lng) || {}
     const payload = { savedAt: Date.now() }
     for (const key of SECTION_KEYS) {
       // Only successful sections are worth restoring.
       if (sections[key]?.status === 'ok' || sections[key]?.status === 'empty') {
         payload[key] = sections[key]
+      } else if (existing[key]) {
+        payload[key] = existing[key]
       }
     }
     localStorage.setItem(cacheKey(lat, lng), JSON.stringify(payload))
@@ -93,8 +99,15 @@ export function useConditions({ lat, lng, enabled = true }) {
       return next
     })
 
+    // React renders these settlements in a later task, so the sections state is
+    // not readable again until well after the last one lands. What the
+    // callbacks produced is recorded here instead — see the cache decision
+    // below, which used to read a ref that was still showing 'loading'.
+    const settled = {}
+
     const settle = (key, value) => {
       if (signal.aborted) return
+      settled[key] = value
       setSections((prev) => ({ ...prev, [key]: value }))
     }
 
@@ -103,7 +116,14 @@ export function useConditions({ lat, lng, enabled = true }) {
         (data) => settle(key, toSection(data)),
         (err) => {
           if (err.name === 'AbortError') return
-          settle(key, { status: 'error', data: null, error: err.message })
+          // Keep whatever this section was already showing. A refresh that
+          // fails offshore should leave the last known numbers up with a note
+          // against them, not blank the card that was answering a minute ago.
+          settle(key, {
+            status: 'error',
+            data: sectionsRef.current[key]?.data ?? null,
+            error: err.message,
+          })
         },
       )
 
@@ -127,7 +147,7 @@ export function useConditions({ lat, lng, enabled = true }) {
 
     if (signal.aborted) return
 
-    const current = sectionsRef.current
+    const current = { ...sectionsRef.current, ...settled }
     const allFailed = SECTION_KEYS.every((key) => current[key].status === 'error')
 
     if (allFailed) {

@@ -7,23 +7,37 @@ const PAD_X = 6
 const PAD_TOP = 10
 const PAD_BOTTOM = 18
 
+// Predictions run through tomorrow so that an evening high still has a "next"
+// to point at, but two days squeezed into this width is four cycles of
+// unreadable wiggle with the height labels on top of each other. Draw the day
+// around now instead — a few hours of where the tide came from, the rest ahead.
+const WINDOW_BEFORE_MS = 3 * 60 * 60 * 1000
+const WINDOW_AFTER_MS = 21 * 60 * 60 * 1000
+
 export default function TideChart({ curve, extremes = [], now = new Date() }) {
   if (!curve || curve.length < 2) return null
 
-  const heights = curve.map((p) => p.heightFt)
+  const fromMs = now.getTime() - WINDOW_BEFORE_MS
+  const toMs = now.getTime() + WINDOW_AFTER_MS
+  const windowed = curve.filter((p) => p.at.getTime() >= fromMs && p.at.getTime() <= toMs)
+  // A curve that doesn't reach the window at all (a cached payload gone stale
+  // overnight) is still worth drawing whole rather than not at all.
+  const points = windowed.length >= 2 ? windowed : curve
+
+  const heights = points.map((p) => p.heightFt)
   const minHeight = Math.min(...heights)
   const maxHeight = Math.max(...heights)
   const span = maxHeight - minHeight || 1
 
-  const firstMs = curve[0].at.getTime()
-  const lastMs = curve[curve.length - 1].at.getTime()
+  const firstMs = points[0].at.getTime()
+  const lastMs = points[points.length - 1].at.getTime()
   const timeSpan = lastMs - firstMs || 1
 
   const x = (at) => PAD_X + ((at.getTime() - firstMs) / timeSpan) * (WIDTH - PAD_X * 2)
   const y = (heightFt) =>
     PAD_TOP + (1 - (heightFt - minHeight) / span) * (HEIGHT - PAD_TOP - PAD_BOTTOM)
 
-  const line = curve.map((p) => `${x(p.at).toFixed(1)},${y(p.heightFt).toFixed(1)}`).join(' ')
+  const line = points.map((p) => `${x(p.at).toFixed(1)},${y(p.heightFt).toFixed(1)}`).join(' ')
   const area = `${PAD_X},${HEIGHT - PAD_BOTTOM} ${line} ${WIDTH - PAD_X},${HEIGHT - PAD_BOTTOM}`
 
   const nowMs = now.getTime()
@@ -43,7 +57,7 @@ export default function TideChart({ curve, extremes = [], now = new Date() }) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="tide-chart-svg"
         role="img"
-        aria-label={`Tide curve from ${formatTime(curve[0].at)} to ${formatTime(curve[curve.length - 1].at)}`}
+        aria-label={`Tide curve from ${formatTime(points[0].at)} to ${formatTime(points[points.length - 1].at)}`}
       >
         <defs>
           <linearGradient id="tideFill" x1="0" y1="0" x2="0" y2="1">

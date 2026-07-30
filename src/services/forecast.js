@@ -77,6 +77,10 @@ function angleDiffDeg(a, b) {
   return d > 180 ? 360 - d : d
 }
 
+// Successive extremes of a semidiurnal tide sit about 6h12m apart — half of the
+// 12h25m principal lunar period.
+const HALF_CYCLE_MS = (6 * 60 + 12) * 60 * 1000
+
 /**
  * How strongly the tide is running right now, from 0 (slack, at a high or low)
  * to 1 (maximum, at the midpoint between them). A simple harmonic tide's
@@ -93,10 +97,15 @@ function currentPhaseStrength(extremes, now = Date.now()) {
     if (t <= now) prev = e
     else if (!next) next = e
   }
-  if (!prev || !next) return 0
-  const span = next.at.getTime() - prev.at.getTime()
+  if (!next) return 0
+
+  // Predictions begin at midnight, so in the small hours before the day's first
+  // high or low there is no earlier extreme to measure from. Infer where it was
+  // rather than reporting slack water for a tide that is in fact running.
+  const prevMs = prev ? prev.at.getTime() : next.at.getTime() - HALF_CYCLE_MS
+  const span = next.at.getTime() - prevMs
   if (span <= 0) return 0
-  const frac = (now - prev.at.getTime()) / span
+  const frac = Math.min(1, Math.max(0, (now - prevMs) / span))
   return Math.sin(frac * Math.PI)
 }
 
