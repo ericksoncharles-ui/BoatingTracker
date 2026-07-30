@@ -310,26 +310,18 @@ body {
   background: rgba(27, 42, 74, 0.1);
 }
 
+/* Fixed, and portaled to <body> — see measurePlacement in PlacePicker.jsx for
+   why it can't be positioned against the field it belongs to. left/top/bottom/
+   width all come from there. */
 .place-picker-list {
-  position: absolute;
+  position: fixed;
   z-index: 500;
-  left: 0;
-  right: 0;
-  top: 100%;
-  margin-top: 4px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background: var(--cream);
   border: 1px solid rgba(27, 42, 74, 0.15);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-}
-
-.place-picker-list-above {
-  top: auto;
-  bottom: 100%;
-  margin-top: 0;
-  margin-bottom: 4px;
 }
 
 .place-picker-group {
@@ -1006,6 +998,16 @@ body {
     height: -webkit-fill-available;
     position: relative;
     overflow: hidden;
+
+    /* The tab bar's real height, home indicator included. Everything that has
+       to sit above it — the sheet, the conditions screen — measures from this
+       one value: the sheet used to stop at a bare 60px and lose its bottom
+       inches behind the bar on any device with a bottom inset. */
+    --tab-bar-h: calc(60px + env(safe-area-inset-bottom, 0px));
+    --sheet-half-h: 55dvh;
+    /* Everything above the tab bar less a strip of chart, so a fully raised
+       sheet still reads as a sheet over the map and clears the notch. */
+    --sheet-full-h: calc(100dvh - var(--tab-bar-h) - env(safe-area-inset-top, 0px) - 12px);
   }
 
   .mobile-map {
@@ -1057,9 +1059,9 @@ body {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 60px;
+    bottom: var(--tab-bar-h);
     z-index: 100;
-    height: 55dvh;
+    height: var(--sheet-half-h);
     background: var(--navy);
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
@@ -1080,8 +1082,12 @@ body {
     pointer-events: none;
   }
 
-  .mobile-sheet.sheet-open {
-    height: 55dvh;
+  .mobile-sheet.sheet-half {
+    height: var(--sheet-half-h);
+  }
+
+  .mobile-sheet.sheet-full {
+    height: var(--sheet-full-h);
   }
 
   .sheet-handle {
@@ -1146,10 +1152,6 @@ body {
     padding: 14px 20px;
   }
 
-  .sheet-content .sidebar-footer {
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
-  }
-
   .sheet-content .sidebar-welcome {
     padding: 20px;
     min-height: unset;
@@ -1174,7 +1176,7 @@ body {
     display: flex;
     align-items: stretch;
     justify-content: space-around;
-    height: calc(60px + env(safe-area-inset-bottom, 0));
+    height: var(--tab-bar-h);
     padding-bottom: env(safe-area-inset-bottom, 0);
     background: var(--navy);
     border-top: 1px solid var(--border);
@@ -1352,16 +1354,9 @@ body {
 
 /* ── Landscape mobile ───────────────────────────────── */
 @media (max-width: 768px) and (orientation: landscape) {
-  .mobile-sheet.sheet-open {
-    height: 70dvh;
-  }
-
-  .mobile-tab-bar {
-    height: calc(50px + env(safe-area-inset-bottom, 0));
-  }
-
-  .mobile-sheet {
-    bottom: 50px;
+  .mobile-layout {
+    --tab-bar-h: calc(50px + env(safe-area-inset-bottom, 0px));
+    --sheet-half-h: 70dvh;
   }
 }
 
@@ -2202,7 +2197,7 @@ body {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     background: var(--navy);
-    padding: 14px 14px calc(74px + env(safe-area-inset-bottom, 0));
+    padding: 14px 14px calc(14px + var(--tab-bar-h));
   }
 
   .conditions-panel {
