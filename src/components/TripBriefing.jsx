@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // A trip that starts and ends in the same water is "across" it; one that doesn't
 // is a run between two. Naming them beats the old hardcoded "across Long Island
@@ -21,19 +21,40 @@ function generateFallbackBriefing(tripResult) {
   return `Your trip from ${start.name} to ${dest.name} covers ${distanceNM} nautical miles ${watersPhrase(start, dest)}. At ${cruisingSpeed || tripResult.cruisingSpeed} knots, expect about ${travelTimeFormatted} of cruising${poiNote}. ${fuelNote}`
 }
 
+const BUTTON_LABEL = {
+  idle: 'Generate AI briefing',
+  loading: 'Generating…',
+  ok: 'Regenerate',
+  error: 'Try again',
+}
+
 export default function TripBriefing({ tripResult }) {
+  // The template briefing is free and instant, so it's what shows the moment
+  // a trip loads. The AI rewrite costs a call, so — same rule as the fishing
+  // report — it only happens when the boater asks for it.
+  const [status, setStatus] = useState('idle')
   const [briefing, setBriefing] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [isAI, setIsAI] = useState(false)
+  const abortRef = useRef(null)
+
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   useEffect(() => {
+    abortRef.current?.abort()
     if (!tripResult) {
       setBriefing('')
+      setStatus('idle')
       return
     }
+    setBriefing(generateFallbackBriefing(tripResult))
+    setStatus('idle')
+  }, [tripResult])
 
+  const run = useCallback(() => {
+    if (!tripResult) return
+    abortRef.current?.abort()
     const controller = new AbortController()
-    setLoading(true)
+    abortRef.current = controller
+    setStatus('loading')
 
     fetch('/api/briefing', {
       method: 'POST',
@@ -58,26 +79,33 @@ export default function TripBriefing({ tripResult }) {
       .then((data) => {
         if (!data.briefing) throw new Error('Empty briefing')
         setBriefing(data.briefing)
-        setIsAI(true)
+        setStatus('ok')
       })
       .catch((error) => {
         if (error.name === 'AbortError') return
         setBriefing(generateFallbackBriefing(tripResult))
-        setIsAI(false)
+        setStatus('error')
       })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
-
-    return () => { controller.abort() }
   }, [tripResult])
 
-  if (!tripResult || (!briefing && !loading)) return null
+  if (!tripResult) return null
 
   return (
     <div className="trip-briefing">
-      <h3>Trip Briefing {isAI && <span className="ai-badge">AI</span>}</h3>
-      {loading ? (
+      <div className="trip-briefing-head">
+        <h3>Trip Briefing {status === 'ok' && <span className="ai-badge">AI</span>}</h3>
+        <div className="fishing-summary-actions">
+          <button
+            className="fishing-summary-run"
+            onClick={run}
+            disabled={status === 'loading'}
+            type="button"
+          >
+            {BUTTON_LABEL[status]}
+          </button>
+        </div>
+      </div>
+      {status === 'loading' ? (
         <p className="briefing-loading">Generating briefing...</p>
       ) : (
         <p className="briefing-text">{briefing}</p>
