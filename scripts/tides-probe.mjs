@@ -8,7 +8,7 @@
 // of the Sound's small harbors, and the app interpolates the curve for them; a
 // line below reading "hourly: rejected" next to "subordinate" is expected, not
 // a fault.
-import { marinas, LIS_BBOX } from '../src/data.js'
+import { marinas, TIDE_STATION_BBOX } from '../src/data.js'
 import { calcDistanceNM } from '../src/utils.js'
 
 const CO_OPS = 'https://api.tidesandcurrents.noaa.gov'
@@ -66,13 +66,13 @@ const stations = (meta?.stations || [])
       s.id &&
       Number.isFinite(s.lat) &&
       Number.isFinite(s.lng) &&
-      s.lat >= LIS_BBOX.minLat &&
-      s.lat <= LIS_BBOX.maxLat &&
-      s.lng >= LIS_BBOX.minLng &&
-      s.lng <= LIS_BBOX.maxLng,
+      s.lat >= TIDE_STATION_BBOX.minLat &&
+      s.lat <= TIDE_STATION_BBOX.maxLat &&
+      s.lng >= TIDE_STATION_BBOX.minLng &&
+      s.lng <= TIDE_STATION_BBOX.maxLng,
   )
 
-console.log(`${stations.length} prediction stations inside LIS_BBOX`)
+console.log(`${stations.length} prediction stations inside TIDE_STATION_BBOX`)
 // Worth eyeballing: the box reaches into the Hudson, the East River and the
 // south shore of Long Island, and the nearest station is picked by straight-line
 // distance with no regard for land in between.

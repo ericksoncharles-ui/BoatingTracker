@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react'
 
+// A trip that starts and ends in the same water is "across" it; one that doesn't
+// is a run between two. Naming them beats the old hardcoded "across Long Island
+// Sound", which was wrong the moment the list reached Nantucket.
+function watersPhrase(start, dest) {
+  if (!start.region || !dest.region) return 'across Long Island Sound'
+  return start.region === dest.region
+    ? `across ${start.region}`
+    : `from ${start.region} to ${dest.region}`
+}
+
 function generateFallbackBriefing(tripResult) {
   const { start, dest, distanceNM, travelTimeFormatted, cruisingSpeed, fuelPercentUsed, nearbyPOIs, needsFuelWarning } = tripResult
-  const poiName = nearbyPOIs.length > 0 ? nearbyPOIs[0].name : 'the scenic waters'
+  const poiNote = nearbyPOIs.length > 0
+    ? ` — consider a stop near ${nearbyPOIs[0].name} along the way`
+    : ''
   const fuelNote = needsFuelWarning
     ? `Keep an eye on fuel — you'll use about ${fuelPercentUsed}% of your tank, so consider a fuel stop.`
     : `Fuel looks comfortable at ${fuelPercentUsed}% of tank capacity.`
-  return `Your trip from ${start.name} to ${dest.name} covers ${distanceNM} nautical miles across Long Island Sound. At ${cruisingSpeed || tripResult.cruisingSpeed} knots, expect about ${travelTimeFormatted} of cruising — consider a stop near ${poiName} along the way. ${fuelNote}`
+  return `Your trip from ${start.name} to ${dest.name} covers ${distanceNM} nautical miles ${watersPhrase(start, dest)}. At ${cruisingSpeed || tripResult.cruisingSpeed} knots, expect about ${travelTimeFormatted} of cruising${poiNote}. ${fuelNote}`
 }
 
 export default function TripBriefing({ tripResult }) {
@@ -33,6 +45,8 @@ export default function TripBriefing({ tripResult }) {
         distanceNM: tripResult.distanceNM,
         travelTimeFormatted: tripResult.travelTimeFormatted,
         cruisingSpeed: tripResult.cruisingSpeed,
+        startRegion: tripResult.start.region,
+        destRegion: tripResult.dest.region,
         fuelPercentUsed: tripResult.fuelPercentUsed,
         nearbyPOIs: tripResult.nearbyPOIs.map((p) => p.name),
       }),

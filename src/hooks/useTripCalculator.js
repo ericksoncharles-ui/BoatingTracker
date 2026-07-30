@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react'
-import { marinas, pointsOfInterest, noWakeZones, navigationSpine, shoalAreas, headlands } from '../data'
+import {
+  marinas, pointsOfInterest, noWakeZones, navigationSpine, navigationBranches,
+  shoalAreas, headlands,
+} from '../data'
 import {
   calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, buildRouteWaypoints,
   findNearbyPOIs, applyShoalAvoidance, applyLandAvoidance,
@@ -19,13 +22,13 @@ export function useTripCalculator() {
     const dest = marinas.find((m) => m.id === destId)
     if (!start || !dest || start.id === dest.id) return null
 
-    const baseWaypoints = buildRouteWaypoints(start, dest, navigationSpine)
+    const baseWaypoints = buildRouteWaypoints(start, dest, navigationSpine, navigationBranches, headlands)
     const { waypoints: landClearWaypoints } = applyLandAvoidance(baseWaypoints, headlands)
     const { waypoints: routeWaypoints, avoided } = applyShoalAvoidance(landClearWaypoints, shoalAreas, draft)
     const distanceNM = calcRouteDistanceNM(routeWaypoints)
     const noWakeResult = calcNoWakeDelay(routeWaypoints, noWakeZones, cruisingSpeed)
     const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize, noWakeResult.totalDelayHours)
-    const nearbyPOIs = findNearbyPOIs(start, dest, pointsOfInterest, 5)
+    const nearbyPOIs = findNearbyPOIs(routeWaypoints, pointsOfInterest, 5)
 
     const draftWarnings = []
     if (draft > 0) {

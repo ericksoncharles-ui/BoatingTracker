@@ -61,10 +61,22 @@ function buildPrompt(trip) {
     ? trip.nearbyPOIs.slice(0, 5).map((name) => text(name)).filter(Boolean).join(', ')
     : ''
 
+  // The two ends can now be in different waters — Long Island Sound to Nantucket
+  // Sound, say — so the prompt names them instead of asserting the Sound. Region
+  // names are clamped like every other client value; the phrase is built here,
+  // not accepted from the browser.
+  const startRegion = text(trip.startRegion, 40)
+  const destRegion = text(trip.destRegion, 40)
+  const waters = !startRegion
+    ? 'across Long Island Sound'
+    : startRegion === destRegion
+      ? `across ${startRegion}`
+      : `from ${startRegion} to ${destRegion || startRegion}`
+
   return [
     'You are a friendly harbor master. Give a 2-3 sentence trip briefing for a boating trip',
     `from ${text(trip.startName) || 'the marina'} to ${text(trip.destName) || 'the destination'},`,
-    `${number(trip.distanceNM, 10000)} nautical miles across Long Island Sound.`,
+    `${number(trip.distanceNM, 10000)} nautical miles ${waters}.`,
     `Travel time is about ${text(trip.travelTimeFormatted, 40) || 'a short run'} at`,
     `${number(trip.cruisingSpeed, 100)} knots cruising speed.`,
     `Fuel usage is ${number(trip.fuelPercentUsed, 1000)}% of tank.`,

@@ -1,11 +1,13 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { marinas } from '../data'
+import { marinas, placeRegions } from '../data'
 
 // The list spans working harbors, open anchorages, and lighthouses you'd only
-// stand off and look at. Grouping keeps a 50-entry list scannable and warns
-// the helm that picking "Greens Ledge Light" is not picking a place to tie up.
-const PLACE_GROUPS = [
+// stand off and look at, across six bodies of water. Grouping by region and then
+// by kind keeps ninety entries scannable, puts everything near a destination
+// together, and still warns the helm that picking "Greens Ledge Light" is not
+// picking a place to tie up.
+const KIND_GROUPS = [
   { label: 'Marinas & Harbors', match: (m) => !m.kind || m.kind === 'marina' },
   { label: 'Anchorages & Beaches', match: (m) => m.kind === 'anchorage' },
   { label: 'Lighthouses & Landmarks', match: (m) => m.kind === 'landmark' },
@@ -87,14 +89,14 @@ export default function PlacePicker({ label, labelIcon, value, onChange, placeho
     [query],
   )
 
-  // Groups keep their data.js order, which runs roughly west to east along the
-  // Sound — a geographic ordering worth preserving in the results.
+  // Regions run west to east and places keep their data.js order within one — a
+  // geographic ordering worth preserving in the results.
   const groups = useMemo(() => (
-    PLACE_GROUPS
-      .map(({ label: groupLabel, match }) => ({
-        label: groupLabel,
-        places: marinas.filter((m) => match(m) && matchesQuery(m, terms)),
-      }))
+    placeRegions
+      .flatMap((region) => KIND_GROUPS.map(({ label: kindLabel, match }) => ({
+        label: `${region} — ${kindLabel}`,
+        places: marinas.filter((m) => m.region === region && match(m) && matchesQuery(m, terms)),
+      })))
       .filter((group) => group.places.length > 0)
   ), [terms])
 

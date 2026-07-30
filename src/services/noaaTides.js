@@ -1,15 +1,18 @@
 import { calcDistanceNM } from '../utils'
-import { LIS_BBOX } from '../data'
+import { TIDE_STATION_BBOX } from '../data'
 
 // Tide predictions from NOAA CO-OPS. Station ids are discovered from NOAA's own
 // metadata API rather than hardcoded — a wrong id would silently show another
 // harbour's tides, which is worse than no tides at all.
 
 const CO_OPS = 'https://api.tidesandcurrents.noaa.gov'
-// v2 carries each station's harmonic/subordinate classification; a v1 entry
-// predates it and has to be refetched rather than trusted.
-const STATION_CACHE_KEY = 'bt.tideStations.v2'
-const LEGACY_STATION_CACHE_KEYS = ['bt.tideStations.v1']
+// v2 carried each station's harmonic/subordinate classification; v3 widens the
+// bounding box east to Nantucket. Both are cache-invalidating: a v2 entry was
+// filtered to Long Island Sound, so keeping it would resolve a Nantucket trip to
+// a station in the Sound for the next thirty days — the exact silent wrong answer
+// discovering station ids at runtime is meant to avoid.
+const STATION_CACHE_KEY = 'bt.tideStations.v3'
+const LEGACY_STATION_CACHE_KEYS = ['bt.tideStations.v1', 'bt.tideStations.v2']
 const STATION_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 /**
@@ -69,8 +72,9 @@ function isSubordinateStation(station) {
 }
 
 /**
- * Every NOAA tide-prediction station inside the Long Island Sound bounding box.
- * Cached locally — the nationwide list is large and changes rarely.
+ * Every NOAA tide-prediction station inside the planner's bounding box, which
+ * runs from the western Sound to east of Nantucket. Cached locally — the
+ * nationwide list is large and changes rarely.
  */
 export async function fetchTideStations(signal) {
   const cached = readCachedStations()
@@ -95,13 +99,13 @@ export async function fetchTideStations(signal) {
         s.id &&
         Number.isFinite(s.lat) &&
         Number.isFinite(s.lng) &&
-        s.lat >= LIS_BBOX.minLat &&
-        s.lat <= LIS_BBOX.maxLat &&
-        s.lng >= LIS_BBOX.minLng &&
-        s.lng <= LIS_BBOX.maxLng,
+        s.lat >= TIDE_STATION_BBOX.minLat &&
+        s.lat <= TIDE_STATION_BBOX.maxLat &&
+        s.lng >= TIDE_STATION_BBOX.minLng &&
+        s.lng <= TIDE_STATION_BBOX.maxLng,
     )
 
-  if (stations.length === 0) throw new Error('No Long Island Sound tide stations found')
+  if (stations.length === 0) throw new Error('No tide stations found for these waters')
   writeCachedStations(stations)
   return stations
 }

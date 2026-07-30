@@ -44,7 +44,7 @@ export default function Sidebar({
         <div>
           <p className="brand-mark">SoundCaptain</p>
           <h1>Long Island Sound<br />Trip Planner</h1>
-          <p className="subtitle">Plan your next adventure on the Sound</p>
+          <p className="subtitle">Plan your next run — the Sound to Nantucket</p>
         </div>
       </div>
 
@@ -230,29 +230,35 @@ export default function Sidebar({
             </div>
           </div>
 
-          <h3>Points of Interest</h3>
-          <ul className="poi-list">
-            {tripResult.nearbyPOIs.map((poi) => (
-              <li key={poi.id}>
-                <div className="poi-header">
-                  <strong>{poi.name}</strong>
-                  <div className="poi-actions">
-                    <a
-                      className="poi-btn"
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poi.name + ' ' + poi.description.split('—')[0].trim())}&center=${poi.lat},${poi.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Open in Google Maps"
-                    >
-                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                      Google Maps
-                    </a>
-                  </div>
-                </div>
-                <span>{poi.description}</span>
-              </li>
-            ))}
-          </ul>
+          {/* A long run can leave nothing within reach of the track, and an
+              empty list under a heading reads as a bug. */}
+          {tripResult.nearbyPOIs.length > 0 && (
+            <>
+              <h3>Points of Interest</h3>
+              <ul className="poi-list">
+                {tripResult.nearbyPOIs.map((poi) => (
+                  <li key={poi.id}>
+                    <div className="poi-header">
+                      <strong>{poi.name}</strong>
+                      <div className="poi-actions">
+                        <a
+                          className="poi-btn"
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poi.name + ' ' + poi.description.split('—')[0].trim())}&center=${poi.lat},${poi.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open in Google Maps"
+                        >
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                          Google Maps
+                        </a>
+                      </div>
+                    </div>
+                    <span>{poi.description}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           <TripBriefing tripResult={tripResult} />
         </div>
@@ -270,7 +276,7 @@ export default function Sidebar({
             </svg>
           </div>
           <p className="welcome-title">Ready to set sail?</p>
-          <p className="welcome-text">Choose your departure marina and destination above, then hit <strong>Plan Trip</strong> to chart your course across the Sound.</p>
+          <p className="welcome-text">Choose your departure marina and destination above, then hit <strong>Plan Trip</strong> to chart your course.</p>
         </div>
       )}
       <div className="sidebar-footer">

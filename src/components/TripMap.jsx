@@ -55,8 +55,10 @@ const HARBOR_ZOOM = 12
 const GPS_ZOOM = 13
 
 // A GPS fix farther than this from mid-Sound is off the chart we cover, so
-// centering on it would just show blank tiles.
-const IN_RANGE_NM = 120
+// centering on it would just show blank tiles. Measured from the middle of the
+// Sound, Nantucket is about 140 NM out and the destination list now goes there,
+// so this has to reach past it.
+const IN_RANGE_NM = 200
 
 // Recentering on the boat only happens when location is already granted — an
 // unprompted permission dialog on load would ambush anyone just browsing.

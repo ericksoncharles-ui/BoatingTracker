@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "fishing:probe": "node scripts/fishing-probe.mjs",
     "tides:probe": "node scripts/tides-probe.mjs",
+    "route:probe": "node scripts/route-probe.mjs",
     "start": "node --env-file-if-exists=.env server/index.js"
   },
   "dependencies": {
