@@ -135,6 +135,25 @@ Getting these wrong produces plausible-looking but wrong navigation output.
   reach**, and the last stretch into the harbor is curated data. Failing instead
   would fall back to the channel graph, and a course over land is worse than a
   course that stops short.
+- **The route is water-checked, not channel-checked, and the app says so.** It
+  carries no aids-to-navigation data — no buoy positions, no channel
+  centrelines — so a plotted course can lie outside the marked channel. The
+  Sidebar shows a standing advisory on every route saying exactly that and
+  pointing at the OpenSeaMap marks layer, which is where the real buoys are.
+  Do not remove it without adding the data that would make it untrue.
+- **A shortest path is not a course.** Left alone it shaves every headland:
+  routes were coming back with 300 ft of shore clearance, which is water but is
+  not water anyone steers. Two things fix that, and both matter —
+  `standoffMultiplier` makes the search pay to stand off the beach, and
+  `furthestClearTarget` takes each shortcut at the most generous offing in
+  `SHORTCUT_CLEARANCES` that still allows one. Straightening the path on a plain
+  land check undoes all of it.
+  - Clearance is read off the distance-to-land field, not by testing a padded
+    box at each step along the chord — the box is `(2p+1)²` lookups per step and
+    put a long route into seconds of work.
+  - That field is seeded from cells with *no* land in them, not from the
+    permissive search grid. Measuring clearance from cells that are three
+    quarters beach tells the route it has room where it has none.
 - **The channel graph is now only a fallback** for a position outside the
   coastline box. `navigationSpine`, `navigationBranches` and their per-waypoint
   `corridorNM` still describe where the deep water runs, and `route:probe` still

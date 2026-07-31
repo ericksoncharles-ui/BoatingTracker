@@ -7,12 +7,15 @@
 // pairs came back with a course drawn over land. This replaces the guesswork
 // with a search over the real coastline.
 //
-// The search grid is the coastline bitmap downsampled 2x, and a coarse cell
-// counts as water only when all four of its fine cells do. That erosion is
-// deliberate: it buys about 90 m of clearance everywhere, so a shortest path
-// around a point cannot come out shaving the beach. Passages the app has to
-// keep open — Woods Hole, Plum Gut, Quicks Hole — are all several cells wide at
-// this scale.
+// The search grid is the coastline bitmap downsampled 2x. It decides only what
+// the search may consider; the fine mask decides what a boat may do, and every
+// step and every shortcut is cleared against it.
+//
+// A shortest path is not a course. Left to itself it shaves every headland it
+// rounds, so the search pays to stand off the beach and a shortcut is taken at
+// the most generous offing that still allows one. That approximates staying
+// mid-channel; it is not the same as following the marked channel, which would
+// need buoy positions this app does not carry.
 
 import { LAND_MASK } from '../landMask.generated.js'
 import { segmentHitsLand } from './landMask.js'
@@ -37,8 +40,8 @@ const M_PER_NM = 1852
 // How far off the beach a course prefers to stand, and how much it will pay to
 // do it. Without this the shortest path around any point grazes it — correct
 // geometry, poor seamanship. Eight cells is a little under a mile.
-const STANDOFF_CELLS = 8
-const STANDOFF_MAX_MULTIPLIER = 1.6
+const STANDOFF_CELLS = 10
+const STANDOFF_MAX_MULTIPLIER = 2.4
 
 // A coarse cell is searchable when any of its fine cells is water.
 //
@@ -68,6 +71,11 @@ function buildGrid() {
 
   // 1 = the search may pass through, 0 = solid land.
   const water = new Uint8Array(COLS * ROWS)
+  // Cells with no land in them at all. Clearance is measured against these,
+  // not against `water` — a cell counted as passable may still be three
+  // quarters beach, and measuring distance from those makes the route think it
+  // has room where it has none.
+  const clear = new Uint8Array(COLS * ROWS)
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       let landCount = 0
@@ -77,18 +85,19 @@ function buildGrid() {
         }
       }
       water[r * COLS + c] = landCount <= MAX_LAND_SUBCELLS && landCount < FACTOR * FACTOR ? 1 : 0
+      clear[r * COLS + c] = landCount === 0 ? 1 : 0
     }
   }
 
-  // Chamfer distance to the nearest land, in cells, capped — only the first few
-  // cells matter, and capping keeps this in a Uint8Array.
+  // Chamfer distance to the nearest cell holding any land, in cells, capped —
+  // only the first few cells matter, and capping keeps this in a Uint8Array.
   const CAP = STANDOFF_CELLS + 1
   const dist = new Uint8Array(COLS * ROWS)
-  for (let i = 0; i < water.length; i++) dist[i] = water[i] ? CAP : 0
+  for (let i = 0; i < clear.length; i++) dist[i] = clear[i] ? CAP : 0
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const i = r * COLS + c
-      if (!water[i]) continue
+      if (!dist[i]) continue
       let best = dist[i]
       if (r > 0) best = Math.min(best, dist[i - COLS] + 1)
       if (c > 0) best = Math.min(best, dist[i - 1] + 1)
@@ -100,7 +109,7 @@ function buildGrid() {
   for (let r = ROWS - 1; r >= 0; r--) {
     for (let c = COLS - 1; c >= 0; c--) {
       const i = r * COLS + c
-      if (!water[i]) continue
+      if (!dist[i]) continue
       let best = dist[i]
       if (r < ROWS - 1) best = Math.min(best, dist[i + COLS] + 1)
       if (c < COLS - 1) best = Math.min(best, dist[i + 1] + 1)
@@ -132,19 +141,18 @@ function standoffMultiplier(d) {
   return 1 + (STANDOFF_MAX_MULTIPLIER - 1) * closeness * closeness
 }
 
-// Nearest navigable cell to a point, searched in rings.
+// How much water a cell needs around it to be worth starting from.
 //
-// Harbor coordinates and even some approach waypoints sit on cells the eroded
-// grid calls land — a marina is behind a breakwater, and a breakwater is land
-// at this resolution. Snapping outward is what lets the search start from open
-// water without the caller having to curate a second set of waypoints.
-// A cell has to have this much water around it to be worth starting from. The
-// nearest water cell to a harbor is often a sliver against the shore that the
-// step check cannot get out of — East Greenwich snapped into one and the search
-// then exhausted Narragansett Bay without ever reaching it. Preferring a cell
-// with room around it puts the search in the channel rather than in the corner.
+// The nearest water cell to a harbor is often a sliver against the shore that
+// the step check cannot get out of — East Greenwich snapped into one and the
+// search then exhausted Narragansett Bay without ever reaching it. Preferring a
+// cell with room around it puts the search in the channel, not in the corner.
 const SNAP_CLEARANCE_CELLS = 2
 
+// Nearest navigable cell to a point, searched in rings. Harbor coordinates and
+// some approach waypoints sit on cells the grid calls land — a marina is behind
+// a breakwater, and a breakwater is land at this resolution — so the search has
+// to start from the open water outside them.
 function snapToWater(lat, lng, blocked, maxRings = 40) {
   const { water, dist } = buildGrid()
   const r0 = rowOf(lat)
@@ -284,6 +292,63 @@ export function directCourseIsClear(from, to, hazards) {
   return !hazardBlocksCourse(from, to, hazards)
 }
 
+// Shore clearance a shortcut has to keep, in search cells (~180 m each), tried
+// in order — roughly 0.5, 0.3, 0.2 and 0.1 NM, then anything that is water.
+//
+// Straightening a path on a plain land check produces a course that shaves
+// every headland it rounds: measured against the mask, routes came out with
+// 300 feet of clearance and less. That is water, but it is not water anyone
+// steers through. The marked channel is further off, and a skipper following
+// the plotted line would be outside the buoys and among the rocks.
+//
+// A shortcut is therefore taken at the most generous offing that still allows
+// one, falling back to a thinner margin only where the water genuinely is thin.
+export const SHORTCUT_CLEARANCES = [5, 3, 2, 1, 0]
+
+/**
+ * Least clearance the straight course from a to b keeps, in search cells.
+ *
+ * Read off the precomputed distance-to-land field rather than by testing a
+ * padded box at every step: the box is (2p+1)^2 lookups per step and turned a
+ * long route into seconds of work, while this is one lookup per cell crossed.
+ */
+export function courseClearance(from, to) {
+  const { dist } = buildGrid()
+  const steps = Math.max(
+    2,
+    Math.ceil(Math.max(
+      Math.abs(rowF(to.lat) - rowF(from.lat)),
+      Math.abs(colF(to.lng) - colF(from.lng)),
+    )),
+  )
+  let worst = Infinity
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps
+    const r = rowOf(from.lat + (to.lat - from.lat) * t)
+    const c = colOf(from.lng + (to.lng - from.lng) * t)
+    if (!inGrid(r, c)) return 0
+    const d = dist[r * COLS + c]
+    if (d < worst) worst = d
+    if (worst === 0) return 0
+  }
+  return worst
+}
+
+/**
+ * Furthest point in `points` reachable from `points[i]` in a straight line,
+ * preferring a course that keeps water under the boat over the longest chord
+ * that merely misses the beach.
+ */
+export function furthestClearTarget(points, i, hazards) {
+  for (const wanted of SHORTCUT_CLEARANCES) {
+    for (let j = points.length - 1; j > i + 1; j--) {
+      if (courseClearance(points[i], points[j]) < wanted) continue
+      if (directCourseIsClear(points[i], points[j], hazards)) return j
+    }
+  }
+  return i + 1
+}
+
 /**
  * Shortest navigable path between two positions, as [lat, lng] pairs.
  *
@@ -389,13 +454,7 @@ export function findWaterPath(from, to, hazards) {
   const simplified = [pos[0]]
   let i = 0
   while (i < pos.length - 1) {
-    let next = i + 1
-    for (let j = pos.length - 1; j > i + 1; j--) {
-      if (directCourseIsClear(pos[i], pos[j], hazards)) {
-        next = j
-        break
-      }
-    }
+    const next = furthestClearTarget(pos, i, hazards)
     simplified.push(pos[next])
     i = next
   }

@@ -854,6 +854,33 @@ body {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
+/* The course is water-checked, not channel-checked. Gold and advisory rather
+   than red: it is a standing caveat on every route, not a hazard on this one,
+   and a warning colour shown every single time stops being read. */
+.channel-advisory {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(214, 158, 46, 0.10);
+  border-radius: 8px;
+  border-left: 3px solid var(--gold);
+  font-size: 0.78rem;
+  color: #CBD5E0;
+  line-height: 1.45;
+}
+
+.channel-advisory strong {
+  color: var(--gold-light);
+}
+
+.channel-advisory svg {
+  flex-shrink: 0;
+  color: var(--gold);
+  margin-top: 2px;
+}
+
 .shoal-avoided-info {
   margin-top: 12px;
   padding: 10px 12px;

@@ -1,4 +1,6 @@
-import { directCourseIsClear, findWaterPath } from './services/waterRouter.js'
+import {
+  directCourseIsClear, findWaterPath, furthestClearTarget, courseClearance, SHORTCUT_CLEARANCES,
+} from './services/waterRouter.js'
 
 /**
  * Calculate distance between two coordinates in nautical miles using Haversine formula.
@@ -309,7 +311,12 @@ export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas
 
   // A straight shot between the approaches, when the water allows it, is both
   // the shortest course and the one a skipper would steer.
-  if (directCourseIsClear(startApproach, destApproach, hazards)) {
+  // The straight shot has to keep proper water under it, not merely miss the
+  // land. Where it doesn't, the search takes over — it will come back with the
+  // same line when that really is the best water, and with an offing when it
+  // isn't.
+  if (courseClearance(startApproach, destApproach) >= SHORTCUT_CLEARANCES[0] &&
+      directCourseIsClear(startApproach, destApproach, hazards)) {
     return tagSearched([
       [start.lat, start.lng],
       [startApproach.lat, startApproach.lng],
@@ -338,13 +345,7 @@ export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas
     const kept = [points[0]]
     let i = 0
     while (i < points.length - 1) {
-      let next = i + 1
-      for (let j = points.length - 1; j > i + 1; j--) {
-        if (directCourseIsClear(points[i], points[j], hazards)) {
-          next = j
-          break
-        }
-      }
+      const next = furthestClearTarget(points, i, hazards)
       kept.push(points[next])
       i = next
     }

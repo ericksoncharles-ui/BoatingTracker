@@ -217,6 +217,21 @@ export default function Sidebar({
             </div>
           )}
 
+          {/* The plotted course is checked against the coastline and against
+              the shoals this boat can't clear — it is not a channel. The app
+              carries no buoy positions, so the line can run outside the marks.
+              Saying so on the card is the honest version of that limit, and it
+              points at the OpenSeaMap marks the chart is already drawing. */}
+          <div className="channel-advisory">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12.01" y2="16.5"/></svg>
+            <div>
+              <strong>Planning line, not a channel.</strong> This course is kept in
+              charted water and clear of shoals too thin for your draft, but it does
+              not follow the buoyed channels. Navigate between the red and green
+              marks — they&apos;re on the chart with the Buoys &amp; Marks layer on.
+            </div>
+          </div>
+
           <div className="fuel-gauge">
             <div className="fuel-gauge-label">
               <span>Fuel Usage</span>
