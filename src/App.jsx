@@ -218,7 +218,7 @@ export default function App() {
             onCalculate={trip.calculateTrip}
             onReset={trip.resetTrip}
           />
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
         </div>
         </ErrorBoundary>
       )}
@@ -226,7 +226,7 @@ export default function App() {
       {activeTab === 'chart' && (
         <ErrorBoundary>
         <div className="chart-layout desktop-only">
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
         </div>
         </ErrorBoundary>
       )}
@@ -251,7 +251,7 @@ export default function App() {
       <ErrorBoundary>
       <div className="mobile-layout mobile-only">
         <div className="mobile-map">
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} />
+          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
         </div>
 
         <div className="mobile-brand">

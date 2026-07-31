@@ -51,6 +51,7 @@ export function useTripCalculator() {
       nearbyPOIs,
       draftWarnings,
       shoalsAvoided: avoided,
+      routeWaypoints,
     }
 
     setTripResult(result)
