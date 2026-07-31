@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, LayersControl, LayerGroup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, Polyline, LayersControl, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useGeolocation } from '../hooks/useGeolocation'
@@ -178,7 +178,58 @@ function LiveLocation() {
   )
 }
 
-export default function TripMap({ marinas, shoalAreas, focus }) {
+// The planner already walks the channel graph and works out where the shoal
+// and land detours land — without this the chart never shows any of that, and
+// a boater has to take the sidebar's numbers on faith. Fit the map to the
+// route once per plan; after that the skipper is free to pan without being
+// yanked back on every re-render.
+function RouteLayer({ tripResult }) {
+  const map = useMap()
+  const fitForRef = useRef(null)
+
+  useEffect(() => {
+    if (!tripResult?.routeWaypoints?.length) return
+    if (fitForRef.current === tripResult) return
+    fitForRef.current = tripResult
+    map.fitBounds(L.latLngBounds(tripResult.routeWaypoints), { padding: [48, 48] })
+  }, [tripResult, map])
+
+  if (!tripResult?.routeWaypoints?.length) return null
+
+  const { routeWaypoints, start, dest } = tripResult
+
+  return (
+    <>
+      {/* A dark casing under the gold dash line keeps the plotted course
+          readable over every base layer, including light street tiles. */}
+      <Polyline
+        positions={routeWaypoints}
+        pathOptions={{ color: '#1B2A4A', weight: 6, opacity: 0.35, lineCap: 'round', lineJoin: 'round' }}
+      />
+      <Polyline
+        positions={routeWaypoints}
+        pathOptions={{ color: '#D69E2E', weight: 3, opacity: 0.95, dashArray: '8 7', lineCap: 'round', lineJoin: 'round' }}
+      />
+
+      <CircleMarker
+        center={[start.lat, start.lng]}
+        radius={9}
+        pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: '#2F855A', fillOpacity: 1 }}
+      >
+        <Popup><strong>{start.name}</strong><br />Departure</Popup>
+      </CircleMarker>
+      <CircleMarker
+        center={[dest.lat, dest.lng]}
+        radius={9}
+        pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: '#C53030', fillOpacity: 1 }}
+      >
+        <Popup><strong>{dest.name}</strong><br />Destination</Popup>
+      </CircleMarker>
+    </>
+  )
+}
+
+export default function TripMap({ marinas, shoalAreas, focus, tripResult }) {
   const center = focus ? [focus.lat, focus.lng] : LI_SOUND_CENTER
   const zoom = focus ? HARBOR_ZOOM : LI_SOUND_ZOOM
 
@@ -257,12 +308,15 @@ export default function TripMap({ marinas, shoalAreas, focus }) {
 
         <InitialView />
         <LiveLocation />
+        <RouteLayer tripResult={tripResult} />
 
-        {marinas.map((marina) => (
-          <Marker key={marina.id} position={[marina.lat, marina.lng]}>
-            <Popup>{marina.name}</Popup>
-          </Marker>
-        ))}
+        {marinas
+          .filter((marina) => marina.id !== tripResult?.start.id && marina.id !== tripResult?.dest.id)
+          .map((marina) => (
+            <Marker key={marina.id} position={[marina.lat, marina.lng]}>
+              <Popup>{marina.name}</Popup>
+            </Marker>
+          ))}
       </MapContainer>
 
       {/* Only shown on the standalone Nautical Chart tab (see .chart-layout
