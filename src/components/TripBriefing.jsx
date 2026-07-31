@@ -29,9 +29,9 @@ const BUTTON_LABEL = {
 }
 
 export default function TripBriefing({ tripResult }) {
-  // The template briefing is free and instant, so it's what shows the moment
-  // a trip loads. The AI rewrite costs a call, so — same rule as the fishing
-  // report — it only happens when the boater asks for it.
+  // Nothing is generated — template or AI — until the boater presses the
+  // button, same rule as the fishing report. The template string only backs
+  // up a failed or unconfigured AI call; it's not a preview shown eagerly.
   const [status, setStatus] = useState('idle')
   const [briefing, setBriefing] = useState('')
   const abortRef = useRef(null)
@@ -40,12 +40,7 @@ export default function TripBriefing({ tripResult }) {
 
   useEffect(() => {
     abortRef.current?.abort()
-    if (!tripResult) {
-      setBriefing('')
-      setStatus('idle')
-      return
-    }
-    setBriefing(generateFallbackBriefing(tripResult))
+    setBriefing('')
     setStatus('idle')
   }, [tripResult])
 
@@ -107,8 +102,10 @@ export default function TripBriefing({ tripResult }) {
       </div>
       {status === 'loading' ? (
         <p className="briefing-loading">Generating briefing...</p>
-      ) : (
+      ) : briefing ? (
         <p className="briefing-text">{briefing}</p>
+      ) : (
+        <p className="briefing-placeholder">Press "Generate AI briefing" for a written passage summary.</p>
       )}
     </div>
   )

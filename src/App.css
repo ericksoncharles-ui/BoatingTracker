@@ -777,6 +777,12 @@ body {
   color: #CBD5E0;
 }
 
+.briefing-placeholder {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: #90A4C4;
+}
+
 /* ── Welcome State ───────────────────────────────────── */
 
 .sidebar-welcome {
