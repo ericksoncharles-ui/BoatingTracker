@@ -22,8 +22,7 @@ import {
   marinas, navigationSpine, navigationBranches, shoalAreas, headlands,
 } from '../src/data.js'
 import {
-  buildChannelGraph, buildRouteWaypoints, calcDistanceNM, calcRouteDistanceNM,
-  applyLandAvoidance, applyShoalAvoidance,
+  buildChannelGraph, planRoute, calcDistanceNM, calcRouteDistanceNM,
 } from '../src/utils.js'
 
 const DRAFT_FT = 3
@@ -150,9 +149,14 @@ function report(startId, destId, verbose) {
     return
   }
 
-  const base = buildRouteWaypoints(start, dest, navigationSpine, navigationBranches, headlands)
-  const { waypoints: landClear, avoided: landAvoided } = applyLandAvoidance(base, headlands)
-  const { waypoints, avoided: shoalsAvoided } = applyShoalAvoidance(landClear, shoalAreas, DRAFT_FT)
+  const { waypoints, shoalsAvoided } = planRoute(start, dest, {
+    spine: navigationSpine,
+    branches: navigationBranches,
+    headlands,
+    shoals: shoalAreas,
+    draftFt: DRAFT_FT,
+  })
+  const landAvoided = []
 
   const routeNM = calcRouteDistanceNM(waypoints)
   const directNM = calcDistanceNM(start.lat, start.lng, dest.lat, dest.lng)

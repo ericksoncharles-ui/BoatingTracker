@@ -51,7 +51,11 @@ export const marinas = [
     { id: 'new-rochelle', name: 'New Rochelle Municipal Marina, NY', lat: 40.8940, lng: -73.7730, approachDepthFt: 6, approach: { lat: 40.880, lng: -73.770 } },
     { id: 'mamaroneck', name: 'Mamaroneck Harbor, NY', lat: 40.9420, lng: -73.7370, approachDepthFt: 6, approach: { lat: 40.930, lng: -73.730 } },
     { id: 'manhasset', name: 'Manhasset Bay Marina, NY', lat: 40.8310, lng: -73.7130, approachDepthFt: 8, approach: { lat: 40.845, lng: -73.710 } },
-    { id: 'glen-cove', name: 'Glen Cove Marina, NY', lat: 40.8650, lng: -73.6290, approachDepthFt: 7, approach: { lat: 40.880, lng: -73.620 } },
+    // Glen Cove sits on Hempstead Harbor, around -73.657. The old coordinates
+    // put both the marina and its approach near -73.62 — a mile and a half
+    // inland, on the far side of the neck — so every route here was drawn
+    // across Long Island before it started.
+    { id: 'glen-cove', name: 'Glen Cove Marina, NY', lat: 40.8615, lng: -73.6570, approachDepthFt: 7, approach: { lat: 40.8900, lng: -73.6580 } },
     { id: 'oyster-bay-marina', name: 'Oyster Bay Marine Center, NY', lat: 40.8730, lng: -73.5300, approachDepthFt: 7, approach: { lat: 40.920, lng: -73.500 } },
     { id: 'cold-spring', name: 'Cold Spring Harbor, NY', lat: 40.8710, lng: -73.4560, approachDepthFt: 5, approach: { lat: 40.915, lng: -73.475 } },
     { id: 'huntington', name: 'Huntington Harbor, NY', lat: 40.8990, lng: -73.4200, approachDepthFt: 7, approach: { lat: 40.920, lng: -73.415 } },

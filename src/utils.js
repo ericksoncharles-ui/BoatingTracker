@@ -1,3 +1,5 @@
+import { directCourseIsClear, findWaterPath } from './services/waterRouter.js'
+
 /**
  * Calculate distance between two coordinates in nautical miles using Haversine formula.
  */
@@ -285,17 +287,74 @@ function crossesLand(a, b, landAreas) {
 /**
  * Build the most direct practical route between two places.
  *
- * The channel graph marks safe open water down the middle of the run. Rather
- * than always riding it between the nearest snap points (which produces
- * dog-legs and overshoot), evaluate the shortest walk through the graph from
- * the nearest entry waypoints to the nearest exit ones, plus the direct
- * approach-to-approach line, and take whichever is shortest. Open-water
- * crossings are real, so the direct line wins whenever it beats the channel
- * path and stays in navigable water.
+ * The course between the two approach waypoints is searched over the real
+ * coastline (see services/waterRouter.js): the straight line wins when it is
+ * navigable, and otherwise the shortest path that stays in the water does. The
+ * channel graph below is kept for the case where the coastline data cannot
+ * answer — a position outside the covered box — and its corridors still
+ * describe where the deep water runs.
+ *
+ * `hazards` are circles the boat must stay out of on top of land: the shoals it
+ * cannot clear at its draft. Passing them here rather than detouring around
+ * them afterwards is what makes "shortest water route" and "deep enough for
+ * this boat" the same search instead of two passes that can undo each other.
  */
-export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas = []) {
+export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas = [], hazards = []) {
   const startApproach = start.approach || { lat: start.lat, lng: start.lng }
   const destApproach = dest.approach || { lat: dest.lat, lng: dest.lng }
+
+  // Marks a route as already checked against the coastline, so planRoute leaves
+  // the circle-based bypass passes off it.
+  const tagSearched = (waypoints) => Object.defineProperty(waypoints, 'searched', { value: true })
+
+  // A straight shot between the approaches, when the water allows it, is both
+  // the shortest course and the one a skipper would steer.
+  if (directCourseIsClear(startApproach, destApproach, hazards)) {
+    return tagSearched([
+      [start.lat, start.lng],
+      [startApproach.lat, startApproach.lng],
+      [destApproach.lat, destApproach.lng],
+      [dest.lat, dest.lng],
+    ])
+  }
+
+  const watered = findWaterPath(startApproach, destApproach, hazards)
+  if (watered && watered.length > 0) {
+    // Stitch the curated approach waypoints onto either end of the searched
+    // path, then run the same line-of-sight pass over the join.
+    //
+    // The join is where this goes wrong if it is done by eye. The search starts
+    // at the nearest open water to the approach, which for a harbor up a river
+    // is not the approach; dropping that first point because it is "close
+    // enough" swings the far end of the next leg, and a couple of hundred
+    // metres at the Bridgeport end is Stratford Point eight miles down the
+    // course. So a point is only dropped when the chord that replaces it is
+    // itself clear.
+    const points = [
+      startApproach,
+      ...watered.map(([lat, lng]) => ({ lat, lng })),
+      destApproach,
+    ]
+    const kept = [points[0]]
+    let i = 0
+    while (i < points.length - 1) {
+      let next = i + 1
+      for (let j = points.length - 1; j > i + 1; j--) {
+        if (directCourseIsClear(points[i], points[j], hazards)) {
+          next = j
+          break
+        }
+      }
+      kept.push(points[next])
+      i = next
+    }
+
+    return tagSearched([
+      [start.lat, start.lng],
+      ...kept.map((p) => [p.lat, p.lng]),
+      [dest.lat, dest.lng],
+    ])
+  }
 
   const graph = buildChannelGraph(spine, branches)
   const { nodes, adj, legs } = graph
@@ -482,6 +541,65 @@ export function applyShoalAvoidance(waypoints, shoals, draftFt, clearanceFt = 2)
  */
 export function applyLandAvoidance(waypoints, headlands) {
   return insertHazardBypasses(waypoints, headlands, 0.3)
+}
+
+/**
+ * Plan the whole route: the course to steer, and what it was steered around.
+ *
+ * One entry point because the two halves have to agree. The bypass passes above
+ * predate the coastline data and work by pushing a waypoint off a circle's
+ * centre — which, run over a course the water search already made navigable,
+ * cheerfully inserts a dog-leg straight across a headland the search had gone
+ * round. So they only run when the search could not answer and the channel
+ * graph had to carry the route instead.
+ */
+export function planRoute(start, dest, {
+  spine = [], branches = [], headlands: landAreas = [], shoals = [], draftFt = 0, clearanceFt = 2,
+} = {}) {
+  const activeShoals = shoals.filter((s) => s.minDepthFt < draftFt + clearanceFt)
+  const waypoints = buildRouteWaypoints(start, dest, spine, branches, landAreas, activeShoals)
+
+  if (routeCameFromWaterSearch(waypoints)) {
+    // Report the hazards the boat would have met on the straight line and does
+    // not meet on the plotted one — the search steered around them, so the
+    // sidebar can say so without a second pass re-deriving the course.
+    const startApproach = start.approach || { lat: start.lat, lng: start.lng }
+    const destApproach = dest.approach || { lat: dest.lat, lng: dest.lng }
+    const avoided = activeShoals.filter((s) => {
+      const { distance, t } = distanceFromRoute(
+        s.lat, s.lng,
+        startApproach.lat, startApproach.lng,
+        destApproach.lat, destApproach.lng,
+      )
+      if (!(t > 0.02 && t < 0.98 && distance < s.radiusNM)) return false
+      return !routePassesThrough(waypoints, s)
+    })
+    return { waypoints, shoalsAvoided: avoided, searched: true }
+  }
+
+  const { waypoints: landClear } = applyLandAvoidance(waypoints, landAreas)
+  const { waypoints: final, avoided } = applyShoalAvoidance(landClear, shoals, draftFt, clearanceFt)
+  return { waypoints: final, shoalsAvoided: avoided, searched: false }
+}
+
+// Does the plotted course still pass inside this hazard's circle?
+function routePassesThrough(waypoints, hazard) {
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const { distance } = distanceFromRoute(
+      hazard.lat, hazard.lng,
+      waypoints[i][0], waypoints[i][1],
+      waypoints[i + 1][0], waypoints[i + 1][1],
+    )
+    if (distance < hazard.radiusNM) return true
+  }
+  return false
+}
+
+// buildRouteWaypoints tags the routes it checked against the coastline, so
+// planRoute knows whether the bypass passes still have work to do. A flag on
+// the array keeps the function's return type unchanged for its other callers.
+function routeCameFromWaterSearch(waypoints) {
+  return waypoints.searched === true
 }
 
 // How far off the track something can be and still count as being on the way.

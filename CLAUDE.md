@@ -34,10 +34,19 @@ npm run preview  # serve the build
 npm run tides:probe    # which NOAA station each location resolves to
 npm run fishing:probe  # what each fishing source actually yields
 npm run route:probe    # graph health, keep-out clearances, and sample routes
+npm run route:audit    # does any planned route cross land?
+npm run landmask:build # regenerate the coastline bitmap from OSM data
 ```
 
 `route:probe` takes a pair (`npm run route:probe -- newport cuttyhunk`) to print
 one route leg by leg, or `-- --all` for every cross-region pair.
+
+**`route:audit` is the one that guards the important invariant.** It plans every
+pair of places — about 4,750 of them — and walks each leg against the coastline
+bitmap. It must report zero open-water legs crossing land; treat any failure as
+a bug in the router or in the place's coordinates, not as noise. It takes a pair
+(`npm run route:audit -- stamford greenwich`) to print one route leg by leg with
+each leg's verdict.
 
 There are **no tests and no linter configured**. Verify changes by running
 `npm run dev` and exercising the UI. If you add tests, wire them into
@@ -58,6 +67,9 @@ src/App.jsx           Tab state + desktop/mobile layouts + bottom-sheet drag
 src/App.css           All styling (~1100 lines), CSS vars in :root
 src/data.js           Places, navigation spine + branches, shoals, headlands, no-wake zones, POIs
 src/utils.js          Pure navigation/fuel math — no React
+src/landMask.generated.js   GENERATED coastline bitmap (npm run landmask:build)
+src/services/landMask.js    Land/water lookups; the one land-crossing test
+src/services/waterRouter.js A* over the water, and the direct-course check
 src/hooks/useTripCalculator.js   Owns all form state, orchestrates utils.js
 src/hooks/useConditions.js       Fetches every live conditions source for one position
 src/services/noaaTides.js        Tide predictions
@@ -91,31 +103,50 @@ Getting these wrong produces plausible-looking but wrong navigation output.
 - **Units are nautical.** Distances in nautical miles, speed in knots, depth in
   feet at MLW, fuel in gallons and GPH. `calcDistanceNM` computes kilometers via
   Haversine and divides by 1.852 — don't "simplify" that away.
-- **Routes are not straight lines.** `buildRouteWaypoints` walks a **channel
-  graph**: `navigationSpine` (the west-to-east trunk of mid-water waypoints, now
-  running from Throgs Neck to the Nantucket jetties) plus `navigationBranches`,
-  which hang off a waypoint (`from`) and may rejoin another (`to`). Shortest path
-  is Dijkstra over that graph; then a greedy pass shortcuts any chord that stays
-  inside a leg's corridor **and** clear of land. A single chain was enough for the
-  Sound; it cannot express Narragansett Bay splitting around Conanicut Island, or
-  Buzzards Bay reachable from Vineyard Sound only through a hole in the Elizabeth
-  Islands. Branches with a `to` are what make Quicks Hole and Woods Hole
-  shortcuts rather than cul-de-sacs.
-- **Corridor width is per-waypoint, not global.** `corridorNM` on a waypoint says
-  how far off its legs is still open water a route may cut across; absent means
-  6 NM, the open Sound. Vineyard Sound runs 0.8-1.2 because the Elizabeth Islands
-  sit a mile and a half off the channel, Plum Gut and Quicks Hole run 0.4-0.5.
-  Widening one of these is how routes start cutting corners across islands.
-- **A direct approach-to-approach line** wins when it beats the graph path and is
-  either under `SHORT_HOP_NM` (10 NM) or inside a corridor — but never if it
-  crosses land. The short-hop exemption skips the *graph*, never the land check:
-  Orient Point is six miles from Greenport with the North Fork in between.
-- **`headlands` is the land model**, and it does two jobs: rejecting a direct
-  chord that runs over land, and supplying a curated `bypass` for legs that pass
-  too close. `radiusNM` is a *detection* circle (land plus margin);
-  `applyLandAvoidance` adds 0.3 NM on top, and the hard rejection uses the core,
-  `radiusNM - 0.3`. Circles are drawn small and numerous along an island chain
-  because one big circle covers the channel either side of the land as well.
+- **The route is searched over the real coastline, and it must stay in water.**
+  `planRoute` in `utils.js` is the single entry point. Between the two approach
+  waypoints it takes the straight course when that course is clear, and
+  otherwise runs A* over the water (`services/waterRouter.js`). This replaced a
+  channel graph guarded by a dozen keep-out circles, under which **three
+  quarters of all place pairs came back with a course drawn over land** — the
+  circles covered Eatons Neck, Lloyd Neck and the Elizabeth Islands, and nothing
+  along the Connecticut shore where most trips happen. `route:audit` is what
+  keeps that from coming back.
+- **`segmentHitsLand` in `services/landMask.js` is the only land-crossing
+  test.** The router plans against it and the audit checks against it, so the
+  two cannot disagree. An earlier attempt had the router consulting its own
+  coarser grid, which quietly passed courses over Stratford Point while the
+  audit called them clear. Do not add a second land test.
+  - It visits **every cell** the course touches rather than sampling points
+    along it — a sampled walk slips between two diagonally touching specks of
+    land — and it runs between the **true positions**, not the centres of the
+    cells they fall in, because half a cell of error at each end swings the
+    middle of a long leg by a whole cell.
+- **The search grid is deliberately permissive; the mask is what clears a
+  course.** `waterRouter` searches a 2x-downsampled grid where a cell counts as
+  passable if any of its fine cells is water. That is only safe because **a step
+  between two cells is rejected unless the course between them is clear on the
+  fine mask** — so the path is water-only by construction. Making the grid
+  itself strict (all four fine cells water) instead seals every channel under
+  ~360 m: upper Narragansett Bay became an isolated pond and every route to East
+  Greenwich fell back to the old graph, which is exactly the thing that draws
+  courses over land.
+- **A course that cannot reach its goal ends at the nearest water it could
+  reach**, and the last stretch into the harbor is curated data. Failing instead
+  would fall back to the channel graph, and a course over land is worse than a
+  course that stops short.
+- **The channel graph is now only a fallback** for a position outside the
+  coastline box. `navigationSpine`, `navigationBranches` and their per-waypoint
+  `corridorNM` still describe where the deep water runs, and `route:probe` still
+  checks the graph's health, but they no longer decide a normal route.
+- **`headlands` no longer decides what is land** — the coastline mask does. The
+  circles survive for their curated `bypass` points, used only on the fallback
+  path.
+- **A place's coordinates are load-bearing, and the audit will catch a bad one.**
+  Glen Cove sat at -73.629, a mile and a half inland on the wrong side of the
+  neck, and produced 97 audit failures on its own. If `route:audit` reports one
+  place failing against everything, suspect its `lat`/`lng`/`approach` before
+  suspecting the router.
 - **Marinas have an `approach` waypoint** — an open-water point outside the
   harbor entrance. Routing runs between approach points; the marina coordinates
   are only the first and last legs. Any new marina needs a sane `approach`,
@@ -123,15 +154,32 @@ Getting these wrong produces plausible-looking but wrong navigation output.
   controlling depth exists — the draft check is skipped when it is absent, which
   is the honest outcome for an open roadstead. Put the approach outside any
   headland or shoal circle unless the place *is* the hazard (a lighthouse).
-- **Two passages are deliberately not modelled**: the Sakonnet River and the Cape
-  Cod Canal. Bristol to New Bedford and Marion to Hyannis therefore route the long
-  way round, out of the bay and back up. That is the honest answer for a planner
-  with no bridge clearances or canal traffic rules in it — don't "fix" it with a
-  branch unless you add those.
-- **Shoal avoidance is draft-dependent.** `applyShoalAvoidance` only detours
-  around hazards where `minDepthFt < draft + clearance` (default 2 ft clearance),
-  and it deliberately leaves the first and last legs alone since those are
-  curated harbor approaches.
+- **The Cape Cod Canal is still not modelled.** It is narrower than the
+  coastline mask can resolve, so the search cannot get through it: a course from
+  Buzzards Bay to Cape Cod Bay comes back as 105 NM around the outside of the
+  Cape rather than 6 NM through the cut. That is the same honest answer the old
+  router gave — this planner has no canal traffic rules in it — but note it is
+  now a consequence of the data rather than a decision. If a Cape Cod Bay
+  destination is ever added, this needs deciding on purpose.
+- **The Sakonnet River *is* now used**, which is a change. Bristol to New Bedford
+  runs down the Sakonnet (37 NM) instead of out around Newport, because the
+  search plans over real water and the Sakonnet is real water. It is navigable
+  for the powerboats this app plans for, but it is spanned by fixed bridges and
+  the app models no air draft — the boat form asks for tank, speed, burn and
+  draft, and nothing about height. If that matters, block the passage explicitly
+  rather than hoping the mask closes it.
+- **Shoal avoidance is draft-dependent, and now happens inside the search.**
+  `planRoute` passes the shoals where `minDepthFt < draft + clearance` (default
+  2 ft) into the route search as blocked water, so "shortest water course" and
+  "deep enough for this boat" are one search rather than two passes that undo
+  each other. `applyShoalAvoidance` and `applyLandAvoidance` still exist and
+  still run — but **only on the fallback graph route**. Running their bypass
+  insertion over a searched course reintroduces land crossings: they push a
+  waypoint off a circle's centre with no idea where the shoreline is.
+- **Depth beyond the curated shoals is not modelled.** The coastline data says
+  where the land is, not how deep the water is. `shoalAreas` and
+  `approachDepthFt` are the whole depth model, so a route is "in water" with far
+  more confidence than it is "deep enough".
 - **No-wake zones cost time and save fuel.** Delay is the difference between
   transit at cruising speed and at the zone's `speedLimit`; fuel in a zone burns
   at 30% of cruise GPH (`calcTripDetails`).

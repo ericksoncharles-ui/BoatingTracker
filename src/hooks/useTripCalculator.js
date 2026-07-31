@@ -4,8 +4,7 @@ import {
   shoalAreas, headlands,
 } from '../data'
 import {
-  calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, buildRouteWaypoints,
-  findNearbyPOIs, applyShoalAvoidance, applyLandAvoidance,
+  calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, planRoute, findNearbyPOIs,
 } from '../utils'
 
 export function useTripCalculator() {
@@ -22,9 +21,13 @@ export function useTripCalculator() {
     const dest = marinas.find((m) => m.id === destId)
     if (!start || !dest || start.id === dest.id) return null
 
-    const baseWaypoints = buildRouteWaypoints(start, dest, navigationSpine, navigationBranches, headlands)
-    const { waypoints: landClearWaypoints } = applyLandAvoidance(baseWaypoints, headlands)
-    const { waypoints: routeWaypoints, avoided } = applyShoalAvoidance(landClearWaypoints, shoalAreas, draft)
+    const { waypoints: routeWaypoints, shoalsAvoided: avoided } = planRoute(start, dest, {
+      spine: navigationSpine,
+      branches: navigationBranches,
+      headlands,
+      shoals: shoalAreas,
+      draftFt: draft,
+    })
     const distanceNM = calcRouteDistanceNM(routeWaypoints)
     const noWakeResult = calcNoWakeDelay(routeWaypoints, noWakeZones, cruisingSpeed)
     const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize, noWakeResult.totalDelayHours)
