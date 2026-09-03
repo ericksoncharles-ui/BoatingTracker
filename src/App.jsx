@@ -1,11 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 import { marinas, shoalAreas } from './data'
 import { useTripCalculator } from './hooks/useTripCalculator'
+import Dashboard from './components/Dashboard'
 import Sidebar from './components/Sidebar'
 import TripMap from './components/TripMap'
 import ConditionsPanel from './components/ConditionsPanel'
 import FishingReportPanel from './components/FishingReportPanel'
 import ErrorBoundary from './components/ErrorBoundary'
+
+const HOME_ICON_SM = (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
+)
+
+const HOME_ICON = (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
+)
 
 const CONDITIONS_ICON = (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -104,7 +113,7 @@ export default function App() {
   const trip = useTripCalculator()
   const isMobileLayout = useIsMobileLayout()
   const startMarina = marinas.find((m) => m.id === trip.startId)
-  const [activeTab, setActiveTab] = useState('planner')
+  const [activeTab, setActiveTab] = useState('dashboard')
   const [sheetSnap, setSheetSnap] = useState('half')
   const [sheetDrag, setSheetDrag] = useState(null)
   const sheetRef = useRef(null)
@@ -139,6 +148,14 @@ export default function App() {
     setSheetDrag(null)
   }
 
+  // The dashboard's "Explore the coast" cards hand off straight into a plan
+  // rather than making the skipper re-pick the destination in the sidebar.
+  const handlePickDestination = (marinaId) => {
+    trip.setDestId(marinaId)
+    setActiveTab('planner')
+    setSheetSnap((snap) => (snap === 'collapsed' ? 'half' : snap))
+  }
+
   // Planning is the one thing the sheet exists for, and at half height its
   // answer starts below the fold — the summary used to appear as a sliver at the
   // bottom edge. Open the sheet all the way and put the summary at the top of
@@ -166,6 +183,13 @@ export default function App() {
           {BRAND_ICON}
           <span>SoundCaptain</span>
         </div>
+        <button
+          className={`tab-btn ${activeTab === 'dashboard' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          {HOME_ICON_SM}
+          Dashboard
+        </button>
         <button
           className={`tab-btn ${activeTab === 'planner' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('planner')}
@@ -198,6 +222,18 @@ export default function App() {
 
       {/* Desktop layout. Each tab gets its own boundary so a crash in one
           leaves the tab bar alive — switching away and back remounts it. */}
+      {activeTab === 'dashboard' && (
+        <ErrorBoundary>
+        <div className="dashboard-layout desktop-only">
+          <Dashboard
+            fallbackMarinaId={trip.startId}
+            onOpenTab={setActiveTab}
+            onPickDestination={handlePickDestination}
+          />
+        </div>
+        </ErrorBoundary>
+      )}
+
       {activeTab === 'planner' && (
         <ErrorBoundary>
         <div className="planner-layout desktop-only">
@@ -261,7 +297,7 @@ export default function App() {
 
         <div
           ref={sheetRef}
-          className={`mobile-sheet sheet-${sheetSnap} ${activeTab === 'chart' || activeTab === 'conditions' || activeTab === 'fishing' ? 'sheet-hidden' : ''}`}
+          className={`mobile-sheet sheet-${sheetSnap} ${activeTab === 'chart' || activeTab === 'conditions' || activeTab === 'fishing' || activeTab === 'dashboard' ? 'sheet-hidden' : ''}`}
           style={sheetDrag !== null ? { height: `${sheetDrag}px`, transition: 'none' } : undefined}
         >
           <div
@@ -294,6 +330,19 @@ export default function App() {
           </div>
         </div>
 
+        {/* The dashboard is its own screen, not a companion to the chart
+            underneath it, so it takes the full screen like Conditions and
+            Fishing rather than sitting in the bottom sheet. */}
+        {activeTab === 'dashboard' && isMobileLayout && (
+          <div className="mobile-conditions">
+            <Dashboard
+              fallbackMarinaId={trip.startId}
+              onOpenTab={setActiveTab}
+              onPickDestination={handlePickDestination}
+            />
+          </div>
+        )}
+
         {/* Conditions takes the full screen rather than the bottom sheet — it
             scrolls, and the map behind it isn't relevant to reading tides. */}
         {activeTab === 'conditions' && isMobileLayout && (
@@ -310,6 +359,13 @@ export default function App() {
 
         {/* Mobile bottom tab bar */}
         <nav className="mobile-tab-bar">
+          <button
+            className={`mobile-tab ${activeTab === 'dashboard' ? 'mobile-tab-active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            {HOME_ICON}
+            <span>Home</span>
+          </button>
           <button
             className={`mobile-tab ${activeTab === 'planner' ? 'mobile-tab-active' : ''}`}
             // Tapping Planner is also how a collapsed sheet comes back, so it

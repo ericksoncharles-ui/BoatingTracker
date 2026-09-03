@@ -2457,7 +2457,7 @@ select:focus-visible,
     grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
   }
 
-  /* Four tabs need a little more room for their labels than three did. */
+  /* Five tabs need a little more room for their labels than three did. */
   .mobile-tab {
     font-size: 0.6rem;
     gap: 2px;
@@ -2470,6 +2470,440 @@ select:focus-visible,
 
   .cond-sources {
     text-align: left;
+  }
+}
+
+/* ── Dashboard ───────────────────────────────────────── */
+/* The landing screen — a helm's-eye summary rather than a form, so it reads
+   top to bottom on a phone the same way it does in the desktop scroll pane. */
+
+.dashboard-layout {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background:
+    radial-gradient(80% 60% at 15% 0%, rgba(43, 108, 176, 0.12) 0%, transparent 60%),
+    var(--navy);
+  scrollbar-color: var(--border) var(--navy);
+}
+
+.dashboard {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.dash-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 28px;
+  padding: 40px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-medium) 55%, var(--navy-deep) 100%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+/* A faint chart grid, the same device the sidebar header uses, so the hero
+   reads as "chart" rather than generic marketing hero art. */
+.dash-hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(144, 164, 196, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(144, 164, 196, 0.07) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(135deg, black, transparent 72%);
+  -webkit-mask-image: linear-gradient(135deg, black, transparent 72%);
+  pointer-events: none;
+}
+
+.dash-hero-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+}
+
+.dash-hero-eyebrow {
+  color: var(--gold-light);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.dash-hero-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--white);
+  line-height: 1.08;
+}
+
+.dash-hero-tagline {
+  color: #C8D6E5;
+  font-size: 1rem;
+  line-height: 1.55;
+  max-width: 42ch;
+}
+
+.dash-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 14px 22px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--sea) 0%, #3182CE 100%);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.dash-hero-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px var(--sea-glow);
+}
+
+.dash-hero-cta svg:last-child {
+  transition: transform 0.2s var(--ease);
+}
+
+.dash-hero-cta:hover svg:last-child {
+  transform: translateX(3px);
+}
+
+.dash-glance {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  align-self: center;
+  border-radius: var(--radius-md);
+  background: rgba(16, 25, 46, 0.55);
+  border: 1px solid var(--border);
+}
+
+.dash-glance-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #90A4C4;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.dash-glance-icon {
+  display: flex;
+  color: var(--gold-light);
+}
+
+.dash-glance-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.dash-glance-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(144, 164, 196, 0.14);
+}
+
+.dash-glance-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #90A4C4;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dash-glance-value {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--white);
+}
+
+/* Same comfort-band coloring the conditions wind outlook uses, so a calm day
+   reads calm and a small-craft-advisory day reads red in both places. */
+.dash-band-calm { color: var(--green); }
+.dash-band-moderate { color: var(--gold-light); }
+.dash-band-brisk { color: #ED8936; }
+.dash-band-rough { color: #FC8181; }
+
+.dash-glance-sub {
+  font-size: 0.7rem;
+  color: #5a6e8f;
+  min-height: 1em;
+}
+
+.dash-glance-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: var(--gold-light);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dash-glance-link:hover {
+  color: var(--gold);
+  text-decoration: underline;
+}
+
+.dash-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-alert {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(214, 158, 46, 0.14);
+  border: 1px solid rgba(214, 158, 46, 0.45);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.82rem;
+  color: #F0E0BC;
+}
+
+.dash-alert strong {
+  display: block;
+  color: var(--white);
+  font-size: 0.88rem;
+}
+
+.dash-alert p {
+  margin-top: 3px;
+  line-height: 1.45;
+}
+
+.dash-alert-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--gold-light);
+}
+
+.dash-alert-severe,
+.dash-alert-extreme {
+  background: rgba(197, 48, 48, 0.16);
+  border-color: rgba(197, 48, 48, 0.55);
+  color: #FED7D7;
+}
+
+.dash-alert-severe .dash-alert-icon,
+.dash-alert-extreme .dash-alert-icon {
+  color: #FC8181;
+}
+
+.dash-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 16px;
+}
+
+.dash-section-head h2 {
+  font-size: 1.3rem;
+  color: var(--white);
+}
+
+.dash-section-head p {
+  color: #90A4C4;
+  font-size: 0.85rem;
+}
+
+.dash-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.dash-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, var(--navy-light) 0%, var(--navy-medium) 100%);
+  color: var(--white);
+  cursor: pointer;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.dash-action-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--sea);
+}
+
+.dash-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: rgba(43, 108, 176, 0.22);
+  color: var(--sea-hover);
+}
+
+.dash-action-planner .dash-action-icon { background: rgba(43, 108, 176, 0.22); color: #63B3ED; }
+.dash-action-chart .dash-action-icon { background: rgba(214, 158, 46, 0.2); color: var(--gold-light); }
+.dash-action-conditions .dash-action-icon { background: rgba(56, 161, 105, 0.2); color: #68D391; }
+.dash-action-fishing .dash-action-icon { background: rgba(197, 48, 48, 0.18); color: #FC8181; }
+
+.dash-action-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.dash-action-desc {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #90A4C4;
+}
+
+.dash-destinations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.dash-dest-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(16, 25, 46, 0.4);
+  cursor: pointer;
+  transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.dash-dest-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  background: rgba(214, 158, 46, 0.08);
+}
+
+.dash-dest-region {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gold-light);
+}
+
+.dash-dest-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.dash-dest-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #90A4C4;
+}
+
+.dash-species-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.dash-species-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(214, 158, 46, 0.12);
+  border: 1px solid rgba(214, 158, 46, 0.35);
+  color: #F0E0BC;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: default;
+}
+
+.dash-footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.dash-footer p {
+  color: #5a6e8f;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  max-width: 70ch;
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 18px;
+    gap: 22px;
+  }
+
+  .dash-hero {
+    grid-template-columns: 1fr;
+    padding: 22px;
+    gap: 18px;
+  }
+
+  .dash-hero-title {
+    font-size: 1.9rem;
+  }
+
+  .dash-glance {
+    align-self: stretch;
+  }
+
+  .dash-actions-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dash-destinations {
+    grid-template-columns: 1fr;
   }
 }
 
