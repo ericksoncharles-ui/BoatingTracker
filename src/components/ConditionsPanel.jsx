@@ -140,7 +140,13 @@ function Card({ icon, title, badge, section, children }) {
         {badge}
       </header>
 
-      {showSpinner && <p className="cond-note">Loading…</p>}
+      {showSpinner && (
+        <div className="cond-metrics" aria-label="Loading" role="status">
+          <div className="cond-skeleton" />
+          <div className="cond-skeleton" />
+          <div className="cond-skeleton" />
+        </div>
+      )}
       {status === 'error' && (
         <p className="cond-error">
           {section.error || 'Could not load this data.'}

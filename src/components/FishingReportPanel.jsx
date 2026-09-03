@@ -136,7 +136,13 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
           )}
         </header>
 
-        {loading && !tideData && !currentWeather && <p className="cond-note">Loading…</p>}
+        {loading && !tideData && !currentWeather && (
+          <div className="cond-metrics" aria-label="Loading" role="status">
+            <div className="cond-skeleton" />
+            <div className="cond-skeleton" />
+            <div className="cond-skeleton" />
+          </div>
+        )}
 
         {!loading && !tideData && !currentWeather && (
           <p className="cond-error">
