@@ -507,8 +507,14 @@ select:focus-visible,
   gap: 10px;
 }
 
+/* In the 400px sidebar "Speed (kts)" and "Burn (GPH)" wrap to two lines and
+   "Draft (ft)" doesn't, which left the draft field sitting higher than the
+   rest. Each label is a column with its field pinned to the bottom. */
 .input-row label {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .button-row {
@@ -978,7 +984,8 @@ select:focus-visible,
 .sidebar-footer {
   padding: 12px 24px;
   font-size: 0.7rem;
-  color: #3d5070;
+  /* Muted, but readable: the old #3d5070 was under 2:1 on the navy. */
+  color: #8FA6C4;
   text-align: center;
   border-top: 1px solid var(--border);
   letter-spacing: 0.05em;
@@ -1494,6 +1501,23 @@ select:focus-visible,
     margin-top: 8px !important;
   }
 
+  /* Leaflet's touch zoom buttons are 30px: small for a thumb on a moving
+     boat, beside a 48px locate button. */
+  .leaflet-touch .leaflet-bar a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 22px;
+  }
+
+  /* iOS zooms the whole page into any field under 16px when it takes focus.
+     With pinch zoom back on, that fires on every tap into the planner. */
+  .sidebar-form input,
+  .sidebar-form select,
+  .cond-place-picker select {
+    font-size: 16px;
+  }
+
   /* ── Safe Areas ─────────────────────────────────────── */
 
   .mobile-map .leaflet-bottom {
@@ -1579,7 +1603,7 @@ select:focus-visible,
   gap: 12px;
 }
 
-.cond-header h2 {
+.cond-header h1 {
   color: var(--white);
   font-family: var(--font-display);
   font-size: 1.3rem;
@@ -1719,7 +1743,7 @@ select:focus-visible,
   margin-bottom: 14px;
 }
 
-.cond-card-head h3 {
+.cond-card-head h2 {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1850,7 +1874,8 @@ select:focus-visible,
 
 .cond-provenance {
   margin-top: 10px;
-  color: #7D93B2;
+  /* #7D93B2 came to about 4.2:1 on the cards, short of 4.5 at this size. */
+  color: #8FA6C4;
   font-style: italic;
 }
 
@@ -1881,6 +1906,8 @@ select:focus-visible,
 
 .cond-subhead {
   margin: 14px 0 7px;
+  /* An h3 under the card's h2, but set like the small labels it always was. */
+  font-family: var(--font-body);
   font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -1979,8 +2006,13 @@ select:focus-visible,
   border-bottom: 1px solid rgba(45, 62, 94, 0.5);
 }
 
-.cond-tide-list li.cond-past {
-  opacity: 0.42;
+/* A tide already gone is muted by colour rather than by fading the row: at
+   0.42 opacity its times fell under 2:1, unreadable in sun at the helm. */
+.cond-tide-list li.cond-past,
+.cond-tide-list li.cond-past .cond-tide-kind,
+.cond-tide-list li.cond-past .cond-tide-height {
+  color: #8FA6C4;
+  font-weight: 500;
 }
 
 /* Day heading inside the list — the predictions cover today and tomorrow. */
@@ -1991,7 +2023,7 @@ select:focus-visible,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--sea);
+  color: #90A4C4;
   border-bottom: none;
   opacity: 1;
 }
@@ -2008,7 +2040,7 @@ select:focus-visible,
 }
 
 .cond-tide-low {
-  color: #7D93B2;
+  color: #A9BCD6;
 }
 
 .cond-tide-height {
@@ -2446,7 +2478,7 @@ select:focus-visible,
     gap: 12px;
   }
 
-  .cond-header h2 {
+  .cond-header h1 {
     font-size: 1.05rem;
   }
 

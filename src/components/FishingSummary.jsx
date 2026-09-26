@@ -110,10 +110,10 @@ export default function FishingSummary() {
   return (
     <section className="cond-card fishing-summary-card">
       <header className="cond-card-head">
-        <h3>
+        <h2>
           <span className="cond-card-icon">{ICON}</span>
           What the Reports Say
-        </h3>
+        </h2>
         <div className="fishing-summary-actions">
           {status === 'ok' && <span className="ai-badge">AI</span>}
           <button

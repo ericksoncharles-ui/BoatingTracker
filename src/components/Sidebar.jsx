@@ -43,7 +43,7 @@ export default function Sidebar({
   )
 
   return (
-    <aside className="sidebar">
+    <section className="sidebar" aria-label="Trip planner">
       <div className="sidebar-header">
         <div className="header-icon">
           <svg viewBox="0 0 44 44" width="42" height="42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -292,6 +292,6 @@ export default function Sidebar({
       <div className="sidebar-footer">
         SoundCaptain • Built by Charles Erickson
       </div>
-    </aside>
+    </section>
   )
 }

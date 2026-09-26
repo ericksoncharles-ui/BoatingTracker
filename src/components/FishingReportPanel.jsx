@@ -124,7 +124,7 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
       <div className="cond-header">
         <div>
           <p className="brand-mark">SoundCaptain</p>
-          <h2>Fishing Reports</h2>
+          <h1>Fishing Reports</h1>
           <p className="cond-location">
             Live water conditions near {marina.name.split(',')[0]}, plus what's running and where to find
             reports for the Sound.
@@ -136,10 +136,10 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
 
       <section className="cond-card">
         <header className="cond-card-head">
-          <h3>
+          <h2>
             <span className="cond-card-icon">{ICONS.fish}</span>
             Bite Conditions
-          </h3>
+          </h2>
           {biteWindow && (
             <span className={`cond-badge ${biteWindow.prime ? 'cond-badge-estimated' : ''}`}>
               {biteWindow.prime ? 'Prime window' : 'Between changes'}
@@ -201,10 +201,10 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
 
       <section className="cond-card">
         <header className="cond-card-head">
-          <h3>
+          <h2>
             <span className="cond-card-icon">{ICONS.fish}</span>
             Running Now — {MONTH_NAMES[monthIdx]}
-          </h3>
+          </h2>
         </header>
 
         {runningNow.length === 0 ? (
@@ -227,10 +227,10 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
 
       <section className="cond-card fishing-links-card">
         <header className="cond-card-head">
-          <h3>
+          <h2>
             <span className="cond-card-icon">{ICONS.link}</span>
             Reports, Shops &amp; Regulations
-          </h3>
+          </h2>
         </header>
         <p className="cond-note">
           Species, bait, and hot spots change week to week — check these before you head out.

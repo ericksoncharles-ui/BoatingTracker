@@ -148,10 +148,10 @@ function Card({ icon, title, badge, section, children }) {
   return (
     <section className="cond-card">
       <header className="cond-card-head">
-        <h3>
+        <h2>
           <span className="cond-card-icon">{icon}</span>
           {title}
-        </h3>
+        </h2>
         {badge}
       </header>
 
@@ -279,7 +279,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
       <div className="cond-header">
         <div>
           <p className="brand-mark">SoundCaptain</p>
-          <h2>On-Water Conditions</h2>
+          <h1>On-Water Conditions</h1>
           <p className="cond-location">
             <span className="cond-location-icon">{ICONS.pin}</span>
             {waitingForGeo ? 'Finding your location…' : locationNote}
@@ -486,8 +486,10 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
             {forecast.data.hourly?.length > 0 && (
               <>
-                <h4 className="cond-subhead">Next 24 hours</h4>
-                <ul className="cond-hourly">
+                <h3 className="cond-subhead">Next 24 hours</h3>
+                {/* It scrolls sideways, so it takes focus: otherwise the hours
+                    past the edge are out of reach without a pointer. */}
+                <ul className="cond-hourly" tabIndex={0} aria-label="Hourly wind, next 24 hours">
                   {forecast.data.hourly.map((hour) => (
                     <li key={hour.at.getTime()} className={`cond-band-${windBand(hour.windKt)}`}>
                       <span className="cond-hour">
@@ -506,7 +508,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
             {dailyOutlook.length > 0 && (
               <>
-                <h4 className="cond-subhead">{dailyOutlook.length}-day wind outlook</h4>
+                <h3 className="cond-subhead">{dailyOutlook.length}-day wind outlook</h3>
                 <ul className="cond-daily">
                   {dailyOutlook.map((day) => (
                     <li key={day.at.getTime()}>
@@ -556,10 +558,10 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
       <section className="cond-card">
         <header className="cond-card-head">
-          <h3>
+          <h2>
             <span className="cond-card-icon">{ICONS.wave}</span>
             UConn LISICOS
-          </h3>
+          </h2>
         </header>
         <p className="cond-note">
           The Long Island Sound Integrated Coastal Observing System runs a handful of buoys
