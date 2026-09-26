@@ -6,17 +6,20 @@ Guidance for Claude Code when working in this repository.
 
 A single-page **southern New England boating trip planner**, home waters Long
 Island Sound. The user picks a start and destination, enters boat specs (tank
-size, cruising speed, fuel burn, draft), and gets back distance, travel time,
-fuel usage, no-wake-zone delays, draft/shoal warnings, and nearby points of
-interest — plotted over a NOAA nautical chart.
+size, cruising speed, fuel burn, draft), and gets back a route kept to water
+deep enough for that draft, with distance, travel time, fuel usage,
+no-wake-zone delays, harbor draft warnings, and nearby points of interest,
+plotted over a NOAA nautical chart.
 
 Destinations run west to east through six regions: Long Island Sound, Peconic &
 Gardiners Bay, Block Island & Rhode Island Sound, Narragansett Bay, Buzzards Bay,
 and Vineyard & Nantucket Sound. The Sound is still the centre of gravity — the
 default view, the fishing links and the species calendar are all Sound-specific.
 
-There is no database. All navigation data is hardcoded in `src/data.js`, and
-every navigation calculation happens client-side. The only server (`server/`) is
+There is no database. Places, zones and points of interest are hardcoded in
+`src/data.js`, the water itself is a depth grid built from NOAA's surveys
+(`public/depth-grid.bin`), and every navigation calculation happens
+client-side. The only server (`server/`) is
 a small Express process that holds the Anthropic key and reaches the third-party
 pages the browser can't fetch itself.
 
@@ -33,20 +36,28 @@ npm run preview  # serve the build
 
 npm run tides:probe      # which NOAA station each location resolves to
 npm run fishing:probe    # what each fishing source actually yields
-npm run route:probe      # graph health, keep-out clearances, and sample routes
-npm run coastline:build  # regenerate src/coastlineData.js from GSHHG
+npm run route:probe      # depth grid, place positions, closed waters, sample routes
+npm run depth:build      # rebuild public/depth-grid.bin from NOAA's surveys (Python)
 ```
 
 `route:probe` takes a pair (`npm run route:probe -- newport cuttyhunk`) to print
-one route leg by leg, or `-- --all` for every cross-region pair. `-- --land`
-plans every ordered pair of places (about 9,500, a couple of minutes) and fails
-any whose middle legs cross the shoreline or a shoal too shallow for the probe's
-draft, then names the slowest route to plan. The draft is 3 ft, at which 14 of
-the 25 shoals are too shallow to cross; add `--draft 6` for a keel boat, which
-brings in 22. Run both before committing a change to `data.js` or the router.
-The `harbor leg` warnings it prints are the dock ends of routes up inner harbors
-and rivers the 100 m shoreline doesn't resolve (Norwalk, Mystic, Point Judith
-Pond, Edgartown); they are expected.
+one route leg by leg, or `-- --all` for every pair of places (about 4,750, five
+minutes on four threads). Every route is walked again cell by cell against the
+router's own rules: nothing through closed water, water too shallow for the
+draft only near an end, dry cells only in the last few hundred yards. Any breach
+fails the run. It warns about a place whose position is on a dry cell and a
+route that took over a second to plan, prints planning-time percentiles, and
+lists routes over 2.5 times the straight line to look at on the chart. The
+current ones are all real: from one side of Block Island or Shelter Island to
+the other, round Lloyd Neck, West Chop or Shippan Point, and short hops off
+Westport, Cockenoe and Orient Point across flats too thin to cut (at 6 ft,
+Norwalk to Westport goes outside the Norwalk Islands too). The draft is 3 ft;
+add `--draft 6` for a keel boat. Run both before committing a change to
+`data.js`, the router or the grid.
+
+`depth:build` needs Python 3.9+ with rasterio and numpy (`pip install rasterio
+numpy`), downloads about 1.3 GB of survey tiles into a cache and takes a couple
+of minutes. The built file is committed, so nothing else needs Python.
 
 There are **no tests and no linter configured**. Verify changes by running
 `npm run dev` and exercising the UI. If you add tests, wire them into
@@ -65,11 +76,11 @@ index.html            PWA meta tags, manifest link
 src/main.jsx          React root
 src/App.jsx           Tab state + desktop/mobile layouts + bottom-sheet drag
 src/App.css           All styling (~2500 lines), CSS vars in :root
-src/data.js           Places, navigation spine + branches, shoals, headlands, no-wake zones, POIs
-src/utils.js          Pure navigation/fuel math — no React
-src/coastline.js      Shoreline queries (isLand, crossesLand, shore distance), no React
-src/coastlineData.js  Generated GSHHG land polygons (LGPL-3.0); never edit by hand
-src/hooks/useTripCalculator.js   Owns all form state, orchestrates utils.js
+src/data.js           Places, closed waters, shoal circles (map only), no-wake zones, POIs
+src/utils.js          Pure navigation/fuel math, no React
+src/depthGrid.js      Loads, decodes and walks the depth grid, no React
+src/router.js         Shortest route on the depth grid for a given depth, no React
+src/hooks/useTripCalculator.js   Owns all form state, plans the route, orchestrates utils.js
 src/hooks/useConditions.js       Fetches every live conditions source for one position
 src/services/noaaTides.js        Tide predictions
 src/services/forecast.js         Wind/weather forecast + the wind-and-tide wave estimate
@@ -82,17 +93,20 @@ src/components/FishingSummary.jsx  Aggregate summary of the linked fishing repor
 server/index.js       Express: /api/briefing, /api/fishing-summary, serves dist/
 server/fishingSummary.js  Fetches + summarizes the fishing report sources
 server/htmlText.js        HTML -> text pass for the fishing-summary page reader
-scripts/build-coastline.mjs  Fetches GSHHG, clips and thins it into coastlineData.js
+scripts/build-depth.py    Downloads NOAA's navigation surfaces, builds public/depth-grid.bin
 scripts/*-probe.mjs       The probes above
-public/sw.js              Service worker: offline app shell
+public/depth-grid.bin     Generated depth grid (NOAA, public domain); never edit by hand
+public/sw.js              Service worker: offline app shell and depth grid
 ```
 
 **Where to make a change:**
 
-- New marina / shoal / no-wake zone / POI → `src/data.js` only. A place in water
-  the channel graph doesn't reach needs a branch there too — then
-  `npm run route:probe` to see what the router does with it, and `-- --land`
-  (at both drafts) to see what it does to every other route.
+- New marina / shoal circle / no-wake zone / POI → `src/data.js` only. Put a
+  place's position on the water at its docks or anchorage, then
+  `npm run route:probe -- <id> <another id>` to see a route to it, and
+  `-- --all` (at both drafts) to see that nothing else broke.
+- How a route is found → `src/router.js`. What the grid holds →
+  `scripts/build-depth.py`, then `npm run depth:build`.
 - Change how a number is computed → `src/utils.js` (keep functions pure).
 - New input or result field → `useTripCalculator.js` + `Sidebar.jsx`.
 - Map layers, markers, GPS behavior → `TripMap.jsx`.
@@ -106,74 +120,81 @@ Getting these wrong produces plausible-looking but wrong navigation output.
 - **Units are nautical.** Distances in nautical miles, speed in knots, depth in
   feet at MLW, fuel in gallons and GPH. `calcDistanceNM` computes kilometers via
   Haversine and divides by 1.852 — don't "simplify" that away.
-- **Routes are not straight lines.** `buildRouteWaypoints` walks a **channel
-  graph**: `navigationSpine` (the west-to-east trunk of mid-water waypoints, now
-  running from Throgs Neck to the Nantucket jetties) plus `navigationBranches`,
-  which hang off a waypoint (`from`) and may rejoin another (`to`). Shortest path
-  is Dijkstra over that graph; then a greedy pass shortcuts any chord that stays
-  inside a leg's corridor **and** clear of land. A single chain was enough for the
-  Sound; it cannot express Narragansett Bay splitting around Conanicut Island, or
-  Buzzards Bay reachable from Vineyard Sound only through a hole in the Elizabeth
-  Islands. Branches with a `to` are what make Quicks Hole and Woods Hole
-  shortcuts rather than cul-de-sacs. Branches are joined up only after every
-  waypoint exists, so a `to` may name a branch declared further down.
-- **Corridor width is per-waypoint, not global.** `corridorNM` on a waypoint says
-  how far off its legs is still open water a route may cut across; absent means
-  6 NM, the open Sound. Vineyard Sound runs 0.8-1.2 because the Elizabeth Islands
-  sit a mile and a half off the channel, Plum Gut and Quicks Hole run 0.4-0.5.
-  Widening one of these is how routes start cutting corners across islands.
-- **A direct approach-to-approach line** wins when it beats the graph path and is
-  either under `SHORT_HOP_NM` (10 NM) or inside a corridor — but never if it
-  crosses land. The short-hop exemption skips the *graph*, never the land check:
-  Orient Point is six miles from Greenport with the North Fork in between. When
-  land is all that blocks a line under `DETOUR_MAX_NM` (15 NM), `findWaterPath`
-  looks for the way through itself, A* on a local grid over the shoreline kept
-  0.1 NM off the beach and pulled tight, and takes it when it beats the graph.
-  That is what gets Norwalk to Westport through the islands rather than out to
-  mid-Sound and back.
-- **The shoreline in `coastline.js` is the land model.** GSHHG at full
-  resolution, good to about 100 m, clipped and thinned by `coastline:build`.
-  Every chord the router considers is tested with `crossesLand`: exact
-  segment-against-edge intersection, since the land a shortcut finds is often a
-  barrier beach narrower than any sampling step, with 0.1 NM of grace at each end
-  because an approach can sit inside the source's error of a breakwater. Rocks
-  and islets below that resolution are the shoal list's job. The shoreline has no
-  rivers, so a branch up one is marked `river: true` and route:probe leaves its
-  legs out of the land check (the Connecticut up to Essex).
-- **`headlands` is only for an offing the shoreline can't give**: Point Judith,
-  Sakonnet Point and Nashawena, each with a curated `bypass` point. `radiusNM` is
-  a detection circle; `applyLandAvoidance` adds 0.3 NM on top. Circles that only
-  restated the shoreline (Eatons Neck, Lloyd Neck, Orient Point, Shelter Island,
-  Conanicut, Cuttyhunk, Pasque, Naushon) were removed, because their bypasses
-  dragged routes that were already on the water into zigzags, and some sat
-  ashore. Don't add one back to stop a route crossing land; that is the
-  shoreline's job, and route:probe will say where it fails.
-- **Marinas have an `approach` waypoint** — an open-water point outside the
-  harbor entrance. Routing runs between approach points; the marina coordinates
-  are only the first and last legs. Any new marina needs a sane `approach`,
-  a `region`, and `approachDepthFt` (controlling depth at MLW) *if* a published
-  controlling depth exists — the draft check is skipped when it is absent, which
-  is the honest outcome for an open roadstead. Put the approach outside any
-  headland or shoal circle unless the place *is* the hazard (a lighthouse), and
-  on the water: route:probe fails an approach more than the shoreline's error
-  inland.
-- **Two passages are deliberately not modelled**: the Sakonnet River and the Cape
-  Cod Canal. Bristol to New Bedford and Marion to Hyannis therefore route the long
-  way round, out of the bay and back up. That is the honest answer for a planner
-  with no bridge clearances or canal traffic rules in it — don't "fix" it with a
-  branch unless you add those.
-- **Shoal avoidance is draft-dependent.** `applyShoalAvoidance` only detours
-  around hazards where `minDepthFt < draft + KEEL_CLEARANCE_FT` (2 ft), and it
-  deliberately leaves the first and last legs alone since those are curated
-  harbor approaches. Each hazard's keep-out zone is its radius plus the buffer,
-  drawn in just enough to leave both approach waypoints outside it. A leg is
-  judged by how close it passes beyond its own ends (`ENDPOINT_SLACK_NM`, 0.05
-  NM), never by a share of its length: 2% of a seventy-mile leg ran over Greens
-  Ledge. When a one-point detour would go aground, or the router has put a
-  waypoint inside a zone, `aroundHazard` replaces the stretch of route 3 to 6 NM
-  either side with a water path clear of the land and of every zone. When there
-  is no way round the hazard comes back in `unavoided` and the sidebar names it;
-  never let the detour fall back to a point on land, or drop the warning.
+- **Routes are found on the survey, not drawn.** `planRoute` (`router.js`) finds
+  the shortest way through water charted at least as deep as the boat needs, on
+  the depth grid (`depthGrid.js`, `public/depth-grid.bin`): NOAA's National
+  Bathymetric Source navigation surfaces, the compiled surveys the ENCs are
+  drawn from, on chart datum (MLLW), pooled into cells of about 18.5 m that each
+  hold the *shallowest* depth surveyed in them, so a rock is never averaged into
+  the water beside it. There is no channel graph, no curated waypoint and no
+  land polygon any more. The hand-drawn graph put Marion's approach on the neck
+  beside Sippican Harbor, and every point like it was a route over land. Don't
+  bring back waypoints to steer a route: if a route is wrong, the grid or a
+  place's position is, and route:probe will say which.
+- **Depth is held to draft plus `KEEL_CLEARANCE_FT` (2 ft), rounded up to a
+  chart step.** A cell stores how many of the header's steps it reaches (1 3 4 5
+  6 7 8 10 12 15 20 25 ft), and `requiredStep` takes the first step at least as
+  deep as asked: a boat needing 9 ft is held to 10, never allowed 8. 0 is dry at
+  low water, land or unsurveyed, and the router treats them alike. The grid
+  can't tell anything past 25 ft, so `BOAT_LIMITS.draft` has to stay at or under
+  23 ft.
+- **Water is priced by the mile** (the `_COST` constants in `router.js`): deep
+  enough 1; too shallow 26, plus 25 for every foot short, so a foot short is 51;
+  dry 500; closed not at all. Shallow water is allowed only within 3 NM of
+  either end and dry cells within 0.25 NM (`REACH`). That is for harbors: a
+  marina is often shallower than the boat wants, which is the harbor draft
+  warning's and the tide's business, and a dock position can sit on the quay.
+  The grading is what keeps a route up the channel rather than across the flats
+  beside it; at one price for all shallow water the two were equal. Out in the
+  Sound a shoal is never "worth it"; it is not water the route can use. An end
+  with no way out at those allowances climbs `REACH` on its own:
+  dry to 1.2 NM (Coecles Harbor's dredged cut is narrower than a cell, so it
+  reads dry all the way across), then shallow to 6 NM. An 8 NM rung opened the
+  North Fork's marsh creeks to routes into Greenport; don't widen the ladder
+  for one harbor.
+- **A course can't slip diagonally between two worse cells** (`squeeze` in
+  `walk`, the corner rule in `stepCost`): that is how a jetty drawn corner to
+  corner would otherwise let a route through.
+- **The search has to stay fast; it runs on the main thread.** Lazy Theta*
+  (A* whose steps run in any direction, so open water is one straight line)
+  over the grid's leaves, leaning 10% toward the destination (`WEIGHT`).
+  `harborToll` tells it what the shallow way out of each end costs, so a dock on
+  a dry cell doesn't send it combing fifty miles of water first. A rough pass
+  over 150 m blocks, from the destination back, finds which way to go, and the
+  fine search runs in a corridor 2 then 4 super-blocks (1.2 km each) either side
+  of it (`CORRIDOR_WIDTHS`) before it searches everywhere. `pullTight` then
+  straightens the path wherever a line costs no more. `route:probe -- --all`
+  puts the median route at about 0.1 s and the slowest under 1 s in Node; a
+  change that moves those needs a reason.
+- **Places sit on the water, at their docks or anchorage.** `lat`/`lng` is where
+  a route starts or ends. A position on a dry cell sends the router across it
+  to the nearest water, which can be the wrong water (Cuttyhunk's was on the
+  island's south shore), so route:probe warns about one. `approach` no longer
+  steers anything: it is where a route to a landmark ends (you stand off a
+  lighthouse, not land on it) and the water point the marine alerts ask about.
+  Any new place needs a `region`, and `approachDepthFt` (controlling depth at
+  MLW) *if* a published figure exists: the draft check is skipped when it is
+  absent, which is the honest outcome for an open roadstead.
+- **Two passages are deliberately closed**: the Sakonnet River at the Tiverton
+  bridges and the Cape Cod Canal, boxes in `closedWaters` the router won't
+  enter whatever the depth. Bristol to New Bedford and Marion to Hyannis
+  therefore go the long way round, out of the bay and back up. That is the
+  honest answer for a planner with no bridge clearances or canal traffic rules
+  in it; don't open either unless you add those. route:probe fails a box that
+  sits on no water, since it would close nothing.
+- **The shallow ends of a route are reported, never hidden.** `describe` returns
+  every stretch in water shallower than the route was held to, or over dry
+  cells, with its least depth; the sidebar sums them for each end and the map
+  draws them orange and red. That is where the grid's limits show (a cut
+  narrower than a cell, a dock drawn on the quay, a creek the survey stops
+  short of), so don't drop it. `shoalAreas` is the map's Shoals & Hazards layer
+  and nothing else: the router never reads it, since the grid has every one of
+  those shoals and the thousands nobody named.
+- **The grid is a survey, and surveys age.** Sand shoals move, Nantucket
+  Sound's most of all. `depth:build` takes the newest NBS tile scheme, and the
+  grid's header records which scheme and when it was built (route:probe prints
+  both). Rebuild it now and then, and never present a route as a substitute for
+  the chart.
 - **The harbor draft warning uses the same 2 ft.** Under 2 ft to spare at the
   approach is a caution; under the draft itself says wait for the tide. Boat
   inputs reach the arithmetic only through `parseBoatInputs` and `BOAT_LIMITS`
@@ -227,8 +248,8 @@ Getting these wrong produces plausible-looking but wrong navigation output.
   `TripMap.jsx`; bundlers break them otherwise.
 - Map controls stop pointer/click propagation so map gestures don't swallow
   button presses.
-- The plotted route carries `COASTLINE_ATTRIBUTION`, since GSHHG (LGPL-3.0) is
-  what it was drawn against.
+- The plotted route carries `DEPTH_ATTRIBUTION` (NOAA National Bathymetric
+  Source), since those depths are what it was planned on.
 
 ## AI briefing
 
@@ -401,8 +422,14 @@ at install it reads them out of the cached `index.html` rather than a list;
 without that the first visit, whose files load before the worker is in control,
 left nothing to run offline. `/assets/` is served cache-first (a hashed file
 never changes), everything else network-first, `/api/` never cached. Caching a
-new page prunes `/assets/` files it no longer names. The shoreline is its own
-chunk (`manualChunks` in `vite.config.js`) so it keeps its name across deploys.
+new page prunes `/assets/` files it no longer names.
+
+The depth grid (`/depth-grid.bin`, a megabyte of gzip) is in the shell list,
+since a planner that opens with no signal but can't plan is no use at the helm.
+The page fetches it when a destination is picked, not on load, and
+`loadDepthGrid` unpacks the gzip itself with `DecompressionStream`, unless a
+host has already sent it with `Content-Encoding` and the browser did. It is
+named `.bin`, not `.gz`, so hosts are less tempted to.
 
 ## Conventions
 
@@ -414,6 +441,7 @@ chunk (`manualChunks` in `vite.config.js`) so it keeps its name across deploys.
   assigned during render still holds the `loading` pass at that point — which is
   how the conditions cache silently stored nothing for a while.
 - Two-space indent, no semicolons, single quotes — match surrounding code.
-- Comments in this codebase explain *nautical reasoning* (why a corridor is 6 NM,
-  why iOS needs a warm-up geolocation call), not what the code does. Follow that.
+- Comments in this codebase explain *nautical reasoning* (why dry cells are
+  allowed a quarter mile from a dock, why iOS needs a warm-up geolocation
+  call), not what the code does. Follow that.
 - `.env` is gitignored; never commit an API key.

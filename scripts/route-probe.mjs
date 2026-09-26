@@ -1,41 +1,89 @@
 #!/usr/bin/env node
 // What the router actually does, without opening the app.
 //
-// The channel graph is hand-placed geometry, and the failure mode is a route
-// that looks plausible and runs over an island. This prints the things that are
-// checkable without a chart:
+// The router plans on the survey's depths (src/depthGrid.js, src/router.js),
+// so the failure modes worth watching are a place whose position isn't where
+// its water is, a route that can't be found, one that is slow to find, and
+// the router breaking its own rules. This prints:
 //
-//   1. graph health: waypoints the router cannot reach, usually a typo in a
-//      branch's `from` or `to`
-//   2. keep-out collisions: a headland circle or shoal circle sitting on a
-//      channel leg or an approach waypoint, which makes every transit past it
-//      detour for nothing
-//   3. coastline: a channel waypoint, approach, or headland bypass that sits on
-//      land, or a channel leg that runs over it, checked against real shoreline
-//      (src/coastline.js) rather than the circles the router was drawn with
-//   4. routes: distance, the ratio against the straight line, and the legs, so
-//      a dog-leg or an absurd detour shows up as a number, plus any leg that
-//      runs over land or across a shoal too shallow for the draft
+//   1. the depth grid: what it was built from and when
+//   2. places: any harbor or anchorage whose position is on a cell the survey
+//      has as dry (the router then crosses it to the nearest water, which may
+//      be the wrong water), and any approach that is
+//   3. closed waters: each box has to sit across water, or it closes nothing
+//   4. routes: distance against the straight line, how long it took to plan,
+//      the stretches near either end in water shallower than the boat was held
+//      to, and every leg walked again cell by cell against the rules: nothing
+//      through closed water, shallow water only within reach of an end, dry
+//      cells only within the last few hundred yards of one
 //
 // Usage:
-//   npm run route:probe                     # graph checks + a standing sample
-//   npm run route:probe -- stamford nantucket   # one pair, leg by leg
-//   npm run route:probe -- --all            # every pair between regions (slow)
-//   npm run route:probe -- --land           # every pair of places, land and shoals only (slow)
-//   npm run route:probe -- --land --draft 6 # the same for a deeper boat
+//   npm run route:probe                          # grid, places, a standing sample
+//   npm run route:probe -- stamford nantucket    # one route, leg by leg
+//   npm run route:probe -- --all                 # every pair of places (a few minutes)
+//   npm run route:probe -- --all --draft 6       # the same for a deeper boat
 
-import {
-  marinas, navigationSpine, navigationBranches, shoalAreas, headlands,
-} from '../src/data.js'
-import {
-  buildChannelGraph, buildRouteWaypoints, calcDistanceNM, calcRouteDistanceNM,
-  applyLandAvoidance, applyShoalAvoidance, KEEL_CLEARANCE_FT,
-} from '../src/utils.js'
-import { coastline, SHORE_ERROR_NM } from '../src/coastline.js'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import zlib from 'node:zlib'
+import { fileURLToPath } from 'node:url'
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
+import { marinas, closedWaters } from '../src/data.js'
+import { calcDistanceNM, calcRouteDistanceNM, KEEL_CLEARANCE_FT } from '../src/utils.js'
+import { decodeDepthGrid } from '../src/depthGrid.js'
+import { planRoute, requiredStep, REACH } from '../src/router.js'
 
-// A shoal only turns a route when it is too shallow for the boat, so one draft
-// only exercises some of them: a runabout never meets most of the reefs a keel
-// boat has to be taken round.
+const here = path.dirname(fileURLToPath(import.meta.url))
+const GRID_FILE = path.join(here, '..', 'public', 'depth-grid.bin')
+const loadGrid = () => decodeDepthGrid(new Uint8Array(zlib.gunzipSync(fs.readFileSync(GRID_FILE))))
+
+// A landmark is stood off, not landed on: routes to one end at its approach,
+// as the planner does.
+const endOf = (place) => (place.kind === 'landmark' && place.approach ? place.approach : place)
+const place = (id) => marinas.find((m) => m.id === id)
+
+// Sample runs worth watching: one inside each region, the harbors whose way out
+// is narrow or long, and the runs that cross several regions.
+const SAMPLE_PAIRS = [
+  ['stamford', 'norwalk'],
+  ['norwalk', 'westport'],
+  ['stamford', 'port-jefferson'],
+  ['new-london', 'mystic'],
+  ['mystic', 'watch-hill'],
+  ['stony-brook', 'port-jefferson'],
+  ['orient-point', 'greenport'],
+  ['greenport', 'sag-harbor'],
+  ['stamford', 'coecles-harbor'],
+  ['montauk', 'block-island-new'],
+  ['block-island-new', 'newport'],
+  ['newport', 'east-greenwich'],
+  ['bristol', 'new-bedford'],
+  ['newport', 'cuttyhunk'],
+  ['cuttyhunk', 'menemsha'],
+  ['new-bedford', 'marion'],
+  ['marion', 'hyannis'],
+  ['woods-hole', 'edgartown'],
+  ['hyannis', 'nantucket'],
+  ['stamford', 'nantucket'],
+  ['city-island', 'block-island-new'],
+]
+
+const RATIO_WARN = 2.5
+const SLOW_MS = 1000
+
+// A leg the router ran exactly through the corner of a dry cell comes back
+// from latitude and longitude a hair to one side, and clips the cell by a
+// millionth of a mile. Anything under a metre is that, not a course over it.
+const GRAZE_NM = 0.0005
+
+// The same for a leg run exactly along the edge between two rows of cells, as
+// one between the centres of two blocks is: back from latitude and longitude it
+// sits a hair to one side, and is walked down the row the router didn't judge
+// it by, the whole length of the edge. A waypoint within a few centimetres of a
+// cell edge is put back on it.
+const onEdge = (v) => (Math.abs(v - Math.round(v)) < 1e-6 ? Math.round(v) : v)
+
 const argv = process.argv.slice(2)
 const draftFlag = argv.indexOf('--draft')
 const DRAFT_FT = draftFlag === -1 ? 3 : Number(argv[draftFlag + 1])
@@ -44,349 +92,220 @@ if (!(DRAFT_FT >= 0)) {
   console.error('--draft takes a draft in feet, e.g. --draft 6')
   process.exit(2)
 }
-const activeShoals = shoalAreas.filter((s) => s.minDepthFt < DRAFT_FT + KEEL_CLEARANCE_FT)
+const MIN_DEPTH_FT = DRAFT_FT + KEEL_CLEARANCE_FT
 
-// Sample runs worth watching: one inside each new region, and the long ones that
-// have to cross several of them.
-const SAMPLE_PAIRS = [
-  ['stamford', 'port-jefferson'],
-  ['stamford', 'norwalk'],
-  ['norwalk', 'huntington'],
-  ['new-london', 'greenport'],
-  ['orient-point', 'greenport'],
-  ['greenport', 'sag-harbor'],
-  ['sag-harbor', 'dering-harbor'],
-  ['montauk', 'sag-harbor'],
-  ['montauk', 'block-island-new'],
-  ['watch-hill', 'block-island-new'],
-  ['block-island-new', 'newport'],
-  ['newport', 'wickford'],
-  ['newport', 'bristol'],
-  ['newport', 'east-greenwich'],
-  ['sakonnet', 'bristol'],
-  ['newport', 'cuttyhunk'],
-  ['cuttyhunk', 'new-bedford'],
-  ['cuttyhunk', 'menemsha'],
-  ['cuttyhunk', 'vineyard-haven'],
-  ['new-bedford', 'vineyard-haven'],
-  ['padanaram', 'oak-bluffs'],
-  ['marion', 'woods-hole'],
-  ['woods-hole', 'edgartown'],
-  ['vineyard-haven', 'nantucket'],
-  ['edgartown', 'nantucket'],
-  ['hyannis', 'nantucket'],
-  ['stamford', 'newport'],
-  ['stamford', 'nantucket'],
-  ['mystic', 'nantucket'],
-  ['city-island', 'block-island-new'],
-]
-
-const RATIO_WARN = 1.6
-
-// The dock end of a route runs up an inner harbor the 100 m shoreline doesn't
-// resolve: Point Judith Pond, Lloyd Harbor, the basins behind the jetties. So on
-// those two legs the dock end is let off and only a real stretch over land
-// counts, like the old straight line up the Connecticut River to Essex.
-const HARBOR_GRACE_NM = 0.25
-const HARBOR_RUN_NM = 0.25
-
-const place = (id) => marinas.find((m) => m.id === id)
-const approachOf = (p) => p.approach || { lat: p.lat, lng: p.lng }
-const nm = (n) => `${n.toFixed(1)} NM`
-const nm2 = (n) => `${n.toFixed(2)} NM`
-const at = (p) => `${p.lat.toFixed(3)},${p.lng.toFixed(3)}`
-
-// The shoreline has no rivers, so a river branch (the Connecticut up to Essex)
-// is land to it. Its waypoints, and any approach placed on one, are excused from
-// the coastline checks; route:probe says so rather than passing them silently.
-const riverPoints = navigationBranches
-  .filter((branch) => branch.river)
-  .flatMap((branch) => branch.waypoints)
-const onRiver = (p) => riverPoints.some((w) => calcDistanceNM(p.lat, p.lng, w.lat, w.lng) < 0.25)
-
-function routeFor(start, dest) {
-  const base = buildRouteWaypoints(start, dest, navigationSpine, navigationBranches, headlands, coastline)
-  const { waypoints: landClear, avoided: landAvoided } = applyLandAvoidance(base, headlands)
-  const { waypoints, avoided: shoalsAvoided, unavoided } = applyShoalAvoidance(landClear, shoalAreas, DRAFT_FT, { coast: coastline })
-  return { waypoints, avoided: [...landAvoided, ...shoalsAvoided], unavoided }
-}
-
-// Closest a straight leg comes to a point, in NM, on a flat projection: legs are
-// a few miles long, well inside where that matters.
-function legDistanceNM(p, a, b) {
-  const cosLat = Math.cos((p.lat * Math.PI) / 180)
-  const ax = (a.lng - p.lng) * 60 * cosLat
-  const ay = (a.lat - p.lat) * 60
-  const dx = (b.lng - a.lng) * 60 * cosLat
-  const dy = (b.lat - a.lat) * 60
-  const lenSq = dx * dx + dy * dy
-  const t = lenSq ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / lenSq)) : 0
-  return Math.hypot(ax + t * dx, ay + t * dy)
-}
-
-// Shoal circles are drawn to a few hundred yards, so a leg that only grazes the
-// edge of one is inside that error rather than across the shoal. This is the
-// same slack the router gives a leg's ends (ENDPOINT_SLACK_NM in utils.js): the
-// channel out of the Connecticut River runs down the edge of Long Sand Shoal.
-const SHOAL_GRAZE_NM = 0.05
-
-// Every middle leg that crosses a shoal too shallow for the probe's draft. The
-// harbor legs are curated and a shoal round an approach is section 2's to
-// report (a lighthouse on a reef has its approach there on purpose), so a shoal
-// holding either approach is left out.
-function shoalsOnRoute(waypoints) {
-  const ends = [waypoints[1], waypoints[waypoints.length - 2]].map(([lat, lng]) => ({ lat, lng }))
-  const issues = []
-  for (const shoal of activeShoals) {
-    if (ends.some((p) => calcDistanceNM(p.lat, p.lng, shoal.lat, shoal.lng) < shoal.radiusNM)) continue
-    for (let i = 1; i < waypoints.length - 2; i++) {
-      const a = { lat: waypoints[i][0], lng: waypoints[i][1] }
-      const b = { lat: waypoints[i + 1][0], lng: waypoints[i + 1][1] }
-      const d = legDistanceNM(shoal, a, b)
-      if (d < shoal.radiusNM - SHOAL_GRAZE_NM) issues.push({ leg: i + 1, a, b, shoal, d })
-    }
-  }
-  return issues
-}
-
-const describeShoal = (issue) =>
-  `leg ${issue.leg} ${at(issue.a)} -> ${at(issue.b)} crosses ${issue.shoal.id} ` +
-  `(${issue.shoal.minDepthFt} ft, ${nm2(issue.d)} from its centre, radius ${nm2(issue.shoal.radiusNM)})`
-
-// Every leg of a route that runs over land. The middle legs are the router's
-// own work and any land on them is a failure; the first and last are the
-// curated harbor legs, judged with the dock end let off (see HARBOR_GRACE_NM).
-// Routes share most of their legs, so --land would walk the same one thousands
-// of times without this.
-const landCache = new Map()
-function landOnLeg(a, b, harborLeg) {
-  const key = `${a.lat},${a.lng},${b.lat},${b.lng},${harborLeg}`
-  if (!landCache.has(key)) landCache.set(key, coastline.landAlong(a, b, harborLeg ? { graceNM: HARBOR_GRACE_NM } : {}))
-  return landCache.get(key)
-}
-
-function landOnRoute(waypoints) {
-  const issues = []
-  for (let i = 0; i < waypoints.length - 1; i++) {
-    const a = { lat: waypoints[i][0], lng: waypoints[i][1] }
-    const b = { lat: waypoints[i + 1][0], lng: waypoints[i + 1][1] }
-    const harborLeg = i === 0 || i === waypoints.length - 2
-    if ((onRiver(a) && onRiver(b)) || (harborLeg && (onRiver(a) || onRiver(b)))) continue
-    const found = landOnLeg(a, b, harborLeg)
-    if (!found || (harborLeg && found.longestNM < HARBOR_RUN_NM)) continue
-    issues.push({ leg: i + 1, harborLeg, a, b, ...found })
-  }
-  return issues
-}
-
-const describeLand = (issue) =>
-  `leg ${issue.leg} ${at(issue.a)} -> ${at(issue.b)} runs ${nm2(issue.longestNM)} over land ` +
-  `(${nm2(issue.deepestNM)} inland at ${at(issue.at)})`
-
-// Two severities. A graph that can't be walked is broken and fails the probe; a
-// keep-out circle overlapping something is a warning, because some of them are
-// meant to (a lighthouse on a reef has its approach on the reef).
-let problems = 0
-let warnings = 0
-const fail = (line) => {
-  problems += 1
-  console.log(`  ! ${line}`)
-}
-const warn = (line) => {
-  warnings += 1
-  console.log(`  ? ${line}`)
-}
-
-// ── 1. graph health ────────────────────────────────────────────────────────
-console.log('\nChannel graph')
-const graph = buildChannelGraph(navigationSpine, navigationBranches)
-console.log(`  ${graph.nodes.length} waypoints, ${graph.legs.length} legs`)
-
-const ids = new Set(graph.nodes.map((n) => n.id))
-for (const branch of navigationBranches) {
-  if (!ids.has(branch.from)) fail(`${branch.id}: from "${branch.from}" is not a waypoint`)
-  if (branch.to != null && !ids.has(branch.to)) fail(`${branch.id}: to "${branch.to}" is not a waypoint`)
-}
-
-// Everything has to be reachable from the west end of the Sound.
-const seen = new Set([0])
-const queue = [0]
-while (queue.length > 0) {
-  const u = queue.shift()
-  for (const edge of graph.adj[u]) {
-    if (!seen.has(edge.to)) {
-      seen.add(edge.to)
-      queue.push(edge.to)
-    }
-  }
-}
-for (let i = 0; i < graph.nodes.length; i++) {
-  if (!seen.has(i)) fail(`waypoint ${graph.nodes[i].id} is unreachable from the spine`)
-}
-
-// ── 2. keep-out collisions ─────────────────────────────────────────────────
-// A land or shoal circle that covers a channel waypoint, or an approach
-// waypoint, makes the avoidance passes fire on routes that are already fine.
-console.log('\nKeep-out clearances')
-const LAND_BUFFER_NM = 0.3   // applyLandAvoidance
-const SHOAL_BUFFER_NM = 0.25 // applyShoalAvoidance
-
-const checkCircle = (circle, buffer, label) => {
-  const threshold = circle.radiusNM + buffer
-  for (const node of graph.nodes) {
-    const d = calcDistanceNM(circle.lat, circle.lng, node.lat, node.lng)
-    if (d < threshold) warn(`${label} ${circle.id} covers channel waypoint ${node.id} (${nm(d)} < ${nm(threshold)})`)
-  }
-  for (const p of marinas) {
-    // A lighthouse marks a danger, so its approach sits on that danger on
-    // purpose — and the marina-to-approach leg is exempt from detouring anyway.
-    if (p.kind === 'landmark') continue
-    const a = approachOf(p)
-    const d = calcDistanceNM(circle.lat, circle.lng, a.lat, a.lng)
-    if (d < threshold) warn(`${label} ${circle.id} covers the approach to ${p.id} (${nm(d)} < ${nm(threshold)})`)
-  }
-}
-
-for (const land of headlands) checkCircle(land, LAND_BUFFER_NM, 'headland')
-// Only shoals shallow enough to matter to the probe's draft can force a detour.
-for (const shoal of activeShoals) checkCircle(shoal, SHOAL_BUFFER_NM, 'shoal')
-if (warnings === 0) console.log('  all clear')
-
-// ── 3. coastline ───────────────────────────────────────────────────────────
-// Only land further inside than the shoreline's own 100 m error counts, so a
-// waypoint placed tight under a breakwater is not reported as sitting on it.
-console.log('\nCoastline')
-const problemsBefore = problems
-const inland = (p) => coastline.inlandNM(p.lat, p.lng)
-for (const node of graph.nodes) {
-  if (onRiver(node)) continue
-  const depth = inland(node)
-  if (depth > SHORE_ERROR_NM) fail(`channel waypoint ${node.id} is on land, ${nm2(depth)} inland`)
-}
-for (const leg of graph.legs) {
-  if (onRiver(leg.a) && onRiver(leg.b)) continue
-  const found = coastline.landAlong(leg.a, leg.b)
-  if (found) {
-    fail(`channel leg ${leg.a.id} -> ${leg.b.id} runs ${nm2(found.longestNM)} over land (${nm2(found.deepestNM)} inland at ${at(found.at)})`)
-  }
-}
-for (const p of marinas) {
-  if (p.approach && onRiver(p.approach)) continue
-  const depth = p.approach ? inland(p.approach) : 0
-  if (depth > SHORE_ERROR_NM) fail(`the approach to ${p.id} is on land, ${nm2(depth)} inland`)
-}
-for (const land of headlands) {
-  const depth = land.bypass ? inland(land.bypass) : 0
-  if (depth > SHORE_ERROR_NM) fail(`the bypass for ${land.id} is on land, ${nm2(depth)} inland`)
-}
-if (problems === problemsBefore) console.log('  every waypoint, approach, bypass and channel leg is on the water')
-if (riverPoints.length > 0) console.log(`  (${riverPoints.length} river waypoints not checked: the shoreline has no rivers)`)
-
-// ── 4. routes ──────────────────────────────────────────────────────────────
-function report(startId, destId, verbose) {
+/**
+ * Plan one route and check it. Everything is measured again here from the
+ * grid, cell by cell, rather than read back from what the router reports.
+ */
+function probeRoute(grid, startId, destId) {
   const start = place(startId)
   const dest = place(destId)
-  if (!start || !dest) {
-    fail(`unknown place: ${!start ? startId : destId}`)
-    return
-  }
+  const t0 = performance.now()
+  const route = planRoute(grid, endOf(start), endOf(dest), { minDepthFt: MIN_DEPTH_FT, closed: closedWaters })
+  const ms = performance.now() - t0
+  const direct = calcDistanceNM(start.lat, start.lng, dest.lat, dest.lng)
+  if (!route) return { startId, destId, ms, direct, failed: true, problems: [] }
 
-  const { waypoints, avoided, unavoided } = routeFor(start, dest)
-
-  const routeNM = calcRouteDistanceNM(waypoints)
-  const directNM = calcDistanceNM(start.lat, start.lng, dest.lat, dest.lng)
-  const ratio = directNM > 0 ? routeNM / directNM : 1
-  const flag = ratio > RATIO_WARN ? '  <-- long way round?' : ''
-
-  console.log(
-    `  ${startId} -> ${destId}: ${nm(routeNM)} (direct ${nm(directNM)}, x${ratio.toFixed(2)}), ` +
-    `${waypoints.length} waypoints${flag}`
-  )
-  const notes = avoided.map((a) => a.name)
-  if (notes.length > 0) console.log(`      avoiding: ${notes.join(', ')}`)
-  if (unavoided.length > 0) console.log(`      no way round: ${unavoided.map((s) => s.name).join(', ')}`)
-  for (const issue of landOnRoute(waypoints)) {
-    if (issue.harborLeg) warn(`${startId} -> ${destId}: harbor ${describeLand(issue)}`)
-    else fail(`${startId} -> ${destId}: ${describeLand(issue)}`)
-  }
-  for (const issue of shoalsOnRoute(waypoints)) fail(`${startId} -> ${destId}: ${describeShoal(issue)}`)
-
-  if (verbose) {
-    for (let i = 0; i < waypoints.length - 1; i++) {
-      const [aLat, aLng] = waypoints[i]
-      const [bLat, bLng] = waypoints[i + 1]
-      console.log(
-        `      leg ${String(i + 1).padStart(2)}: ${aLat.toFixed(3)},${aLng.toFixed(3)} -> ` +
-        `${bLat.toFixed(3)},${bLng.toFixed(3)}  ${nm(calcDistanceNM(aLat, aLng, bLat, bLng))}`
-      )
-    }
-  }
-}
-
-if (args.length === 2 && !args[0].startsWith('--')) {
-  console.log('\nRoute')
-  report(args[0], args[1], true)
-} else if (args[0] === '--all') {
-  console.log('\nAll cross-region pairs')
-  const harbors = marinas.filter((m) => !m.kind)
-  for (let i = 0; i < harbors.length; i++) {
-    for (let j = i + 1; j < harbors.length; j++) {
-      if (harbors[i].region === harbors[j].region) continue
-      report(harbors[i].id, harbors[j].id, false)
-    }
-  }
-} else if (args[0] === '--land') {
-  // Every ordered pair, since the router does not treat A->B and B->A alike.
-  // Quiet unless something runs over land or a shoal, and grouped by the
-  // offending leg: one bad waypoint shows up in hundreds of routes.
-  console.log(`\nEvery pair of places, land and ${DRAFT_FT} ft shoal check only`)
-  const groups = new Map()
-  let routes = 0
-  let failing = 0
-  const note = (key, issue, kind, pair) => {
-    if (!groups.has(key)) groups.set(key, { issue, kind, pairs: [] })
-    groups.get(key).pairs.push(pair)
-  }
-  // The planner runs this on a phone at the helm, so the slowest route matters
-  // as much as the failures do.
-  let slowest = { ms: 0, pair: '' }
-  for (const start of marinas) {
-    for (const dest of marinas) {
-      if (start.id === dest.id) continue
-      routes += 1
-      const pair = `${start.id} -> ${dest.id}`
-      const t0 = performance.now()
-      const { waypoints } = routeFor(start, dest)
-      const ms = performance.now() - t0
-      if (ms > slowest.ms) slowest = { ms, pair }
-      const land = landOnRoute(waypoints)
-      const shoals = shoalsOnRoute(waypoints)
-      if (land.some((issue) => !issue.harborLeg) || shoals.length > 0) failing += 1
-      for (const issue of land) {
-        const kind = issue.harborLeg ? 'harbor' : 'land'
-        note(`${kind} ${at(issue.a)} -> ${at(issue.b)}`, issue, kind, pair)
+  const need = requiredStep(grid.stepsFt, MIN_DEPTH_FT)
+  const farthest = REACH.at(-1)
+  const ends = [endOf(start), endOf(dest)].map((p) => grid.cellOf(p.lat, p.lng))
+  const nearestEndNM = (y, x) => Math.min(...ends.map((e) => grid.distanceNM(y, x, e.y, e.x)))
+  const shut = closedWaters.map((box) => {
+    const nw = grid.cellOf(box.north, box.west)
+    const se = grid.cellOf(box.south, box.east)
+    return { ...box, r0: nw.y, c0: nw.x, r1: se.y, c1: se.x }
+  })
+  const problems = []
+  const pts = route.waypoints.map(([lat, lng]) => {
+    const { y, x } = grid.cellOf(lat, lng)
+    return { y: onEdge(y), x: onEdge(x) }
+  })
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const p = pts[i]
+    const q = pts[i + 1]
+    const legNM = grid.distanceNM(p.y, p.x, q.y, q.x)
+    let s = 0
+    grid.walk(p.y, p.x, q.y, q.x, (id, value, lengthNM, squeeze) => {
+      const t = legNM > 0 ? (s + lengthNM / 2) / legNM : 0
+      const y = p.y + (q.y - p.y) * t
+      const x = p.x + (q.x - p.x) * t
+      s += lengthNM
+      const at = grid.latLngOf(y, x)
+      const where = `leg ${i + 1} at ${at.lat.toFixed(4)},${at.lng.toFixed(4)}`
+      for (const box of shut) {
+        if (y > box.r0 && y < box.r1 && x > box.c0 && x < box.c1 && lengthNM > GRAZE_NM) problems.push(`${where} crosses ${box.name}`)
       }
-      for (const issue of shoals) note(`shoal ${issue.shoal.id} ${at(issue.a)} -> ${at(issue.b)}`, issue, 'shoal', pair)
-    }
+      if (squeeze >= 0 && squeeze < 1 && value < need) problems.push(`${where} slips between two dry cells`)
+      if (value >= need || lengthNM <= GRAZE_NM) return
+      const near = nearestEndNM(y, x)
+      if (value >= 1 && near > farthest.shallowNM + 0.1) problems.push(`${where}: ${lengthNM.toFixed(2)} NM under ${MIN_DEPTH_FT} ft, ${near.toFixed(1)} NM from either end`)
+      if (value < 1 && near > farthest.dryNM + 0.1) problems.push(`${where}: ${lengthNM.toFixed(2)} NM over dry cells, ${near.toFixed(1)} NM from either end`)
+    })
   }
-  const sorted = [...groups.values()].sort((x, y) => y.pairs.length - x.pairs.length)
-  for (const { issue, kind, pairs } of sorted) {
-    const what = kind === 'shoal' ? describeShoal(issue) : describeLand(issue)
-    const line = `${kind === 'harbor' ? 'harbor ' : ''}${what.replace(/^leg \d+ /, 'leg ')}, ` +
-      `${pairs.length} route(s), e.g. ${pairs.slice(0, 2).join('; ')}`
-    if (kind === 'harbor') warn(line)
-    else fail(line)
+  const byEnd = (end, kind) => route.stretches
+    .filter((st) => st.end === end && st.kind === kind)
+    .reduce((sum, st) => sum + st.lengthNM, 0)
+  return {
+    startId, destId, ms, direct,
+    distance: calcRouteDistanceNM(route.waypoints),
+    waypoints: route.waypoints,
+    heldToFt: route.heldToFt,
+    ends: ['start', 'dest'].map((end) => ({ shallow: byEnd(end, 'shallow'), dry: byEnd(end, 'dry') })),
+    problems,
   }
-  console.log(`  ${failing} of ${routes} routes cross land or a shoal between their approaches`)
-  console.log(`  slowest route to plan: ${slowest.pair}, ${Math.round(slowest.ms)} ms`)
-} else {
-  console.log('\nSample routes')
-  for (const [a, b] of SAMPLE_PAIRS) report(a, b, false)
 }
 
-console.log(
-  problems === 0
-    ? `\nGraph is sound. ${warnings} clearance warning(s).\n`
-    : `\n${problems} problem(s), ${warnings} clearance warning(s).\n`
-)
-if (problems > 0) process.exitCode = 1
+// --all spreads the pairs over worker threads, each with its own grid.
+if (!isMainThread) {
+  const grid = loadGrid()
+  for (const [a, b] of workerData.pairs) parentPort.postMessage(probeRoute(grid, a, b))
+  parentPort.close()
+} else {
+  main()
+}
+
+function main() {
+  let problems = 0
+  let warnings = 0
+  const fail = (line) => {
+    problems += 1
+    console.log(`  ! ${line}`)
+  }
+  const warn = (line) => {
+    warnings += 1
+    console.log(`  ? ${line}`)
+  }
+
+  const grid = loadGrid()
+  const { header } = grid
+
+  // ── 1. the grid ──────────────────────────────────────────────────────────
+  console.log('\nDepth grid')
+  console.log(`  ${header.source}`)
+  console.log(`  ${header.tiles} survey tiles (${header.scheme}), built ${header.built}`)
+  console.log(`  ${header.rows} x ${header.cols} cells of ${(header.dLat * 60 * 1852).toFixed(0)} m, ` +
+    `${(fs.statSync(GRID_FILE).size / 1024).toFixed(0)} KB, steps ${header.stepsFt.join(' ')} ft`)
+
+  // ── 2. places ────────────────────────────────────────────────────────────
+  // A harbor on a dry cell is let off by the router's dry allowance, but that
+  // takes it to the nearest water, which is the wrong water often enough to
+  // check: Cuttyhunk's position was on the island's south shore, not the pond.
+  console.log('\nPlaces')
+  const before = problems + warnings
+  for (const p of marinas) {
+    if (p.kind !== 'landmark' && grid.valueAt(p.lat, p.lng) < 1) {
+      warn(`${p.id} is on a cell the survey has as dry (${p.lat}, ${p.lng})`)
+    }
+    if (p.approach && grid.valueAt(p.approach.lat, p.approach.lng) < 1) {
+      ;(p.kind === 'landmark' ? fail : warn)(`the approach to ${p.id} is on a cell the survey has as dry`)
+    }
+  }
+  if (problems + warnings === before) console.log('  every position and approach is on the water')
+
+  // ── 3. closed waters ─────────────────────────────────────────────────────
+  console.log('\nClosed waters')
+  for (const box of closedWaters) {
+    const nw = grid.cellOf(box.north, box.west)
+    const se = grid.cellOf(box.south, box.east)
+    let wet = 0
+    for (let r = Math.floor(nw.y); r < Math.ceil(se.y); r++) {
+      for (let c = Math.floor(nw.x); c < Math.ceil(se.x); c++) if (grid.valueAtCell(r, c) >= 1) wet += 1
+    }
+    if (wet === 0) fail(`${box.id} sits on no water, so it closes nothing`)
+    else console.log(`  ${box.id}: ${wet} water cells closed`)
+  }
+
+  // ── 4. routes ────────────────────────────────────────────────────────────
+  const describe = (r) => {
+    const flag = r.distance / r.direct > RATIO_WARN ? '  <-- long way round?' : ''
+    const ends = r.ends.map((e, i) => {
+      const bits = []
+      if (e.shallow >= 0.05) bits.push(`${e.shallow.toFixed(2)} NM shallow`)
+      if (e.dry >= 0.05) bits.push(`${e.dry.toFixed(2)} NM dry`)
+      return bits.length ? `${i === 0 ? 'leaving' : 'arriving'}: ${bits.join(', ')}` : null
+    }).filter(Boolean)
+    return `${r.startId} -> ${r.destId}: ${r.distance.toFixed(1)} NM (direct ${r.direct.toFixed(1)}, ` +
+      `x${(r.distance / r.direct).toFixed(2)}), ${r.waypoints.length} waypoints, ${Math.round(r.ms)} ms${flag}` +
+      (ends.length ? `\n      ${ends.join('; ')}` : '')
+  }
+  const judge = (r) => {
+    if (r.failed) fail(`${r.startId} -> ${r.destId}: no route found`)
+    for (const line of r.problems) fail(`${r.startId} -> ${r.destId}: ${line}`)
+    if (r.ms > SLOW_MS) warn(`${r.startId} -> ${r.destId} took ${Math.round(r.ms)} ms to plan`)
+  }
+
+  const finish = () => {
+    console.log(problems === 0
+      ? `\nRoutes are sound. ${warnings} warning(s).\n`
+      : `\n${problems} problem(s), ${warnings} warning(s).\n`)
+    if (problems > 0) process.exitCode = 1
+  }
+
+  console.log(`\nRoutes for a ${DRAFT_FT} ft draft, held to ${MIN_DEPTH_FT} ft`)
+  if (args.length === 2 && !args[0].startsWith('--')) {
+    if (!place(args[0]) || !place(args[1])) {
+      fail(`unknown place: ${!place(args[0]) ? args[0] : args[1]}`)
+      return finish()
+    }
+    const r = probeRoute(grid, args[0], args[1])
+    if (!r.failed) {
+      console.log(`  ${describe(r)}`)
+      for (let i = 0; i + 1 < r.waypoints.length; i++) {
+        const [aLat, aLng] = r.waypoints[i]
+        const [bLat, bLng] = r.waypoints[i + 1]
+        console.log(`      leg ${String(i + 1).padStart(2)}: ${aLat.toFixed(4)},${aLng.toFixed(4)} -> ` +
+          `${bLat.toFixed(4)},${bLng.toFixed(4)}  ${calcDistanceNM(aLat, aLng, bLat, bLng).toFixed(2)} NM`)
+      }
+    }
+    judge(r)
+    return finish()
+  }
+
+  if (args[0] !== '--all') {
+    for (const [a, b] of SAMPLE_PAIRS) {
+      const r = probeRoute(grid, a, b)
+      if (!r.failed) console.log(`  ${describe(r)}`)
+      judge(r)
+    }
+    return finish()
+  }
+
+  // Every unordered pair. The router treats A->B and B->A alike but for which
+  // way round a tie falls, so one of each is enough to find what is broken.
+  const pairs = []
+  for (let i = 0; i < marinas.length; i++) {
+    for (let j = i + 1; j < marinas.length; j++) pairs.push([marinas[i].id, marinas[j].id])
+  }
+  const threads = Math.max(1, Math.min(os.cpus().length, 8))
+  console.log(`  ${pairs.length} routes on ${threads} threads`)
+  const results = []
+  let running = threads
+  for (let t = 0; t < threads; t++) {
+    const worker = new Worker(fileURLToPath(import.meta.url), {
+      workerData: { pairs: pairs.filter((_, k) => k % threads === t) },
+      argv: process.argv.slice(2),
+    })
+    worker.on('message', (r) => {
+      results.push(r)
+      if (results.length % 250 === 0) console.log(`  ... ${results.length}`)
+    })
+    worker.on('error', (error) => {
+      fail(`worker failed: ${error.message}`)
+    })
+    worker.on('exit', () => {
+      running -= 1
+      if (running > 0) return
+      for (const r of results) judge(r)
+      const times = results.map((r) => r.ms).sort((x, y) => x - y)
+      const pct = (q) => Math.round(times[Math.min(times.length - 1, Math.floor(q * times.length))])
+      console.log(`  planning time: median ${pct(0.5)} ms, 90% ${pct(0.9)} ms, 99% ${pct(0.99)} ms, slowest ${pct(1)} ms`)
+      const long = results.filter((r) => !r.failed && r.distance / r.direct > RATIO_WARN)
+      if (long.length) {
+        console.log(`  ${long.length} routes over ${RATIO_WARN}x the straight line (worth a look on the chart):`)
+        for (const r of long.sort((x, y) => y.distance / y.direct - x.distance / x.direct).slice(0, 12)) console.log(`    ${describe(r)}`)
+      }
+      finish()
+    })
+  }
+}

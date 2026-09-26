@@ -4,7 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { calcDistanceNM } from '../utils'
-import { COASTLINE_ATTRIBUTION } from '../coastlineData'
+import { DEPTH_ATTRIBUTION } from '../depthGrid'
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -179,11 +179,10 @@ function LiveLocation() {
   )
 }
 
-// The planner already walks the channel graph and works out where the shoal
-// and land detours land — without this the chart never shows any of that, and
-// a boater has to take the sidebar's numbers on faith. Fit the map to the
-// route once per plan; after that the skipper is free to pan without being
-// yanked back on every re-render.
+// The planner works the route out on the survey's depths. Without this the
+// chart never shows any of that, and a boater has to take the sidebar's
+// numbers on faith. Fit the map to the route once per plan; after that the
+// skipper is free to pan without being yanked back on every re-render.
 function RouteLayer({ tripResult }) {
   const map = useMap()
   const fitForRef = useRef(null)
@@ -197,23 +196,40 @@ function RouteLayer({ tripResult }) {
 
   if (!tripResult?.routeWaypoints?.length) return null
 
-  const { routeWaypoints, start, dest } = tripResult
+  const { routeWaypoints, routeStretches = [], start, dest, depth } = tripResult
 
   return (
     <>
       {/* A dark casing under the gold dash line keeps the plotted course
           readable over every base layer, including light street tiles. The
-          course is drawn against the GSHHG shoreline, which is credited
+          course is planned on NOAA's survey depths, which are credited
           whenever one is on the chart. */}
       <Polyline
         positions={routeWaypoints}
-        attribution={COASTLINE_ATTRIBUTION}
+        attribution={DEPTH_ATTRIBUTION}
         pathOptions={{ color: '#1B2A4A', weight: 6, opacity: 0.35, lineCap: 'round', lineJoin: 'round' }}
       />
       <Polyline
         positions={routeWaypoints}
         pathOptions={{ color: '#D69E2E', weight: 3, opacity: 0.95, dashArray: '8 7', lineCap: 'round', lineJoin: 'round' }}
       />
+      {/* Where the route, near a dock, crosses water the survey shows less
+          than the boat was held to: drawn over the course in orange, red
+          where the survey has it dry, so the stretch the sidebar mentions
+          can be found on the chart. */}
+      {routeStretches.map((s, i) => (
+        <Polyline
+          key={i}
+          positions={s.path}
+          pathOptions={{ color: s.kind === 'dry' ? '#C53030' : '#DD6B20', weight: 5, opacity: 0.9, lineCap: 'round' }}
+        >
+          <Popup>
+            {s.kind === 'dry'
+              ? 'The survey shows this as dry at low water: the berth itself, or a cut narrower than its 20 m cells.'
+              : `The survey shows less than ${depth.heldToFt} ft here${s.least ? ` (${s.least.minFt}${s.least.maxFt ? `–${s.least.maxFt}` : '+'} ft)` : ''}.`}
+          </Popup>
+        </Polyline>
+      ))}
 
       <CircleMarker
         center={[start.lat, start.lng]}

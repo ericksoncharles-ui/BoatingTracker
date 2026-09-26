@@ -7,8 +7,11 @@
 // successful fetch, but a version bump forces `activate` to drop the old
 // cache outright instead of leaving a stale entry a flaky connection could
 // still serve.
-const CACHE_NAME = 'lis-trip-planner-v3'
-const APP_SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png']
+const CACHE_NAME = 'lis-trip-planner-v4'
+// The depth grid the router plans on is a megabyte and has no hash in its
+// name, so it is listed here: a planner that opens with no signal but can't
+// plan is no use at the helm. It is refreshed like the page, network first.
+const APP_SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png', '/depth-grid.bin']
 
 // The built JS and CSS carry a content hash in their names, so they can't be
 // listed above; they are read out of the page itself instead. Caching the page

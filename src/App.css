@@ -9,6 +9,7 @@
   --sea: #2B6CB0;
   --sea-hover: #2558a0;
   --sea-glow: rgba(43, 108, 176, 0.3);
+  --sea-light: #63B3ED;
   --warning: #C53030;
   --warning-bg: #FFF5F5;
   --gold: #D69E2E;
@@ -1010,12 +1011,14 @@ select:focus-visible,
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
-.shoal-avoided-info {
+/* What the route keeps to, and where near its ends the survey shows less. Sea
+   blue: an account of the water, not a warning. */
+.depth-info {
   margin-top: 12px;
   padding: 10px 12px;
   background: var(--navy-light);
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--green);
+  border-left: 3px solid var(--sea);
   box-shadow: var(--shadow-sm);
   font-size: 0.8rem;
   color: #CBD5E0;
@@ -1025,10 +1028,18 @@ select:focus-visible,
   gap: 8px;
 }
 
-.shoal-avoided-info svg {
+.depth-info svg {
   flex-shrink: 0;
-  color: var(--green);
-  margin-top: 1px;
+  color: var(--sea-light);
+  margin-top: 2px;
+}
+
+.depth-info p + p {
+  margin-top: 6px;
+}
+
+.depth-info strong {
+  color: var(--cream);
 }
 
 /* Local knowledge for the chosen start/destination — cautions that a single
