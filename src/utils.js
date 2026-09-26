@@ -112,6 +112,35 @@ export function calcRouteDistanceNM(waypoints) {
   return total
 }
 
+// What the boat inputs accept. Wide enough for a skiff or a sportfisherman,
+// and a sailboat motoring on a 0 GPH guess; narrow enough that a slip of the
+// thumb is caught before it reaches the arithmetic. A cleared speed field used
+// to read as 0 kts and plan an "Infinityh NaNm" trip.
+export const BOAT_LIMITS = {
+  tankSize: { label: 'Tank', unit: 'gal', min: 1, max: 3000 },
+  cruisingSpeed: { label: 'Speed', unit: 'kts', min: 1, max: 80 },
+  fuelBurn: { label: 'Burn', unit: 'GPH', min: 0, max: 300 },
+  draft: { label: 'Draft', unit: 'ft', min: 0, max: 20 },
+}
+
+/**
+ * The boat inputs as numbers, and what is wrong with any that can't be used.
+ * Takes the fields' own text, so a field emptied mid-edit reads as missing
+ * rather than as zero.
+ */
+export function parseBoatInputs(fields) {
+  const values = {}
+  const errors = {}
+  for (const [key, { label, unit, min, max }] of Object.entries(BOAT_LIMITS)) {
+    const text = String(fields[key] ?? '').trim()
+    const n = Number(text)
+    if (text === '' || !Number.isFinite(n)) errors[key] = `${label} needs a number`
+    else if (n < min || n > max) errors[key] = `${label} must be ${min} to ${max} ${unit}`
+    else values[key] = n
+  }
+  return { values, errors, valid: Object.keys(errors).length === 0 }
+}
+
 /**
  * Calculate trip details from distance and boat parameters, including no-wake zone delays.
  */

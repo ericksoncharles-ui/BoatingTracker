@@ -96,7 +96,7 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
   const marina =
     marinas.find((m) => m.id === fallbackMarinaId) || marinas.find((m) => m.id === 'stamford') || marinas[0]
 
-  const conditions = useConditions({ lat: marina.lat, lng: marina.lng, enabled: true })
+  const conditions = useConditions({ lat: marina.lat, lng: marina.lng, water: marina.approach, enabled: true })
   const { tides, forecast, loading } = conditions
 
   // The bite window and the flood or ebb move with the clock, not the fetch.

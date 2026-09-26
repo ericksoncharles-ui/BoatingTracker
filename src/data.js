@@ -598,11 +598,14 @@ export const pointsOfInterest = [
     lng: -72.7740,
     description: 'Archipelago of small islands off Branford — great for sightseeing by boat.',
   },
+  // Off Westbrook, inside the Duck Island Roads breakwaters. It was once placed
+  // eighteen miles west, in open water south of New Haven, which put it "along
+  // the way" of every run out of New Haven and off the list for Westbrook.
   {
     id: 'duck-island',
     name: 'Duck Island',
-    lat: 41.2050,
-    lng: -72.8900,
+    lat: 41.2567,
+    lng: -72.4753,
     description: 'Wildlife refuge near Clinton with calm anchorage opportunities.',
   },
   {

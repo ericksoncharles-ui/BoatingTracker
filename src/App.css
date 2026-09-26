@@ -362,6 +362,11 @@ select:focus-visible,
   box-shadow: 0 0 0 3px var(--sea-glow);
 }
 
+/* A boat field the planner can't use. The message under the row says why. */
+.sidebar-form input[aria-invalid='true'] {
+  border-color: var(--warning);
+}
+
 /* ── Place Picker (searchable start / destination) ────── */
 
 .place-picker {

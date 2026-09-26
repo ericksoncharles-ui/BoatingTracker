@@ -214,6 +214,7 @@ export default function App() {
             setFuelBurn={trip.setFuelBurn}
             draft={trip.draft}
             setDraft={trip.setDraft}
+            boatErrors={trip.boatErrors}
             tripResult={trip.tripResult}
             onCalculate={trip.calculateTrip}
             onReset={trip.resetTrip}
@@ -287,6 +288,7 @@ export default function App() {
               setFuelBurn={trip.setFuelBurn}
               draft={trip.draft}
               setDraft={trip.setDraft}
+              boatErrors={trip.boatErrors}
               tripResult={trip.tripResult}
               onCalculate={trip.calculateTrip}
               onReset={trip.resetTrip}

@@ -49,6 +49,22 @@ const WATER_BODIES = [
     id: 'peconic-gardiners',
     label: 'Gardiners & Peconic Bay',
     bbox: { minLat: 40.90, maxLat: 41.22, minLng: -72.62, maxLng: -71.98 },
+    // The bays lie inside the Sound's box, which is listed first, so a box of
+    // their own never matched: Greenport and Sag Harbor were given sixty
+    // kilometres of Sound fetch and its westward flood. Any box that fits them
+    // also takes in the Sound north of the North Fork, so they get an outline
+    // instead, [lat, lng] down the middle of the North Fork, out round Plum and
+    // Gardiners Islands to Napeague, and back along the South Fork. It is
+    // checked before any box.
+    outline: [
+      [40.950, -72.660], [40.965, -72.600], [40.982, -72.560], [41.012, -72.520],
+      [41.022, -72.480], [41.059, -72.440], [41.087, -72.400], [41.117, -72.360],
+      [41.140, -72.320], [41.150, -72.280], [41.165, -72.240], [41.175, -72.200],
+      [41.185, -72.150], [41.120, -72.100], [41.060, -72.000], [41.030, -71.980],
+      [41.000, -71.980], [40.980, -72.100], [40.960, -72.200], [40.950, -72.280],
+      [40.930, -72.360], [40.890, -72.440], [40.880, -72.520], [40.900, -72.600],
+      [40.920, -72.660],
+    ],
     axisDeg: 70, alongKm: 25, acrossKm: 12,
     floodSetDeg: null,
   },
@@ -73,6 +89,22 @@ const WATER_BODIES = [
     id: 'buzzards-bay',
     label: 'Buzzards Bay',
     bbox: { minLat: 41.40, maxLat: 41.78, minLng: -71.10, maxLng: -70.62 },
+    // Its box reaches across the Elizabeth Islands and is listed before
+    // Vineyard Sound's, so Woods Hole, Tarpaulin Cove and Lake Tashmoo were
+    // given this bay's north-east flood: exactly the invented current Vineyard
+    // Sound's null below exists to refuse. So the bay is an outline, [lat, lng]
+    // along the island chain from Cuttyhunk (whose harbor opens onto the bay)
+    // to Woods Hole, round the shore to the canal and the head of the bay, and
+    // back inland of New Bedford to Westport.
+    outline: [
+      [41.405, -70.965], [41.408, -70.940], [41.419, -70.920], [41.428, -70.900],
+      [41.430, -70.880], [41.438, -70.860], [41.450, -70.840], [41.452, -70.820],
+      [41.458, -70.800], [41.467, -70.780], [41.478, -70.760], [41.495, -70.740],
+      [41.502, -70.720], [41.513, -70.700], [41.520, -70.685], [41.530, -70.680],
+      [41.545, -70.655], [41.600, -70.640], [41.740, -70.610], [41.780, -70.700],
+      [41.740, -70.800], [41.700, -70.880], [41.660, -70.940], [41.600, -70.980],
+      [41.540, -71.060], [41.520, -71.080], [41.480, -71.080],
+    ],
     axisDeg: 40, alongKm: 45, acrossKm: 13,
     floodSetDeg: 40,
   },
@@ -114,11 +146,23 @@ function scale(value, factor, places = 1) {
  * distance rather than to a made-up open-ocean default — a fix a few miles
  * outside a box is in the water next door, not somewhere new.
  */
+function insideOutline(lat, lng, outline) {
+  let inside = false
+  for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+    const [yi, xi] = outline[i]
+    const [yj, xj] = outline[j]
+    if ((yi > lat) !== (yj > lat) && lng < xi + ((lat - yi) * (xj - xi)) / (yj - yi)) inside = !inside
+  }
+  return inside
+}
+
 export function waterBodyFor(lat, lng) {
   if (lat == null || lng == null) return DEFAULT_WATER_BODY
-  const inside = WATER_BODIES.find(
-    (w) => lat >= w.bbox.minLat && lat <= w.bbox.maxLat && lng >= w.bbox.minLng && lng <= w.bbox.maxLng,
-  )
+  const inside =
+    WATER_BODIES.find((w) => w.outline && insideOutline(lat, lng, w.outline)) ||
+    WATER_BODIES.find(
+      (w) => !w.outline && lat >= w.bbox.minLat && lat <= w.bbox.maxLat && lng >= w.bbox.minLng && lng <= w.bbox.maxLng,
+    )
   if (inside) return inside
 
   let nearest = DEFAULT_WATER_BODY

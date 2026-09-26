@@ -71,7 +71,11 @@ function writeCache(lat, lng, sections) {
   }
 }
 
-export function useConditions({ lat, lng, enabled = true }) {
+// `water` is an optional open-water point near the position, the harbor's
+// approach, for the one source that answers by zone (see fetchMarineAlerts).
+export function useConditions({ lat, lng, water, enabled = true }) {
+  const waterLat = water?.lat
+  const waterLng = water?.lng
   const [sections, setSections] = useState({
     tides: IDLE,
     forecast: IDLE,
@@ -142,7 +146,12 @@ export function useConditions({ lat, lng, enabled = true }) {
         data,
         error: null,
       })),
-      track('alerts', fetchMarineAlerts({ lat, lng, signal }), (data) => ({
+      track('alerts', fetchMarineAlerts({
+        lat,
+        lng,
+        water: waterLat != null && waterLng != null ? { lat: waterLat, lng: waterLng } : null,
+        signal,
+      }), (data) => ({
         status: 'ok',
         data,
         error: null,
@@ -162,7 +171,7 @@ export function useConditions({ lat, lng, enabled = true }) {
       setCachedAt(null)
       writeCache(lat, lng, current)
     }
-  }, [lat, lng, enabled])
+  }, [lat, lng, waterLat, waterLng, enabled])
 
   // Paint from cache immediately on a new position, then go get fresh data.
   useEffect(() => {

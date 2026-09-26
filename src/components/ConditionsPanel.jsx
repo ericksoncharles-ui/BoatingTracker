@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { marinas, placeRegions, lisicosLinks } from '../data'
-import { degreesToCardinal } from '../utils'
+import { calcDistanceNM, degreesToCardinal } from '../utils'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { useConditions } from '../hooks/useConditions'
 import { estimateWindWaves } from '../services/forecast'
@@ -85,6 +85,20 @@ const WIND_BAR_MAX_KT = 30
 
 // How long the panel holds off fetching while it waits for a first fix.
 const GEO_GRACE_MS = 8000
+
+// A fix this close to a charted harbor borrows its approach as the open-water
+// point for marine alerts: a phone at the dock is in the harbor's land zone.
+const APPROACH_NEAR_NM = 3
+
+function nearestApproach(lat, lng) {
+  let best = null
+  for (const m of marinas) {
+    if (!m.approach) continue
+    const d = calcDistanceNM(lat, lng, m.lat, m.lng)
+    if (d <= APPROACH_NEAR_NM && (!best || d < best.d)) best = { d, approach: m.approach }
+  }
+  return best?.approach ?? null
+}
 
 // Wind direction is the direction the wind comes *from*, so the arrow has to
 // point the opposite way — where it is pushing you.
@@ -184,10 +198,10 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   const searchingForGeo = !overrideMarina && geoPending
 
   const place = overrideMarina
-    ? { lat: overrideMarina.lat, lng: overrideMarina.lng, label: overrideMarina.name, source: 'picked' }
+    ? { lat: overrideMarina.lat, lng: overrideMarina.lng, water: overrideMarina.approach, label: overrideMarina.name, source: 'picked' }
     : geo.position
-      ? { lat: geo.position.lat, lng: geo.position.lng, label: 'your location', source: 'gps' }
-      : { lat: fallbackMarina.lat, lng: fallbackMarina.lng, label: fallbackMarina.name, source: 'fallback' }
+      ? { lat: geo.position.lat, lng: geo.position.lng, water: nearestApproach(geo.position.lat, geo.position.lng), label: 'your location', source: 'gps' }
+      : { lat: fallbackMarina.lat, lng: fallbackMarina.lng, water: fallbackMarina.approach, label: fallbackMarina.name, source: 'fallback' }
 
   // Holding off on the fetch until the locator answers avoids a double round of
   // requests, but a locator that has to escalate can take most of a minute, and
@@ -196,7 +210,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   // just moves the position and refetches.
   const waitingForGeo = searchingForGeo && !geoGraceOver
 
-  const conditions = useConditions({ lat: place.lat, lng: place.lng, enabled: !waitingForGeo })
+  const conditions = useConditions({ lat: place.lat, lng: place.lng, water: place.water, enabled: !waitingForGeo })
   const { tides, forecast, alerts, refresh, updatedAt, cachedAt, failedAt, loading } = conditions
 
   // Read the payload rather than the status: a section that failed to refresh
