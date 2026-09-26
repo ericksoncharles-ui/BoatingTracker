@@ -44,8 +44,13 @@ Two things follow from that design:
 - **The server builds the prompt, not the client.** The endpoint accepts trip
   fields (place names, distance, speed), never prompt text, so it can't be used
   as a free Claude proxy.
-- **The endpoint is rate limited** (30 requests / 10 min per IP), since it is
-  public once deployed and spends your key.
+- **The endpoint is rate limited** (30 requests / 10 min per IP, shared with the
+  fishing summary), since it is public once deployed and spends your key. The
+  limit keys on the caller's IP, so set `TRUST_PROXY` to match the deployment:
+  `1` (the default) behind a single reverse proxy or a host's load balancer, `0`
+  when the server faces the internet directly. Trusting a proxy that isn't there
+  lets a caller pick their own IP with an `X-Forwarded-For` header, and with it
+  a fresh budget per request.
 
 If the briefing call fails for any reason — no key configured, API error, rate
 limit — the UI falls back to a locally generated briefing and drops the "AI" badge.
