@@ -31,16 +31,25 @@ export const marinas = [
     // Connecticut
     { id: 'norwalk', name: 'Norwalk Cove Marina, CT', lat: 41.0965, lng: -73.4150, approachDepthFt: 6, approach: { lat: 41.070, lng: -73.415 } },
     { id: 'bridgeport', name: 'Bridgeport Harbor Marina, CT', lat: 41.1735, lng: -73.1815, approachDepthFt: 16, approach: { lat: 41.150, lng: -73.180 } },
-    { id: 'stamford', name: 'Stamford Safe Harbor Marina, CT', lat: 41.0430, lng: -73.5435, approachDepthFt: 8, approach: { lat: 41.030, lng: -73.540 } },
+    // At the harbor entrance below Shippan Point. Inside it, every route east
+    // or south had the point in the way.
+    { id: 'stamford', name: 'Stamford Safe Harbor Marina, CT', lat: 41.0430, lng: -73.5435, approachDepthFt: 8, approach: { lat: 41.012, lng: -73.535 } },
     { id: 'greenwich', name: 'Greenwich Harbor, CT', lat: 41.0210, lng: -73.6240, approachDepthFt: 7, approach: { lat: 41.000, lng: -73.620 } },
-    { id: 'westport', name: 'Cedar Point Yacht Club, Westport, CT', lat: 41.1070, lng: -73.3580, approachDepthFt: 5, approach: { lat: 41.085, lng: -73.358 } },
+    // Off the Saugatuck mouth, north of Cockenoe. It used to sit in the notch
+    // of the island itself, and inside its shoal circle.
+    { id: 'westport', name: 'Cedar Point Yacht Club, Westport, CT', lat: 41.1070, lng: -73.3580, approachDepthFt: 5, approach: { lat: 41.095, lng: -73.362 } },
     { id: 'milford', name: 'Milford Harbor, CT', lat: 41.2070, lng: -73.0540, approachDepthFt: 6, approach: { lat: 41.185, lng: -73.055 } },
     { id: 'new-haven', name: 'New Haven Harbor, CT', lat: 41.2830, lng: -72.9080, approachDepthFt: 18, approach: { lat: 41.220, lng: -72.910 } },
     { id: 'branford', name: 'Branford River Marina, CT', lat: 41.2630, lng: -72.8140, approachDepthFt: 5, approach: { lat: 41.240, lng: -72.815 } },
     { id: 'guilford', name: 'Guilford Harbor, CT', lat: 41.2640, lng: -72.6730, approachDepthFt: 4, approach: { lat: 41.240, lng: -72.675 } },
     { id: 'clinton', name: 'Clinton Harbor, CT', lat: 41.2630, lng: -72.5280, approachDepthFt: 5, approach: { lat: 41.240, lng: -72.530 } },
-    { id: 'old-saybrook', name: 'Old Saybrook Marina, CT', lat: 41.2820, lng: -72.3430, approachDepthFt: 6, approach: { lat: 41.255, lng: -72.343 } },
-    { id: 'essex', name: 'Essex Island Marina, CT', lat: 41.3510, lng: -72.3890, approachDepthFt: 6, approach: { lat: 41.265, lng: -72.375 } },
+    // In the river mouth, where the marina is, rather than out in the Sound: a
+    // run up to Essex used to go out past the breakwater and back in.
+    { id: 'old-saybrook', name: 'Old Saybrook Marina, CT', lat: 41.2820, lng: -72.3430, approachDepthFt: 6, approach: { lat: 41.279, lng: -72.339 } },
+    // Up the Connecticut River (br-connecticut-river). The approach used to be
+    // on the Old Saybrook shore at the mouth, with a straight five-mile line
+    // from there to the dock over the town.
+    { id: 'essex', name: 'Essex Island Marina, CT', lat: 41.3510, lng: -72.3890, approachDepthFt: 6, approach: { lat: 41.344, lng: -72.378 } },
     { id: 'mystic', name: 'Mystic Seaport Marina, CT', lat: 41.3590, lng: -71.9660, approachDepthFt: 8, approach: { lat: 41.320, lng: -71.970 } },
     { id: 'stonington', name: 'Stonington Harbor, CT', lat: 41.3310, lng: -71.9050, approachDepthFt: 7, approach: { lat: 41.310, lng: -71.905 } },
     { id: 'niantic', name: 'Niantic Bay Marina, CT', lat: 41.3180, lng: -72.1950, approachDepthFt: 6, approach: { lat: 41.290, lng: -72.195 } },
@@ -49,20 +58,37 @@ export const marinas = [
     // New York — Long Island north shore, west to east
     { id: 'city-island', name: 'City Island Marina, NY', lat: 40.8470, lng: -73.7870, approachDepthFt: 7, approach: { lat: 40.840, lng: -73.775 } },
     { id: 'new-rochelle', name: 'New Rochelle Municipal Marina, NY', lat: 40.8940, lng: -73.7730, approachDepthFt: 6, approach: { lat: 40.880, lng: -73.770 } },
-    { id: 'mamaroneck', name: 'Mamaroneck Harbor, NY', lat: 40.9420, lng: -73.7370, approachDepthFt: 6, approach: { lat: 40.930, lng: -73.730 } },
-    { id: 'manhasset', name: 'Manhasset Bay Marina, NY', lat: 40.8310, lng: -73.7130, approachDepthFt: 8, approach: { lat: 40.845, lng: -73.710 } },
-    { id: 'glen-cove', name: 'Glen Cove Marina, NY', lat: 40.8650, lng: -73.6290, approachDepthFt: 7, approach: { lat: 40.880, lng: -73.620 } },
-    { id: 'oyster-bay-marina', name: 'Oyster Bay Marine Center, NY', lat: 40.8730, lng: -73.5300, approachDepthFt: 7, approach: { lat: 40.920, lng: -73.500 } },
-    { id: 'cold-spring', name: 'Cold Spring Harbor, NY', lat: 40.8710, lng: -73.4560, approachDepthFt: 5, approach: { lat: 40.915, lng: -73.475 } },
+    // The harbor opens east, behind the point, not south across it.
+    { id: 'mamaroneck', name: 'Mamaroneck Harbor, NY', lat: 40.9405, lng: -73.7225, approachDepthFt: 6, approach: { lat: 40.9385, lng: -73.7170 } },
+    // Manhasset Bay opens west toward Hart Island; the approach used to sit
+    // ashore on Manhasset Neck, with every route off it crossing Sands Point.
+    { id: 'manhasset', name: 'Manhasset Bay Marina, NY', lat: 40.8310, lng: -73.7130, approachDepthFt: 8, approach: { lat: 40.8334, lng: -73.7355 } },
+    // At the mouth of Glen Cove Creek on Hempstead Harbor, and in by the harbor
+    // itself: both points used to sit a mile inland, in the city.
+    { id: 'glen-cove', name: 'Glen Cove Marina, NY', lat: 40.8564, lng: -73.6492, approachDepthFt: 7, approach: { lat: 40.8612, lng: -73.6614 } },
+    // Oyster Bay Harbor and Cold Spring Harbor share a mouth north of Centre
+    // Island. Each approach sits where a straight run to the dock stays inside
+    // its own harbor: Oyster Bay's at the channel past Centre Island, Cold
+    // Spring's at the harbor entrance. Cold Spring's used to be ashore on the
+    // Lloyd Neck side.
+    { id: 'oyster-bay-marina', name: 'Oyster Bay Marine Center, NY', lat: 40.8800, lng: -73.5320, approachDepthFt: 7, approach: { lat: 40.905, lng: -73.500 } },
+    { id: 'cold-spring', name: 'Cold Spring Harbor, NY', lat: 40.8705, lng: -73.4665, approachDepthFt: 5, approach: { lat: 40.8985, lng: -73.4885 } },
     { id: 'huntington', name: 'Huntington Harbor, NY', lat: 40.8990, lng: -73.4200, approachDepthFt: 7, approach: { lat: 40.920, lng: -73.415 } },
-    { id: 'northport', name: 'Northport Harbor, NY', lat: 40.9010, lng: -73.3430, approachDepthFt: 8, approach: { lat: 40.925, lng: -73.340 } },
+    // Northport Harbor is reached through Huntington and Northport Bays, round
+    // the south side of Eatons Neck. The approach used to be ashore north of the
+    // village, and every route off it ran straight over the Asharoken beach.
+    { id: 'northport', name: 'Northport Harbor, NY', lat: 40.8980, lng: -73.3570, approachDepthFt: 8, approach: { lat: 40.918, lng: -73.360 } },
     { id: 'stony-brook', name: 'Stony Brook Harbor, NY', lat: 40.9070, lng: -73.1740, approachDepthFt: 4, approach: { lat: 40.933, lng: -73.172 }, note: 'Porpoise Channel across the sand spit is thin and shifts every season — carry half tide or better and favor the marked side.' },
-    { id: 'port-jefferson', name: 'Port Jefferson Harbor, NY', lat: 40.9465, lng: -73.0690, approachDepthFt: 10, approach: { lat: 40.975, lng: -73.070 } },
+    // Outside the jettied inlet at the harbor's north-west corner. The old
+    // approach was off Belle Terre, a mile east, with the point in between.
+    { id: 'port-jefferson', name: 'Port Jefferson Harbor, NY', lat: 40.9465, lng: -73.0690, approachDepthFt: 10, approach: { lat: 40.9735, lng: -73.0925 } },
     { id: 'mount-sinai', name: 'Mount Sinai Harbor, NY', lat: 40.9650, lng: -73.0350, approachDepthFt: 6, approach: { lat: 40.982, lng: -73.035 }, note: 'Short jettied inlet straight off the Sound — the bar just outside builds a steep sea in a northerly.' },
     { id: 'mattituck', name: 'Mattituck Inlet Marina, NY', lat: 41.0120, lng: -72.5590, approachDepthFt: 5, approach: { lat: 41.030, lng: -72.555 } },
 
     // Eastern approaches — Fishers Island Sound
-    { id: 'fishers-island', name: 'West Harbor, Fishers Island, NY', lat: 41.3030, lng: -72.0130, approachDepthFt: 9, approach: { lat: 41.315, lng: -72.013 } },
+    // West Harbor is the notch in the island's north-west shore. Both points used
+    // to be two miles north, on the Connecticut side of Fishers Island Sound.
+    { id: 'fishers-island', name: 'West Harbor, Fishers Island, NY', lat: 41.2660, lng: -72.0040, approachDepthFt: 9, approach: { lat: 41.278, lng: -72.004 } },
     { id: 'watch-hill', name: 'Watch Hill Docks, RI', lat: 41.3060, lng: -71.8600, approachDepthFt: 8, approach: { lat: 41.305, lng: -71.862 } },
 
     // ── Anchorages and beaches in the western Sound ─────────────────────────
@@ -86,9 +112,9 @@ export const marinas = [
     // this is the north end of Lloyd Neck rather than a surveyed fix. The
     // entrance caution below is the part that matters.
     { id: 'sand-hole', kind: 'anchorage', name: 'The Sand Hole, Lloyd Neck, NY', lat: 40.9450, lng: -73.4800, approach: { lat: 40.956, lng: -73.479 }, note: 'Deep inside (up to 25 ft at low water) but entered through two narrow, steep-sided channels running as much as 5 kt. Enter near high water, and only with local knowledge.' },
-    { id: 'lloyd-harbor', kind: 'anchorage', name: 'Lloyd Harbor, NY', lat: 40.9060, lng: -73.4542, approach: { lat: 40.915, lng: -73.435 } },
-    { id: 'sand-city', kind: 'anchorage', name: 'Sand City, Eatons Neck, NY', lat: 40.9198, lng: -73.4037, approach: { lat: 40.942, lng: -73.418 }, note: 'Tucked behind Eatons Neck — anchor, pick up a mooring, or beach the bow. Exposed when the wind pipes up from the east.' },
-    { id: 'mount-misery', kind: 'anchorage', name: 'Mount Misery Cove, Port Jefferson, NY', lat: 40.9620, lng: -73.0870, approach: { lat: 40.972, lng: -73.080 }, note: 'Inside Port Jefferson Harbor and sheltered from everything — the far side of the harbor from the ferry traffic.' },
+    { id: 'lloyd-harbor', kind: 'anchorage', name: 'Lloyd Harbor, NY', lat: 40.9129, lng: -73.4560, approach: { lat: 40.915, lng: -73.435 } },
+    { id: 'sand-city', kind: 'anchorage', name: 'Sand City, Eatons Neck, NY', lat: 40.9198, lng: -73.4037, approach: { lat: 40.922, lng: -73.412 }, note: 'Tucked behind Eatons Neck — anchor, pick up a mooring, or beach the bow. Exposed when the wind pipes up from the east.' },
+    { id: 'mount-misery', kind: 'anchorage', name: 'Mount Misery Cove, Port Jefferson, NY', lat: 40.9620, lng: -73.0870, approach: { lat: 40.9735, lng: -73.0925 }, note: 'Inside Port Jefferson Harbor and sheltered from everything — the far side of the harbor from the ferry traffic.' },
 
     // ── Lighthouses — waypoints and photo stops, not landings ───────────────
     { id: 'stamford-ledge-light', kind: 'landmark', name: 'Stamford Harbor Ledge Light, CT', lat: 41.0137, lng: -73.5426, approach: { lat: 41.005, lng: -73.542 } },
@@ -102,14 +128,16 @@ export const marinas = [
     { id: 'new-london-ledge-light', kind: 'landmark', name: 'New London Ledge Light, CT', lat: 41.3061, lng: -72.0772, approach: { lat: 41.296, lng: -72.077 } },
     // The Race runs to 4 kt around the light and boils on a spring ebb. The
     // approach is placed south of it, on the New London side of the tide gate.
-    { id: 'race-rock-light', kind: 'landmark', name: 'Race Rock Light, Fishers Island, NY', lat: 41.2461, lng: -72.0470, approach: { lat: 41.236, lng: -72.047 }, note: 'Go at slack or with a fair tide — the current through The Race runs to 4 kt and stands up steep, breaking water against the wind.' },
+    { id: 'race-rock-light', kind: 'landmark', name: 'Race Rock Light, Fishers Island, NY', lat: 41.2461, lng: -72.0470, approach: { lat: 41.240, lng: -72.040 }, note: 'Go at slack or with a fair tide — the current through The Race runs to 4 kt and stands up steep, breaking water against the wind.' },
     { id: 'little-gull-light', kind: 'landmark', name: 'Little Gull Island Light, NY', lat: 41.2044, lng: -72.1150, approach: { lat: 41.194, lng: -72.108 }, note: 'Sits between The Race and the Sluiceway — both run hard, and the overfalls either side of the island are no place to loiter.' },
   ]),
 
   ...inRegion('Peconic & Gardiners Bay', [
     { id: 'orient-point', name: 'Orient by the Sea, Orient Point, NY', lat: 41.1560, lng: -72.2340, approachDepthFt: 7, approach: { lat: 41.168, lng: -72.230 }, note: 'Right beside Plum Gut, which runs to 5 kt — leave and enter on slack or a fair current.' },
     { id: 'greenport', name: 'Greenport Yacht Club, NY', lat: 41.1030, lng: -72.3590, approachDepthFt: 8, approach: { lat: 41.113, lng: -72.330 } },
-    { id: 'dering-harbor', name: 'Dering Harbor, Shelter Island, NY', lat: 41.0900, lng: -72.3430, approachDepthFt: 10, approach: { lat: 41.096, lng: -72.330 } },
+    // Dering Harbor opens north-west, toward Greenport; the approach used to be
+    // east of it, on Shelter Island itself.
+    { id: 'dering-harbor', name: 'Dering Harbor, Shelter Island, NY', lat: 41.0900, lng: -72.3430, approachDepthFt: 10, approach: { lat: 41.099, lng: -72.3462 } },
     { id: 'sag-harbor', name: 'Sag Harbor, NY', lat: 40.9980, lng: -72.2930, approachDepthFt: 10, approach: { lat: 41.012, lng: -72.290 } },
     { id: 'three-mile-harbor', name: 'Three Mile Harbor, East Hampton, NY', lat: 41.0300, lng: -72.1940, approachDepthFt: 8, approach: { lat: 41.052, lng: -72.193 } },
 
@@ -130,11 +158,15 @@ export const marinas = [
   ]),
 
   ...inRegion('Narragansett Bay', [
-    { id: 'newport', name: 'Newport Harbor, RI', lat: 41.4870, lng: -71.3260, approachDepthFt: 20, approach: { lat: 41.455, lng: -71.348 } },
+    // The approaches for Newport, Bristol and East Greenwich all used to be
+    // ashore: Newport's on Brenton Point, Bristol's on the neck, and East
+    // Greenwich's in the Potowomut River, with Potowomut Neck between it and
+    // the cove the marina is in.
+    { id: 'newport', name: 'Newport Harbor, RI', lat: 41.4870, lng: -71.3260, approachDepthFt: 20, approach: { lat: 41.4843, lng: -71.3357 } },
     { id: 'jamestown', name: 'Conanicut Marina, Jamestown, RI', lat: 41.5030, lng: -71.3670, approachDepthFt: 12, approach: { lat: 41.500, lng: -71.345 } },
-    { id: 'bristol', name: 'Bristol Harbor, RI', lat: 41.6720, lng: -71.2830, approachDepthFt: 10, approach: { lat: 41.665, lng: -71.295 } },
+    { id: 'bristol', name: 'Bristol Harbor, RI', lat: 41.6720, lng: -71.2830, approachDepthFt: 10, approach: { lat: 41.6567, lng: -71.2838 } },
     { id: 'wickford', name: 'Wickford Harbor, RI', lat: 41.5710, lng: -71.4450, approachDepthFt: 8, approach: { lat: 41.568, lng: -71.418 } },
-    { id: 'east-greenwich', name: 'East Greenwich Harbor, RI', lat: 41.6570, lng: -71.4460, approachDepthFt: 8, approach: { lat: 41.652, lng: -71.433 } },
+    { id: 'east-greenwich', name: 'East Greenwich Harbor, RI', lat: 41.6570, lng: -71.4460, approachDepthFt: 8, approach: { lat: 41.6762, lng: -71.4433 } },
     { id: 'sakonnet', name: 'Sakonnet Harbor, Little Compton, RI', lat: 41.4620, lng: -71.1960, approachDepthFt: 6, approach: { lat: 41.430, lng: -71.195 }, note: 'Small basin behind a breakwater at the mouth of the Sakonnet River — the current outside runs hard and the swell wraps the point.' },
 
     { id: 'potters-cove', kind: 'anchorage', name: 'Potters Cove, Prudence Island, RI', lat: 41.6410, lng: -71.3350, approach: { lat: 41.635, lng: -71.320 }, note: 'Popular weekend anchorage on the north end of Prudence — sheltered except from the north.' },
@@ -146,8 +178,8 @@ export const marinas = [
   ...inRegion('Buzzards Bay', [
     { id: 'cuttyhunk', name: 'Cuttyhunk Pond, MA', lat: 41.4200, lng: -70.9280, approachDepthFt: 8, approach: { lat: 41.440, lng: -70.930 }, note: 'Dredged cut into the pond carries about 8 ft and is narrow enough to meet nothing coming out. Moorings go early; the outer harbor is exposed to the north.' },
     { id: 'padanaram', name: 'Padanaram Harbor, South Dartmouth, MA', lat: 41.5780, lng: -70.9400, approachDepthFt: 8, approach: { lat: 41.562, lng: -70.938 } },
-    { id: 'new-bedford', name: 'New Bedford Harbor, MA', lat: 41.6350, lng: -70.9130, approachDepthFt: 30, approach: { lat: 41.600, lng: -70.905 }, note: 'Entered through the hurricane barrier — a 150 ft gate the tide runs hard through, inside a working commercial port. Call ahead and give the fishing fleet the channel.' },
-    { id: 'marion', name: 'Sippican Harbor, Marion, MA', lat: 41.7050, lng: -70.7640, approachDepthFt: 8, approach: { lat: 41.680, lng: -70.760 } },
+    { id: 'new-bedford', name: 'New Bedford Harbor, MA', lat: 41.6350, lng: -70.9130, approachDepthFt: 30, approach: { lat: 41.5887, lng: -70.8987 }, note: 'Entered through the hurricane barrier — a 150 ft gate the tide runs hard through, inside a working commercial port. Call ahead and give the fishing fleet the channel.' },
+    { id: 'marion', name: 'Sippican Harbor, Marion, MA', lat: 41.7050, lng: -70.7640, approachDepthFt: 8, approach: { lat: 41.6778, lng: -70.7568 } },
 
     { id: 'hadley-harbor', kind: 'anchorage', name: 'Hadley Harbor, Naushon Island, MA', lat: 41.5200, lng: -70.6900, approachDepthFt: 8, approach: { lat: 41.527, lng: -70.700 }, note: 'Land-locked and calm in almost anything, entered from the Buzzards Bay side. The islands ashore are private — stay aboard.' },
 
@@ -191,11 +223,20 @@ export const placeRegions = [...new Set(marinas.map((m) => m.region))]
 // off the channel. Where the water narrows, so does this number.
 export const navigationSpine = [
   { id: 'sp-00', lat: 40.830, lng: -73.785 },  // Western entrance off Throgs Neck
-  { id: 'sp-01', lat: 40.878, lng: -73.737 },  // Execution Rocks
+  { id: 'sp-01', lat: 40.848, lng: -73.757 },  // Between Hart Island and Kings Point
+  // Execution Rocks is a ledge carrying 1 ft with a light on it, and this
+  // waypoint used to be on top of it: a hazard at a waypoint sits at the end of
+  // both its legs, where no detour ever looked. The water between the rocks
+  // and Sands Point is under half a mile and inside their shoal circle, so the
+  // channel passes north-west of them instead.
+  { id: 'sp-01b', lat: 40.889, lng: -73.748 }, // North-west of Execution Rocks
   { id: 'sp-02', lat: 40.895, lng: -73.660 },  // Off Matinecock Point
-  { id: 'sp-03', lat: 41.010, lng: -73.600 },  // Connecticut coast channel
-  { id: 'sp-04', lat: 41.050, lng: -73.500 },  // Off Stamford / Darien
-  { id: 'sp-05', lat: 41.070, lng: -73.350 },  // Mid-Sound off Westport
+  // These three used to follow the Connecticut shore itself, through Cove
+  // Island and the Norwalk Islands. The middle of the Sound is where the
+  // deep water is and where a shortcut can safely leave from.
+  { id: 'sp-03', lat: 40.985, lng: -73.600 },  // Mid-Sound off Greenwich
+  { id: 'sp-04', lat: 40.995, lng: -73.500 },  // Mid-Sound off Stamford
+  { id: 'sp-05', lat: 41.020, lng: -73.350 },  // Mid-Sound, south of the Norwalk Islands
   { id: 'sp-06', lat: 41.000, lng: -73.200 },  // Off Stratford Shoal
   { id: 'sp-07', lat: 41.050, lng: -73.060 },  // Mid-Sound off Bridgeport
   { id: 'sp-08', lat: 41.110, lng: -72.920 },  // Off New Haven breakwater
@@ -203,10 +244,14 @@ export const navigationSpine = [
   { id: 'sp-10', lat: 41.180, lng: -72.660 },  // Off Falkner Island
   { id: 'sp-11', lat: 41.180, lng: -72.530 },  // Off Westbrook / Clinton
   { id: 'sp-12', lat: 41.200, lng: -72.370 },  // Off Connecticut River mouth
-  { id: 'sp-13', lat: 41.185, lng: -72.210 },  // Off Plum Gut
-  { id: 'sp-14', lat: 41.250, lng: -72.090 },  // Off New London / The Race
-  { id: 'sp-15', lat: 41.290, lng: -71.950 },  // Off Fishers Island
-  { id: 'sp-16', lat: 41.308, lng: -71.865 },  // Watch Hill Passage
+  // Far enough north of Plum Gut that the leg east clears Plum Island.
+  { id: 'sp-13', lat: 41.198, lng: -72.215 },  // Off Plum Gut
+  // Through The Race and along the south side of Fishers Island, which is the
+  // way east. The spine used to run from here to Fishers Island Sound across
+  // the west end of the island, and then out over Watch Hill; the inside route
+  // is br-fishers-island-sound now.
+  { id: 'sp-14', lat: 41.218, lng: -72.075 },  // The Race, clear of Valiant Rock
+  { id: 'sp-15', lat: 41.232, lng: -71.960 },  // South of Fishers Island
   // Block Island Sound and Rhode Island Sound are open water — the corridor
   // stays wide, because a boat crossing from Montauk to Block Island really can
   // go straight there.
@@ -236,14 +281,65 @@ export const navigationSpine = [
 // another one (`to`) — that is what makes Quicks Hole and Woods Hole shortcuts
 // between Vineyard Sound and Buzzards Bay rather than cul-de-sacs.
 //
-// `from` and `to` must name a waypoint that already exists, on the spine or on
-// an earlier branch. A typo there leaves a branch unreachable rather than
+// `from` and `to` name a waypoint on the spine or on any branch, earlier or
+// later in this list. A typo there leaves a branch unreachable rather than
 // throwing, so run `npm run route:probe` after editing this — it reports any
-// waypoint the router cannot get to.
+// waypoint the router cannot get to, and any leg or waypoint on land.
 //
 // Coordinates are read off the chart, mid-channel, and are good to a few tenths
 // of a mile. They mark where the deep water runs, not a course to steer.
 export const navigationBranches = [
+  // The inside route from The Race to Block Island Sound: Fishers Island Sound,
+  // for New London, Mystic, Stonington and Watch Hill, out through the passages
+  // east of Fishers Island.
+  {
+    id: 'br-fishers-island-sound',
+    name: 'Fishers Island Sound',
+    from: 'sp-14',
+    to: 'sp-17',
+    waypoints: [
+      { id: 'fs-01', lat: 41.290, lng: -72.060, corridorNM: 1.5 },  // Off New London Ledge
+      { id: 'fs-02', lat: 41.293, lng: -71.990, corridorNM: 1.0 },  // Fishers Island Sound
+      { id: 'fs-03', lat: 41.300, lng: -71.905, corridorNM: 0.8 },  // Off Stonington
+      { id: 'fs-04', lat: 41.290, lng: -71.870, corridorNM: 0.8 },  // Watch Hill Passage
+    ],
+  },
+  // The Connecticut River to Essex. GSHHG, the shoreline route:probe checks
+  // against, stops at the I-95 bridge, so `river` excuses these legs from that
+  // check; the waypoints follow the river's course by eye and are the one part
+  // of the graph nothing verifies automatically.
+  {
+    id: 'br-connecticut-river',
+    name: 'Connecticut River',
+    from: 'sp-12',
+    river: true,
+    waypoints: [
+      { id: 'ct-01', lat: 41.262, lng: -72.339, corridorNM: 0.3 },  // Between the Saybrook jetties
+      { id: 'ct-02', lat: 41.283, lng: -72.340, corridorNM: 0.3 },  // Off Saybrook Point
+      { id: 'ct-03', lat: 41.306, lng: -72.350, corridorNM: 0.2 },  // The I-95 and railroad bridges
+      { id: 'ct-04', lat: 41.327, lng: -72.363, corridorNM: 0.2 },  // Below Nott Island
+      { id: 'ct-05', lat: 41.344, lng: -72.378, corridorNM: 0.2 },  // Off Essex
+    ],
+  },
+  // Huntington Bay and Northport Bay sit behind Lloyd Neck and Eatons Neck, and
+  // the only way in from the Sound is between the two. Five harbors and
+  // anchorages are in there; without this branch the nearest channel waypoints
+  // are out in the Sound, across a neck of land from all of them.
+  {
+    id: 'br-huntington-bay',
+    name: 'Huntington and Northport Bays',
+    from: 'sp-04',
+    waypoints: [
+      // Far enough west of Lloyd Point that Oyster Bay and Cold Spring Harbor
+      // can reach it without clipping the neck.
+      { id: 'hb-00', lat: 40.955, lng: -73.515, corridorNM: 1.0 },  // Off Lloyd Point
+      { id: 'hb-01', lat: 40.975, lng: -73.430, corridorNM: 1.0 },  // Huntington Bay entrance, W of Eatons Neck
+      { id: 'hb-02', lat: 40.940, lng: -73.420, corridorNM: 0.8 },  // Huntington Bay
+      { id: 'hb-03', lat: 40.912, lng: -73.410, corridorNM: 0.4 },  // Below the Sand City spit
+      { id: 'hb-04', lat: 40.915, lng: -73.390, corridorNM: 0.5 },  // Into Northport Bay
+      { id: 'hb-05', lat: 40.922, lng: -73.365, corridorNM: 0.6 },  // Northport Bay
+    ],
+  },
   // Plum Gut is the gate between the Sound and the bays behind the North Fork.
   // It is a third of a mile wide and runs to 5 kt, so the corridor here is
   // tighter than anywhere else east of Hell Gate.
@@ -252,17 +348,54 @@ export const navigationBranches = [
     name: 'Plum Gut',
     from: 'sp-13',
     waypoints: [
-      { id: 'pg-01', lat: 41.164, lng: -72.216, corridorNM: 0.5 },  // The Gut, between Orient Point and Plum Island
-      { id: 'pg-02', lat: 41.125, lng: -72.240, corridorNM: 1.5 },  // Gardiners Bay, inside the Gut
+      { id: 'pg-01', lat: 41.1618, lng: -72.2167, corridorNM: 0.5 },  // The Gut, between Orient Point and Plum Island
+      { id: 'pg-02', lat: 41.1230, lng: -72.2365, corridorNM: 1.5 },  // Gardiners Bay, inside the Gut
     ],
   },
+  // The Shelter Island Sound waypoints used to sit on the island itself, on
+  // North Haven and on Mashomack Point, and the legs between them crossed all
+  // three. These are placed mid-channel against the shoreline in coastline.js.
   {
     id: 'br-shelter-island',
     name: 'Shelter Island Sound',
     from: 'pg-02',
     waypoints: [
-      { id: 'si-01', lat: 41.105, lng: -72.300, corridorNM: 1.0 },  // Into Shelter Island Sound past Youngs Point
-      { id: 'si-02', lat: 41.100, lng: -72.345, corridorNM: 0.8 },  // Off Greenport and Dering Harbor
+      { id: 'si-01', lat: 41.1010, lng: -72.2960, corridorNM: 1.0 },  // Into Shelter Island Sound past Youngs Point
+      { id: 'si-02', lat: 41.1099, lng: -72.3355, corridorNM: 0.4 },  // Between Greenport and Shelter Island's north point
+      { id: 'si-03', lat: 41.1000, lng: -72.3511, corridorNM: 0.4 },  // Greenport Harbor, off Dering Harbor
+    ],
+  },
+  // Shelter Island Sound goes all the way round the island. The west arm, past
+  // Shelter Island Heights and down the island's west side to the South Ferry
+  // narrows, is how Greenport reaches Sag Harbor without going out round the
+  // island's east end.
+  {
+    id: 'br-shelter-island-west',
+    name: 'Shelter Island Sound (west arm)',
+    from: 'si-03',
+    waypoints: [
+      { id: 'si-04', lat: 41.0763, lng: -72.3708, corridorNM: 0.2 },  // Off Shelter Island Heights
+      { id: 'si-05', lat: 41.0739, lng: -72.3790, corridorNM: 0.2 },
+      { id: 'si-06', lat: 41.0744, lng: -72.3842, corridorNM: 0.2 },
+      { id: 'si-07', lat: 41.0711, lng: -72.3894, corridorNM: 0.3 },  // W of Shelter Island
+      { id: 'si-08', lat: 41.0464, lng: -72.3758, corridorNM: 0.4 },  // SW of Shelter Island
+      { id: 'si-09', lat: 41.0373, lng: -72.3478, corridorNM: 0.3 },  // Off North Haven
+      { id: 'si-10', lat: 41.0401, lng: -72.3240, corridorNM: 0.2 },  // The South Ferry narrows
+    ],
+  },
+  // From the South Ferry past Sag Harbor, south of Mashomack Point and out
+  // between it and Cedar Point into Gardiners Bay.
+  {
+    id: 'br-sag-harbor',
+    name: 'Sag Harbor and Northwest Harbor',
+    from: 'si-10',
+    to: 'gb-01',
+    waypoints: [
+      { id: 'sh-01', lat: 41.0432, lng: -72.3142, corridorNM: 0.2 },  // East of the South Ferry
+      { id: 'sh-02', lat: 41.0348, lng: -72.2965, corridorNM: 0.4 },  // Off Sag Harbor
+      { id: 'sh-03', lat: 41.0220, lng: -72.2807, corridorNM: 0.3 },  // S of Mashomack Point
+      { id: 'sh-04', lat: 41.0260, lng: -72.2681, corridorNM: 0.3 },  // Between Mashomack and Cedar Point
+      { id: 'sh-05', lat: 41.0435, lng: -72.2659, corridorNM: 0.4 },  // Off Cedar Point, into Gardiners Bay
     ],
   },
   {
@@ -270,21 +403,19 @@ export const navigationBranches = [
     name: 'Gardiners Bay',
     from: 'pg-02',
     waypoints: [
-      { id: 'gb-01', lat: 41.070, lng: -72.230, corridorNM: 1.5 },  // Mid Gardiners Bay
-      { id: 'gb-02', lat: 41.030, lng: -72.275, corridorNM: 1.0 },  // Off Cedar Point, into Sag Harbor
+      { id: 'gb-01', lat: 41.0750, lng: -72.2300, corridorNM: 1.5 },  // Mid Gardiners Bay
     ],
   },
-  // Shelter Island Sound goes all the way round the island, and the west arm
-  // past Jennings Point and the South Ferry narrows is how Greenport reaches Sag
-  // Harbor — five miles instead of eleven back out through Gardiners Bay.
+  // Round Block Island's north end. New Harbor is entered from the north-west,
+  // and a straight line from there toward Point Judith runs over Sandy Point;
+  // without this the way round was six miles back west to sp-17.
   {
-    id: 'br-shelter-island-west',
-    name: 'Shelter Island Sound (west arm)',
-    from: 'si-02',
-    to: 'gb-02',
+    id: 'br-block-island',
+    name: 'North of Block Island',
+    from: 'sp-17',
+    to: 'sp-18',
     waypoints: [
-      { id: 'si-03', lat: 41.062, lng: -72.372, corridorNM: 0.6 },  // W of Shelter Island, off Jennings Point
-      { id: 'si-04', lat: 41.035, lng: -72.330, corridorNM: 0.4 },  // The South Ferry narrows
+      { id: 'bi-01', lat: 41.250, lng: -71.585, corridorNM: 1.5 },  // Off Sandy Point, Block Island's north end
     ],
   },
   // Montauk Harbor faces Block Island Sound, and the water west of it leads
@@ -304,18 +435,26 @@ export const navigationBranches = [
   },
   // Narragansett Bay splits around Conanicut Island: the East Passage past
   // Newport carries the ship traffic, the West Passage past Dutch Island serves
-  // Wickford and Greenwich Bay. A boat cannot cross between them above
-  // Beavertail, which is why both are separate branches off the same sea buoy.
+  // Wickford and Greenwich Bay. They meet again above the island's north end,
+  // between it and Prudence, where br-conanicut-north joins them; below that
+  // the way across is round Beavertail.
+  // Both passages used to run over land for miles at a stretch: the West
+  // Passage across Quonset Point and Potowomut Neck, the East Passage across
+  // Castle Hill and the Portsmouth shore. These follow the water, checked
+  // against the shoreline in coastline.js.
   {
     id: 'br-narragansett-east',
     name: 'Narragansett Bay East Passage',
     from: 'sp-19',
     waypoints: [
-      { id: 'nb-e-01', lat: 41.452, lng: -71.352, corridorNM: 1.2 },  // Off Castle Hill, East Passage entrance
-      { id: 'nb-e-02', lat: 41.505, lng: -71.335, corridorNM: 1.0 },  // Off Newport Harbor, E of Rose Island
-      { id: 'nb-e-03', lat: 41.560, lng: -71.325, corridorNM: 1.0 },  // Off Gould Island
-      { id: 'nb-e-04', lat: 41.628, lng: -71.300, corridorNM: 0.8 },  // Between Prudence Island and Portsmouth
-      { id: 'nb-e-05', lat: 41.658, lng: -71.300, corridorNM: 0.8 },  // W of Hog Island, into Bristol Harbor
+      { id: 'nb-e-01', lat: 41.4527, lng: -71.3708, corridorNM: 0.8 },  // East Passage entrance, off Castle Hill
+      { id: 'nb-e-02', lat: 41.4638, lng: -71.3676, corridorNM: 0.5 },
+      { id: 'nb-e-03', lat: 41.4800, lng: -71.3517, corridorNM: 0.5 },  // Off Fort Adams, Newport Harbor entrance
+      { id: 'nb-e-04', lat: 41.4940, lng: -71.3472, corridorNM: 0.8 },  // E of Rose Island
+      { id: 'nb-e-05', lat: 41.5367, lng: -71.3288, corridorNM: 0.8 },  // Off Gould Island
+      { id: 'nb-e-06', lat: 41.5997, lng: -71.2942, corridorNM: 0.8 },  // Between Prudence Island and Portsmouth
+      { id: 'nb-e-07', lat: 41.6453, lng: -71.2917, corridorNM: 0.5 },  // W of Hog Island
+      { id: 'nb-e-08', lat: 41.6567, lng: -71.2838, corridorNM: 0.4 },  // Bristol Harbor
     ],
   },
   {
@@ -323,22 +462,38 @@ export const navigationBranches = [
     name: 'Narragansett Bay West Passage',
     from: 'sp-19',
     waypoints: [
-      { id: 'nb-w-01', lat: 41.425, lng: -71.410, corridorNM: 1.5 },  // S of Beavertail Point
-      { id: 'nb-w-02', lat: 41.500, lng: -71.425, corridorNM: 1.0 },  // West Passage, W of Dutch Island
-      { id: 'nb-w-03', lat: 41.565, lng: -71.415, corridorNM: 1.0 },  // Off Wickford
-      { id: 'nb-w-04', lat: 41.640, lng: -71.425, corridorNM: 1.0 },  // N of Quonset Point
-      { id: 'nb-w-05', lat: 41.655, lng: -71.428, corridorNM: 0.8 },  // Greenwich Bay
+      { id: 'nb-w-01', lat: 41.4250, lng: -71.4100, corridorNM: 1.5 },  // S of Beavertail Point
+      { id: 'nb-w-02', lat: 41.5003, lng: -71.4133, corridorNM: 0.6 },  // West Passage, W of Dutch Island
+      { id: 'nb-w-03', lat: 41.5670, lng: -71.4014, corridorNM: 0.8 },  // Off Wickford
+      { id: 'nb-w-04', lat: 41.6000, lng: -71.3867, corridorNM: 0.8 },  // E of Quonset Point
+      { id: 'nb-w-05', lat: 41.6567, lng: -71.3938, corridorNM: 0.6 },  // Off Potowomut Neck, into Greenwich Bay
+      { id: 'nb-w-06', lat: 41.6775, lng: -71.4152, corridorNM: 0.5 },  // Greenwich Bay
+    ],
+  },
+  // The water north of Conanicut Point, where the two passages meet. This used
+  // to be modelled as no way through, which sent Newport to East Greenwich out
+  // round Beavertail and back up the West Passage: twice the distance.
+  {
+    id: 'br-conanicut-north',
+    name: 'North of Conanicut',
+    from: 'nb-w-04',
+    to: 'nb-e-05',
+    waypoints: [
+      { id: 'cn-01', lat: 41.5863, lng: -71.3564, corridorNM: 1.0 },  // Between Conanicut Point and Prudence Island
     ],
   },
   // A boat coming from Point Judith reaches the West Passage without going out to
-  // the Brenton Reef sea buoy first, so the passage gets a second way in.
+  // the Brenton Reef sea buoy first, so the passage gets a second way in. It
+  // rounds Point Judith with the offing its circle asks for, rather than across
+  // the point itself.
   {
     id: 'br-west-passage-approach',
     name: 'West Passage approach',
     from: 'sp-18',
     to: 'nb-w-01',
     waypoints: [
-      { id: 'nb-w-00', lat: 41.395, lng: -71.450, corridorNM: 2.0 },  // S of Narragansett Pier and Whale Rock
+      { id: 'nb-w-00', lat: 41.3450, lng: -71.4600, corridorNM: 1.0 },  // SE of Point Judith
+      { id: 'nb-w-0a', lat: 41.3950, lng: -71.4500, corridorNM: 1.5 },  // S of Narragansett Pier and Whale Rock
     ],
   },
   // Not modelled, and worth knowing: the Sakonnet River (Mount Hope Bay south to
@@ -358,8 +513,10 @@ export const navigationBranches = [
       { id: 'bz-01', lat: 41.420, lng: -71.010, corridorNM: 2.5 },  // Bay entrance, NW of Cuttyhunk
       { id: 'bz-02', lat: 41.480, lng: -70.960, corridorNM: 3.0 },  // Mid bay, NW of Penikese Island
       { id: 'bz-03', lat: 41.540, lng: -70.905, corridorNM: 3.0 },  // Mid bay, off Padanaram
-      { id: 'bz-04', lat: 41.600, lng: -70.845, corridorNM: 3.0 },  // Mid bay, off New Bedford
-      { id: 'bz-05', lat: 41.660, lng: -70.790, corridorNM: 1.5 },  // Off Sippican Harbor
+      // The upper bay runs south-east of West Island. These two used to sit on
+      // the tip of a neck and ashore at Mattapoisett.
+      { id: 'bz-04', lat: 41.578, lng: -70.8164, corridorNM: 2.0 },  // Mid bay, SE of West Island
+      { id: 'bz-05', lat: 41.628, lng: -70.7464, corridorNM: 2.0 },  // Upper bay, off Mattapoisett
     ],
   },
   // Round Cuttyhunk's west end, past Sow and Pigs, between the Vineyard Sound
@@ -386,14 +543,18 @@ export const navigationBranches = [
   // The two holes through the Elizabeth Islands. Both are short, deep and swept
   // by current — the corridor is a few hundred yards because there is nowhere
   // else to be.
+  // Both used to be placed a quarter mile off: Quicks Hole's waypoints on the
+  // end of Nashawena, Woods Hole's with its leg into Buzzards Bay across
+  // Nonamesset. Woods Hole in particular is narrower than anything else in the
+  // graph, hence four waypoints to get through it.
   {
     id: 'br-quicks-hole',
     name: 'Quicks Hole',
     from: 'bz-02',
     to: 'sp-22',
     waypoints: [
-      { id: 'qh-01', lat: 41.452, lng: -70.862, corridorNM: 0.5 },  // N entrance, Buzzards Bay side
-      { id: 'qh-02', lat: 41.430, lng: -70.858, corridorNM: 0.4 },  // S entrance, into Vineyard Sound
+      { id: 'qh-01', lat: 41.4523, lng: -70.8499, corridorNM: 0.5 },  // N entrance, Buzzards Bay side
+      { id: 'qh-02', lat: 41.4273, lng: -70.8461, corridorNM: 0.4 },  // S entrance, into Vineyard Sound
     ],
   },
   {
@@ -402,21 +563,21 @@ export const navigationBranches = [
     from: 'sp-24',
     to: 'bz-04',
     waypoints: [
-      { id: 'wh-01', lat: 41.522, lng: -70.684, corridorNM: 0.3 },  // The passage itself
-      { id: 'wh-02', lat: 41.545, lng: -70.725, corridorNM: 1.2 },  // Buzzards Bay side, off Hadley Harbor
+      { id: 'wh-01', lat: 41.5126, lng: -70.6759, corridorNM: 0.2 },  // The passage, Vineyard Sound end
+      { id: 'wh-02', lat: 41.5218, lng: -70.6838, corridorNM: 0.1 },  // The passage
+      { id: 'wh-03', lat: 41.5192, lng: -70.6863, corridorNM: 0.1 },  // The passage, Buzzards Bay end
+      { id: 'wh-04', lat: 41.5463, lng: -70.7263, corridorNM: 1.2 },  // Buzzards Bay side, off Hadley Harbor
     ],
   },
-  // Up the east side of Buzzards Bay, inside West Island. Without this a boat
-  // running from Marion to Woods Hole — twelve miles straight down the bay — gets
-  // sent out to the mid-bay channel off New Bedford and back.
+  // Straight up the east side of the bay, from off Hadley Harbor to the upper
+  // bay. Without this a boat running from Marion to Woods Hole, twelve miles
+  // down the bay, gets sent out to the mid-bay channel and back.
   {
     id: 'br-buzzards-east',
     name: 'Buzzards Bay (east side)',
-    from: 'wh-02',
+    from: 'wh-04',
     to: 'bz-05',
-    waypoints: [
-      { id: 'bz-e-01', lat: 41.610, lng: -70.735, corridorNM: 2.5 },  // Off Mattapoisett, E of West Island
-    ],
+    waypoints: [],
   },
   {
     id: 'br-hyannis',
@@ -437,11 +598,14 @@ export const pointsOfInterest = [
     lng: -72.7740,
     description: 'Archipelago of small islands off Branford — great for sightseeing by boat.',
   },
+  // Off Westbrook, inside the Duck Island Roads breakwaters. It was once placed
+  // eighteen miles west, in open water south of New Haven, which put it "along
+  // the way" of every run out of New Haven and off the list for Westbrook.
   {
     id: 'duck-island',
     name: 'Duck Island',
-    lat: 41.2050,
-    lng: -72.8900,
+    lat: 41.2567,
+    lng: -72.4753,
     description: 'Wildlife refuge near Clinton with calm anchorage opportunities.',
   },
   {
@@ -649,25 +813,21 @@ export const shoalAreas = [
 // the Elizabeth Islands. Coordinates are approximate — enough to catch the
 // crossing, not surveyed. Add more here as bad-looking routes turn up.
 export const headlands = [
-  // Eatons Neck splits Huntington Bay (west) from Northport Bay (east); a
-  // direct line between their approaches cuts across the peninsula's full
-  // north-south extent, not just its charted tip (sh-eatons-shoal covers the
-  // shoal water just off that tip, a separate depth hazard). Only the north
-  // side, around the light and shoal, is open water — bypass goes there.
-  { id: 'hl-eatons-neck', name: 'Eatons Neck', lat: 40.9400, lng: -73.3970, radiusNM: 1.0, bypass: { lat: 40.9900, lng: -73.3980 } },
-  // Lloyd Neck sits between Cold Spring Harbor/Lloyd Harbor and Huntington
-  // Bay; only the water north of Lloyd Point is clear.
-  { id: 'hl-lloyd-neck', name: 'Lloyd Neck', lat: 40.9250, lng: -73.4620, radiusNM: 1.3, bypass: { lat: 40.9750, lng: -73.4680 } },
-  // The North Fork ends in a mile of low land between Orient village and the
-  // point. Greenport is six miles from Orient Point across it and twelve around
-  // it — through Plum Gut and back in from Gardiners Bay, which is the bypass.
-  { id: 'hl-orient-point', name: 'Orient Point & the North Fork', lat: 41.1450, lng: -72.2900, radiusNM: 1.2, bypass: { lat: 41.1630, lng: -72.2170 } },
-  // Shelter Island sits between Sag Harbor and Dering Harbor. The way round is
-  // west, through the narrows off Jennings Point.
-  { id: 'hl-shelter-island', name: 'Shelter Island', lat: 41.0680, lng: -72.3250, radiusNM: 1.2, bypass: { lat: 41.0580, lng: -72.3720 } },
-  // Conanicut Island divides Narragansett Bay. Nothing crosses between the two
-  // passages above Beavertail Point, so that is where the bypass goes.
-  { id: 'hl-conanicut', name: 'Conanicut Island (Jamestown)', lat: 41.5000, lng: -71.3820, radiusNM: 1.0, bypass: { lat: 41.4280, lng: -71.4040 } },
+  // Eatons Neck and Lloyd Neck had circles here until the shoreline in
+  // coastline.js took over. Each circle reached well into Huntington Bay, and
+  // the Eatons Neck one sent any leg inside Northport Bay round the far side of
+  // the neck to its bypass: the right answer from the Sound, the wrong one from
+  // Sand City to Northport.
+  // Orient Point had a circle, with its bypass in Plum Gut. With the shoreline
+  // in coastline.js holding the North Fork, all it still did was send a route
+  // leaving Orient for the west into the Gut and back out across the point.
+  // Shelter Island's circle went with the shoreline too: its bypass point was
+  // ashore on the island, and the channels round it are in the graph now.
+  // Conanicut Island had a circle mid-island, with its bypass off Beavertail.
+  // The West Passage runs within a mile of that circle past Dutch Island, so a
+  // run down the passage was sent to Beavertail and back up it, across Dutch
+  // Island. The shoreline holds the whole island, and the two passages and the
+  // way round its north end are in the graph.
   // Sakonnet Point and Point Judith both stick a mile into open water between
   // harbors either side of them.
   { id: 'hl-sakonnet-point', name: 'Sakonnet Point', lat: 41.4520, lng: -71.1980, radiusNM: 0.7, bypass: { lat: 41.4200, lng: -71.1960 } },
@@ -675,15 +835,14 @@ export const headlands = [
   // The Elizabeth Islands wall Buzzards Bay off from Vineyard Sound for fifteen
   // miles, and the only ways through are the holes between the islands. One
   // circle per island, with Quicks Hole left clear between Nashawena and Pasque.
-  // Cuttyhunk gets a deliberately small circle. Its own harbor is entered from a
-  // mile north of it and the western entrance to Vineyard Sound passes a mile
-  // south, so a circle big enough to cover a two-mile island flags both of those
-  // as running aground. Chords that genuinely cross the chain here are caught by
-  // Nashawena, whose circle has open water on both sides.
-  { id: 'hl-cuttyhunk', name: 'Cuttyhunk Island', lat: 41.4180, lng: -70.9380, radiusNM: 0.5, bypass: { lat: 41.3980, lng: -70.9850 } },
-  { id: 'hl-nashawena', name: 'Nashawena Island', lat: 41.4320, lng: -70.8950, radiusNM: 0.7, bypass: { lat: 41.4520, lng: -70.8620 } },
-  { id: 'hl-pasque', name: 'Pasque Island', lat: 41.4500, lng: -70.8280, radiusNM: 0.5, bypass: { lat: 41.4300, lng: -70.8580 } },
-  { id: 'hl-naushon', name: 'Naushon Island', lat: 41.4870, lng: -70.7480, radiusNM: 0.9, bypass: { lat: 41.4550, lng: -70.7900 } },
+  // Cuttyhunk had a small circle, with its bypass out past Sow and Pigs Reef.
+  // With the shoreline holding the island and the reef a shoal of its own, all
+  // it still did was take a route already round the west end back out to the
+  // bypass and across the reef to the harbor, three miles for nothing.
+  { id: 'hl-nashawena', name: 'Nashawena Island', lat: 41.4320, lng: -70.8950, radiusNM: 0.7, bypass: { lat: 41.4523, lng: -70.8499 } },
+  // Pasque and Naushon had circles too, with bypass points that turned out to be
+  // ashore on the islands themselves: every route west from Hadley Harbor was
+  // sent four miles across Naushon to reach one. The shoreline covers both now.
 ]
 
 // No-wake zones near marinas and harbors. Each zone has a center point and a

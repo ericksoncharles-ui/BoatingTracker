@@ -112,6 +112,35 @@ export function calcRouteDistanceNM(waypoints) {
   return total
 }
 
+// What the boat inputs accept. Wide enough for a skiff or a sportfisherman,
+// and a sailboat motoring on a 0 GPH guess; narrow enough that a slip of the
+// thumb is caught before it reaches the arithmetic. A cleared speed field used
+// to read as 0 kts and plan an "Infinityh NaNm" trip.
+export const BOAT_LIMITS = {
+  tankSize: { label: 'Tank', unit: 'gal', min: 1, max: 3000 },
+  cruisingSpeed: { label: 'Speed', unit: 'kts', min: 1, max: 80 },
+  fuelBurn: { label: 'Burn', unit: 'GPH', min: 0, max: 300 },
+  draft: { label: 'Draft', unit: 'ft', min: 0, max: 20 },
+}
+
+/**
+ * The boat inputs as numbers, and what is wrong with any that can't be used.
+ * Takes the fields' own text, so a field emptied mid-edit reads as missing
+ * rather than as zero.
+ */
+export function parseBoatInputs(fields) {
+  const values = {}
+  const errors = {}
+  for (const [key, { label, unit, min, max }] of Object.entries(BOAT_LIMITS)) {
+    const text = String(fields[key] ?? '').trim()
+    const n = Number(text)
+    if (text === '' || !Number.isFinite(n)) errors[key] = `${label} needs a number`
+    else if (n < min || n > max) errors[key] = `${label} must be ${min} to ${max} ${unit}`
+    else values[key] = n
+  }
+  return { values, errors, valid: Object.keys(errors).length === 0 }
+}
+
 /**
  * Calculate trip details from distance and boat parameters, including no-wake zone delays.
  */
@@ -198,15 +227,19 @@ export function buildChannelGraph(spine, branches = []) {
     previous = idx
   }
 
-  for (const branch of branches) {
+  // Every waypoint exists before any branch is joined up, so a branch can
+  // leave from or rejoin one declared further down the list. Joining as they
+  // were read used to drop a `to` naming a later branch without a word, which
+  // left the Sag Harbor channel a dead end.
+  const chains = branches.map((branch) => branch.waypoints.map(addNode))
+  branches.forEach((branch, b) => {
     let anchor = byId.get(branch.from)
-    for (const wp of branch.waypoints) {
-      const idx = addNode(wp)
+    for (const idx of chains[b]) {
       link(anchor, idx)
       anchor = idx
     }
     if (branch.to != null) link(anchor, byId.get(branch.to))
-  }
+  })
 
   // Every leg, with the width of water around it — the narrower end governs,
   // since that is the constraint a boat on the leg actually meets.
@@ -268,18 +301,239 @@ function channelDistances(adj, source) {
 // mile off the Eatons Neck beach reads as driving over the neck.
 const LAND_MARGIN_NM = 0.3
 
+// A leg is only judged by how close it gets to a hazard *beyond* its own ends.
+// An approach waypoint can legitimately sit near the land or shoal it is the way
+// around, and an inserted bypass sits just outside its circle by design; what
+// matters is whether the line between them gets closer still. This used to be
+// "ignore the first and last 2% of the leg", which on a seventy-mile leg waved
+// through a mile and a half at each end: enough to run over Greens Ledge on the
+// way into Darien.
+const ENDPOINT_SLACK_NM = 0.05
+
+function passesInside(hazard, a, b, limitNM) {
+  const { distance } = distanceFromRoute(hazard.lat, hazard.lng, a.lat, a.lng, b.lat, b.lng)
+  if (distance >= limitNM) return false
+  const nearestEnd = Math.min(dist(a, hazard), dist(b, hazard))
+  return distance < nearestEnd - ENDPOINT_SLACK_NM
+}
+
 /**
- * True when a straight line from a to b runs over land — through the core of one
- * of the keep-out circles in `headlands`. Endpoints themselves are ignored: an
- * approach waypoint can legitimately sit close to the land it is the way around.
+ * True when a straight line from a to b runs over land: through the core of one
+ * of the keep-out circles in `headlands`, or across the real shoreline when a
+ * `coast` (see coastline.js) is supplied. The circles only know the land someone
+ * drew; the shoreline knows the rest, from Fishers Island to the barrier beaches.
  */
-function crossesLand(a, b, landAreas) {
+function crossesLand(a, b, landAreas, coast) {
   for (const land of landAreas) {
-    const core = Math.max(0.15, land.radiusNM - LAND_MARGIN_NM)
-    const { distance, t } = distanceFromRoute(land.lat, land.lng, a.lat, a.lng, b.lat, b.lng)
-    if (t > 0.02 && t < 0.98 && distance < core) return true
+    if (passesInside(land, a, b, Math.max(0.15, land.radiusNM - LAND_MARGIN_NM))) return true
   }
-  return false
+  return coast ? coast.crossesLand(a, b) : false
+}
+
+// Two harbors ten miles apart can have islands between them that no channel
+// waypoint was ever placed for: the Norwalk Islands, the Thimbles. With the
+// shoreline enforced, the straight line between them is refused and the channel
+// graph's answer can be three times the distance. So for a hop this short the
+// router also looks for the way through itself, on a grid over the real
+// shoreline, and takes it when it beats the graph.
+const DETOUR_MAX_NM = 15
+
+// Sixteen directions, so a grid path isn't limited to 45-degree zigzags before
+// it is pulled tight.
+const GRID_MOVES = [
+  [-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1],
+  [-1, -2], [-1, 2], [1, -2], [1, 2], [-2, -1], [-2, 1], [2, -1], [2, 1],
+]
+
+// A path pulled tight round an island runs along its beach, which is where the
+// rocks are. The detour keeps this much water between itself and the shore,
+// except in the first and last stretch, where an approach waypoint is close to
+// its harbor by design.
+const DETOUR_CLEARANCE_NM = 0.1
+const DETOUR_END_GRACE_NM = 0.3
+
+/**
+ * Shortest way from a to b that stays off the land, found by A* over a local
+ * grid of water points and then pulled tight, or null when there is none
+ * shorter than `limitNM`. `blocked(p, q)` is the router's own land test, so the
+ * answer respects the same shoreline and headland circles as everything else;
+ * `avoid` is circles of water that count as dry here too, for a way round a
+ * reef.
+ */
+function findWaterPath(a, b, blocked, coast, limitNM, avoid = []) {
+  const direct = dist(a, b)
+  if (!coast || direct > DETOUR_MAX_NM) return null
+
+  const stepNM = Math.min(0.25, Math.max(0.1, direct / 40))
+  const marginNM = Math.min(3, Math.max(1, direct / 2))
+  const cosLat = Math.cos((((a.lat + b.lat) / 2) * Math.PI) / 180)
+
+  // A line keeps its clearance when it doesn't cross land and neither do the
+  // two lines DETOUR_CLEARANCE_NM either side of it.
+  const clearLine = (p, q) => {
+    if (blocked(p, q)) return false
+    const east = (q.lng - p.lng) * 60 * cosLat
+    const north = (q.lat - p.lat) * 60
+    const len = Math.hypot(east, north)
+    if (len === 0) return true
+    const grace = p === a || p === b || q === a || q === b ? DETOUR_END_GRACE_NM : 0
+    for (const side of [1, -1]) {
+      const offLat = (side * (-east / len) * DETOUR_CLEARANCE_NM) / 60
+      const offLng = (side * (north / len) * DETOUR_CLEARANCE_NM) / (60 * cosLat)
+      const p2 = { lat: p.lat + offLat, lng: p.lng + offLng }
+      const q2 = { lat: q.lat + offLat, lng: q.lng + offLng }
+      if (coast.crossesLand(p2, q2, grace)) return false
+    }
+    return true
+  }
+  // The grid covers the line with a margin, and has to reach round anything
+  // near it that counts as dry: Sow and Pigs reaches further west of Cuttyhunk
+  // than any margin sized to the hop from the harbor.
+  const near = avoid.filter((c) =>
+    distanceFromRoute(c.lat, c.lng, a.lat, a.lng, b.lat, b.lng).distance < c.radiusNM + marginNM)
+  let south = Math.min(a.lat, b.lat)
+  let north = Math.max(a.lat, b.lat)
+  let west = Math.min(a.lng, b.lng)
+  let east = Math.max(a.lng, b.lng)
+  for (const c of near) {
+    south = Math.min(south, c.lat - c.radiusNM / 60)
+    north = Math.max(north, c.lat + c.radiusNM / 60)
+    west = Math.min(west, c.lng - c.radiusNM / (60 * cosLat))
+    east = Math.max(east, c.lng + c.radiusNM / (60 * cosLat))
+  }
+  const dLat = stepNM / 60
+  const dLng = stepNM / (60 * cosLat)
+  const minLat = south - marginNM / 60
+  const minLng = west - marginNM / (60 * cosLat)
+  const rows = Math.ceil((north + marginNM / 60 - minLat) / dLat) + 1
+  const cols = Math.ceil((east + marginNM / (60 * cosLat) - minLng) / dLng) + 1
+
+  const cells = rows * cols
+  const A = cells
+  const B = cells + 1
+  const point = (k) =>
+    k === A ? a : k === B ? b : { lat: minLat + Math.floor(k / cols) * dLat, lng: minLng + (k % cols) * dLng }
+  const cellOf = (p) => [Math.round((p.lat - minLat) / dLat), Math.round((p.lng - minLng) / dLng)]
+
+  // A grid point counts as water only with water around it too.
+  const wet = new Int8Array(cells)
+  const clearLat = DETOUR_CLEARANCE_NM / 60
+  const clearLng = DETOUR_CLEARANCE_NM / (60 * cosLat)
+  const isWater = (k) => {
+    if (k >= cells) return true
+    if (wet[k] === 0) {
+      const p = point(k)
+      const dry = coast.isLand(p.lat, p.lng)
+        || coast.isLand(p.lat + clearLat, p.lng) || coast.isLand(p.lat - clearLat, p.lng)
+        || coast.isLand(p.lat, p.lng + clearLng) || coast.isLand(p.lat, p.lng - clearLng)
+        || near.some((c) => dist(p, c) < c.radiusNM)
+      wet[k] = dry ? -1 : 1
+    }
+    return wet[k] === 1
+  }
+
+  // The two approaches join the grid through the cells around them.
+  const nearCells = (p) => {
+    const [r, c] = cellOf(p)
+    const out = []
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        if (r + dr >= 0 && r + dr < rows && c + dc >= 0 && c + dc < cols) out.push((r + dr) * cols + c + dc)
+      }
+    }
+    return out
+  }
+  const bCells = new Set(nearCells(b))
+
+  const g = new Float64Array(cells + 2).fill(Infinity)
+  const previous = new Int32Array(cells + 2).fill(-1)
+  const heap = []
+  const push = (f, k) => {
+    heap.push([f, k])
+    let i = heap.length - 1
+    while (i > 0) {
+      const parent = (i - 1) >> 1
+      if (heap[parent][0] <= heap[i][0]) break
+      ;[heap[parent], heap[i]] = [heap[i], heap[parent]]
+      i = parent
+    }
+  }
+  const pop = () => {
+    const top = heap[0]
+    const last = heap.pop()
+    if (heap.length > 0) {
+      heap[0] = last
+      let i = 0
+      for (;;) {
+        const l = 2 * i + 1
+        const r = l + 1
+        let m = i
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r
+        if (m === i) break
+        ;[heap[m], heap[i]] = [heap[i], heap[m]]
+        i = m
+      }
+    }
+    return top
+  }
+
+  g[A] = 0
+  push(direct, A)
+  while (heap.length > 0) {
+    const [f, k] = pop()
+    if (f >= limitNM) return null
+    if (k === B) break
+    if (f > g[k] + dist(point(k), b) + 1e-9) continue
+
+    let next
+    if (k === A) {
+      next = nearCells(a)
+    } else {
+      const r = Math.floor(k / cols)
+      const c = k % cols
+      next = []
+      for (const [dr, dc] of GRID_MOVES) {
+        if (r + dr >= 0 && r + dr < rows && c + dc >= 0 && c + dc < cols) next.push((r + dr) * cols + c + dc)
+      }
+      if (bCells.has(k)) next.push(B)
+    }
+
+    const from = point(k)
+    for (const n of next) {
+      if (!isWater(n)) continue
+      const to = point(n)
+      const cost = g[k] + dist(from, to)
+      // The land test is most of the work here, so it waits until the hop
+      // would actually improve on what is known.
+      if (cost >= g[n]) continue
+      // The hops on and off the grid only have to stay off the land: the
+      // approach at either end can be closer to shore than the clearance.
+      const ok = k === A || n === B ? !blocked(from, to) : clearLine(from, to)
+      if (!ok) continue
+      g[n] = cost
+      previous[n] = k
+      push(cost + dist(to, b), n)
+    }
+  }
+  if (previous[B] === -1) return null
+
+  const path = []
+  for (let k = B; k !== -1; k = previous[k]) path.unshift(point(k))
+
+  // Pull the grid path tight: from each point, jump to the furthest one still
+  // in plain sight across the water, with the clearance kept.
+  const pulled = [path[0]]
+  for (let i = 0; i < path.length - 1;) {
+    let j = path.length - 1
+    while (j > i + 1 && !clearLine(path[i], path[j])) j -= 1
+    pulled.push(path[j])
+    i = j
+  }
+
+  let length = 0
+  for (let i = 1; i < pulled.length; i++) length += dist(pulled[i - 1], pulled[i])
+  return length < limitNM ? { length, points: pulled.slice(1, -1) } : null
 }
 
 /**
@@ -292,8 +546,12 @@ function crossesLand(a, b, landAreas) {
  * approach-to-approach line, and take whichever is shortest. Open-water
  * crossings are real, so the direct line wins whenever it beats the channel
  * path and stays in navigable water.
+ *
+ * `coast` is the shoreline from coastline.js. Without it only the `landAreas`
+ * circles stand between a shortcut and the land, which is how routes came to
+ * cross Fishers Island; the probes and the app always pass it.
  */
-export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas = []) {
+export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas = [], coast = null) {
   const startApproach = start.approach || { lat: start.lat, lng: start.lng }
   const destApproach = dest.approach || { lat: dest.lat, lng: dest.lng }
 
@@ -326,15 +584,24 @@ export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas
     return true
   }
 
+  const blocked = (a, b) => crossesLand(a, b, landAreas, coast)
+
   // Entry/exit is limited to the nearest couple of channel waypoints — long
   // diagonal entry legs can cut across headlands (e.g. Eatons Neck), while the
   // short hop out to the nearest channel points is a safe approach corridor.
-  const nearestIndices = (pt, count) =>
-    nodes
+  // Nearest by distance is not enough on its own: from inside Northport Bay the
+  // closest waypoints are out in the Sound, on the far side of the Asharoken
+  // spit. So the hop has to be clear of land too, and only when none of the
+  // nearby waypoints is does it fall back to the nearest, for route:probe to
+  // report.
+  const ENTRY_SEARCH = 6
+  const nearestIndices = (pt, count) => {
+    const ranked = nodes
       .map((node, idx) => ({ idx, d: dist(pt, node) }))
       .sort((a, b) => a.d - b.d)
-      .slice(0, count)
-      .map((entry) => entry.idx)
+    const clear = ranked.slice(0, ENTRY_SEARCH).filter((entry) => !blocked(pt, nodes[entry.idx]))
+    return (clear.length > 0 ? clear : ranked).slice(0, count).map((entry) => entry.idx)
+  }
 
   const entryCandidates = nearestIndices(startApproach, 2)
   const exitCandidates = nearestIndices(destApproach, 2)
@@ -359,11 +626,20 @@ export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas
 
   // Direct crossing beats the channels when it stays in a corridor, or when it
   // is a short hop between harbors on the same shore. Either way it has to not
-  // run over land.
+  // run over land; when land is all that stands in the way of a short hop, look
+  // for the way round it before settling for the channels.
   const directDist = dist(startApproach, destApproach)
-  if (directDist < best.length && (directDist < SHORT_HOP_NM || inCorridor(startApproach, destApproach))
-      && !crossesLand(startApproach, destApproach, landAreas)) {
-    best = { length: directDist, points: [] }
+  if (directDist < best.length) {
+    if (!blocked(startApproach, destApproach)) {
+      if (directDist < SHORT_HOP_NM || inCorridor(startApproach, destApproach)) {
+        best = { length: directDist, points: [] }
+      }
+    } else {
+      // The corridor test says where a straight line may cut across; a detour
+      // is built on the shoreline itself, so it only has to be shorter.
+      const detour = findWaterPath(startApproach, destApproach, blocked, coast, best.length)
+      if (detour) best = { length: detour.length, points: detour.points.map((p) => [p.lat, p.lng]) }
+    }
   }
 
   // Greedy shortcut pass: skip ahead past intermediate points whenever the
@@ -381,7 +657,7 @@ export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas
   while (i < path.length - 1) {
     let next = i + 1
     for (let j = path.length - 1; j > i + 1; j--) {
-      if (inCorridor(path[i], path[j]) && !crossesLand(path[i], path[j], landAreas)) {
+      if (inCorridor(path[i], path[j]) && !blocked(path[i], path[j])) {
         next = j
         break
       }
@@ -397,20 +673,130 @@ export function buildRouteWaypoints(start, dest, spine, branches = [], landAreas
   ]
 }
 
+// Each pass inserts one detour and starts over, so this caps the detours on one
+// route. A run from the Sound to Nantucket passes a dozen charted hazards; the
+// old cap of six quietly left the rest of them on the course.
+const MAX_BYPASSES = 40
+
+// How far either side of its closest approach a route is rerouted when a reef
+// has land close enough on both sides that a single detour point won't do,
+// and how far that may stretch when the route is still on the reef there.
+const AROUND_REACH_NM = 3
+const AROUND_REACH_MAX_NM = 6
+
+// A hazard's keep-out zone stops this far short of an approach waypoint.
+const ZONE_EDGE_NM = 0.02
+
+/**
+ * The point `reachNM` along the route from `from`, a point on leg i, walking
+ * back (dir -1) or ahead (dir 1), with the leg it lands on. The walk stops at
+ * the approach waypoints: the legs beyond them are the curated harbor legs.
+ */
+function walkRoute(pts, i, from, reachNM, dir) {
+  let leg = i
+  let at = from
+  let left = reachNM
+  for (;;) {
+    const end = dir < 0 ? pts[leg] : pts[leg + 1]
+    const d = dist(at, end)
+    if (d > left) {
+      const f = left / d
+      return { leg, point: { lat: at.lat + (end.lat - at.lat) * f, lng: at.lng + (end.lng - at.lng) * f } }
+    }
+    left -= d
+    at = end
+    if (dir < 0 ? leg === 1 : leg + 1 === pts.length - 2) return { leg, point: end, atApproach: true }
+    leg += dir
+  }
+}
+
+/**
+ * The way round a hazard on the water, for a leg whose one-point detour would
+ * go aground on either side. The stretch of route AROUND_REACH_NM either side
+ * of where leg i passes closest to `zone` is replaced by the water path between
+ * its two ends that keeps off the land and out of every hazard's zone. It is
+ * the stretch and not the leg because the router's own detour round a point
+ * can put a waypoint on the reef off it: Dumpling Rocks, off Round Hill on the
+ * way into Padanaram. Returns the whole new route, or null when there is no
+ * way round.
+ *
+ * Both ends of the stretch have to be clear of every zone, not just this
+ * one's, and no zone is ever left out of the search to make that so. Leaving
+ * out the one City Island's approach sits in sent the way round Execution Rocks
+ * straight across Stepping Stones.
+ */
+function aroundHazard(pts, i, zone, zones, coast) {
+  const a = pts[i]
+  const b = pts[i + 1]
+  const { t } = distanceFromRoute(zone.lat, zone.lng, a.lat, a.lng, b.lat, b.lng)
+  const closest = { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t }
+  const clear = (end) => end.atApproach || zones.every((z) => dist(end.point, z) >= z.radiusNM)
+  const walk = (dir) => {
+    let end
+    for (let reach = AROUND_REACH_NM; reach <= AROUND_REACH_MAX_NM; reach += 1) {
+      end = walkRoute(pts, i, closest, reach, dir)
+      if (clear(end)) break
+    }
+    return end
+  }
+  const back = walk(-1)
+  const ahead = walk(1)
+  if (!clear(back) || !clear(ahead)) return null
+
+  const circles = zones.filter((z) => z.radiusNM > 0)
+  const blocked = (p, q) => coast.crossesLand(p, q)
+    || circles.some((c) => distanceFromRoute(c.lat, c.lng, p.lat, p.lng, q.lat, q.lng).distance < c.radiusNM)
+
+  const path = findWaterPath(back.point, ahead.point, blocked, coast, Infinity, circles)
+  if (!path) return null
+  return [
+    ...pts.slice(0, back.leg + 1),
+    ...(back.atApproach ? [] : [back.point]),
+    ...path.points,
+    ...(ahead.atApproach ? [] : [ahead.point]),
+    ...pts.slice(ahead.leg + 1),
+  ]
+}
+
 /**
  * Detour a route around circular hazards (shoals or headlands). Any hazard
- * the route passes within radiusNM + buffer of gets a bypass waypoint
- * pushed just outside that radius, on the side the route already favors.
+ * the route passes within radiusNM + buffer of (its zone, below) gets a bypass
+ * waypoint pushed just outside that radius, on the side the route already favors.
  * The first and last legs (marina to approach waypoint) are left alone —
  * those are curated harbor approaches.
+ *
+ * With a `coast`, a computed detour that would put the boat on the beach is
+ * taken round the other side of the hazard instead. A reef close inshore is
+ * the common case: the route passes it on the landward side, and "further the
+ * same way" is further up the beach.
  */
-function insertHazardBypasses(waypoints, hazards, buffer) {
+function insertHazardBypasses(waypoints, hazards, buffer, coast = null) {
   const pts = waypoints.map(([lat, lng]) => ({ lat, lng }))
   const avoided = []
+  const noteAvoided = (s) => {
+    if (!avoided.some((x) => x.id === s.id)) avoided.push(s)
+  }
+  // Hazards the route still passes with no way round on the water. Reported
+  // rather than hidden: the boat is still being sent past them.
+  const unavoided = []
+
+  // What the route keeps out of for each hazard: its circle and the buffer,
+  // drawn in where it has to be to leave both approach waypoints outside. An
+  // approach is curated and has to be reached whatever lies near it: City
+  // Island's is in the margin round Stepping Stones, and a lighthouse's is on
+  // its reef. The approaches never move, so neither do the zones.
+  const first = pts[1]
+  const last = pts[pts.length - 2]
+  const zoneOf = new Map(hazards.map((s) => [s.id, {
+    lat: s.lat,
+    lng: s.lng,
+    radiusNM: Math.min(s.radiusNM + buffer, dist(first, s) - ZONE_EDGE_NM, dist(last, s) - ZONE_EDGE_NM),
+  }]))
+  const zones = [...zoneOf.values()]
 
   let changed = true
   let iter = 0
-  while (changed && iter++ < 6) {
+  while (changed && iter++ < MAX_BYPASSES) {
     changed = false
     for (let i = 1; i < pts.length - 2 && !changed; i++) {
       for (const s of hazards) {
@@ -419,61 +805,98 @@ function insertHazardBypasses(waypoints, hazards, buffer) {
         // the leg leading into it can legitimately still pass close by
         // without needing (or being able to usefully take) a second detour.
         if (s.bypass && avoided.some((x) => x.id === s.id)) continue
-        const { distance, t } = distanceFromRoute(
-          s.lat, s.lng,
-          pts[i].lat, pts[i].lng,
-          pts[i + 1].lat, pts[i + 1].lng
-        )
-        if (t > 0.02 && t < 0.98 && distance < s.radiusNM + buffer) {
-          let bypassPoint
-          if (s.bypass) {
-            // Land only has water on one side — route through the curated
-            // safe point instead of guessing a direction off the center.
-            bypassPoint = { lat: s.bypass.lat, lng: s.bypass.lng }
-          } else {
-            const cLat = pts[i].lat + t * (pts[i + 1].lat - pts[i].lat)
-            const cLng = pts[i].lng + t * (pts[i + 1].lng - pts[i].lng)
-            const cosLat = Math.cos((s.lat * Math.PI) / 180)
-            // Direction from hazard center toward the route, in NM space
-            let vLat = (cLat - s.lat) * 60
-            let vLng = (cLng - s.lng) * 60 * cosLat
-            let len = Math.hypot(vLat, vLng)
-            if (len < 1e-6) {
-              // Leg passes through the center — deflect perpendicular to it
-              vLat = -(pts[i + 1].lng - pts[i].lng)
-              vLng = pts[i + 1].lat - pts[i].lat
-              len = Math.hypot(vLat, vLng) || 1
-            }
-            const targetNM = s.radiusNM + buffer + 0.05
-            bypassPoint = {
-              lat: s.lat + ((vLat / len) * targetNM) / 60,
-              lng: s.lng + ((vLng / len) * targetNM) / (60 * cosLat),
-            }
+        if (unavoided.some((x) => x.id === s.id)) continue
+        const zone = zoneOf.get(s.id)
+        // A waypoint inside the zone itself, like the router's own detour
+        // pulled tight round Round Hill and ending on Dumpling Rocks. Neither of
+        // its legs passes any closer than that waypoint, so the leg test never
+        // fires, and pushing a leg aside would leave the waypoint on the reef.
+        const inside = !s.bypass && i + 1 < pts.length - 2 && dist(pts[i + 1], s) < zone.radiusNM
+        if (!inside && !passesInside(s, pts[i], pts[i + 1], zone.radiusNM)) continue
+
+        let bypassPoint
+        if (s.bypass) {
+          // Land only has water on one side — route through the curated
+          // safe point instead of guessing a direction off the center.
+          bypassPoint = { lat: s.bypass.lat, lng: s.bypass.lng }
+        } else {
+          const { t } = distanceFromRoute(
+            s.lat, s.lng,
+            pts[i].lat, pts[i].lng,
+            pts[i + 1].lat, pts[i + 1].lng
+          )
+          const cLat = pts[i].lat + t * (pts[i + 1].lat - pts[i].lat)
+          const cLng = pts[i].lng + t * (pts[i + 1].lng - pts[i].lng)
+          const cosLat = Math.cos((s.lat * Math.PI) / 180)
+          // Direction from hazard center toward the route, in NM space
+          let vLat = (cLat - s.lat) * 60
+          let vLng = (cLng - s.lng) * 60 * cosLat
+          let len = Math.hypot(vLat, vLng)
+          if (len < 1e-6) {
+            // Leg passes through the center — deflect perpendicular to it
+            vLat = -(pts[i + 1].lng - pts[i].lng)
+            vLng = pts[i + 1].lat - pts[i].lat
+            len = Math.hypot(vLat, vLng) || 1
           }
-          // A curated bypass can land on a waypoint the route already goes
-          // through — Quicks Hole is both a channel waypoint and the way around
-          // Nashawena. Inserting it again would leave a zero-length leg.
-          const duplicate =
-            dist(bypassPoint, pts[i]) < 0.05 || dist(bypassPoint, pts[i + 1]) < 0.05
-          if (!duplicate) pts.splice(i + 1, 0, bypassPoint)
-          if (!avoided.some((x) => x.id === s.id)) avoided.push(s)
-          changed = true
-          break
+          const targetNM = s.radiusNM + buffer + 0.05
+          const side = (sign) => ({
+            lat: s.lat + ((sign * vLat) / len) * targetNM / 60,
+            lng: s.lng + ((sign * vLng) / len) * targetNM / (60 * cosLat),
+          })
+          const aground = (p) => coast && (coast.crossesLand(pts[i], p) || coast.crossesLand(p, pts[i + 1]))
+          bypassPoint = side(1)
+          if (aground(bypassPoint)) bypassPoint = side(-1)
+          if (inside || aground(bypassPoint)) {
+            // Land close on both sides of the reef, like Greens Ledge between
+            // Sheffield Island and the Darien shore: find the way through on
+            // the water instead of putting the boat on a beach. A detour onto
+            // land is no answer, so with no way round the leg stays as it is.
+            const around = coast && aroundHazard(pts, i, zone, zones, coast)
+            if (!around) {
+              unavoided.push(s)
+              continue
+            }
+            pts.splice(0, pts.length, ...around)
+            noteAvoided(s)
+            changed = true
+            break
+          }
         }
+
+        // A curated bypass can land on a waypoint the route already goes
+        // through — Quicks Hole is both a channel waypoint and the way around
+        // Nashawena. Inserting it again would leave a zero-length leg, and
+        // counting it as a change would restart the scan on this same leg
+        // forever, so every hazard further along never got looked at.
+        const duplicate =
+          dist(bypassPoint, pts[i]) < 0.05 || dist(bypassPoint, pts[i + 1]) < 0.05
+        if (duplicate) {
+          if (s.bypass) noteAvoided(s)
+          continue
+        }
+        pts.splice(i + 1, 0, bypassPoint)
+        noteAvoided(s)
+        changed = true
+        break
       }
     }
   }
 
-  return { waypoints: pts.map((p) => [p.lat, p.lng]), avoided }
+  return { waypoints: pts.map((p) => [p.lat, p.lng]), avoided, unavoided }
 }
+
+// Water to keep under the keel, in feet at MLW. Both the shoal detours and the
+// harbor-approach draft warning measure against it, so a boat is never routed
+// round a 5 ft shoal and then waved into a 5 ft harbor.
+export const KEEL_CLEARANCE_FT = 2
 
 /**
  * Detour a route around shoal areas that are too shallow for the boat.
  * Only hazards with charted depth < draft + clearance are treated as active.
  */
-export function applyShoalAvoidance(waypoints, shoals, draftFt, clearanceFt = 2) {
+export function applyShoalAvoidance(waypoints, shoals, draftFt, { clearanceFt = KEEL_CLEARANCE_FT, coast = null } = {}) {
   const active = shoals.filter((s) => s.minDepthFt < draftFt + clearanceFt)
-  return insertHazardBypasses(waypoints, active, 0.25)
+  return insertHazardBypasses(waypoints, active, 0.25, coast)
 }
 
 /**

@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { marinas, placeRegions, lisicosLinks } from '../data'
-import { degreesToCardinal } from '../utils'
+import { calcDistanceNM, degreesToCardinal } from '../utils'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { useConditions } from '../hooks/useConditions'
 import { estimateWindWaves } from '../services/forecast'
+import { tideStateAt } from '../services/noaaTides'
 import TideChart from './TideChart'
 
 const ICONS = {
@@ -85,6 +86,20 @@ const WIND_BAR_MAX_KT = 30
 // How long the panel holds off fetching while it waits for a first fix.
 const GEO_GRACE_MS = 8000
 
+// A fix this close to a charted harbor borrows its approach as the open-water
+// point for marine alerts: a phone at the dock is in the harbor's land zone.
+const APPROACH_NEAR_NM = 3
+
+function nearestApproach(lat, lng) {
+  let best = null
+  for (const m of marinas) {
+    if (!m.approach) continue
+    const d = calcDistanceNM(lat, lng, m.lat, m.lng)
+    if (d <= APPROACH_NEAR_NM && (!best || d < best.d)) best = { d, approach: m.approach }
+  }
+  return best?.approach ?? null
+}
+
 // Wind direction is the direction the wind comes *from*, so the arrow has to
 // point the opposite way — where it is pushing you.
 function WindArrow({ deg }) {
@@ -133,10 +148,10 @@ function Card({ icon, title, badge, section, children }) {
   return (
     <section className="cond-card">
       <header className="cond-card-head">
-        <h3>
+        <h2>
           <span className="cond-card-icon">{icon}</span>
           {title}
-        </h3>
+        </h2>
         {badge}
       </header>
 
@@ -160,8 +175,9 @@ function Card({ icon, title, badge, section, children }) {
 export default function ConditionsPanel({ fallbackMarinaId }) {
   const geo = useGeolocation({ autoStart: true, highAccuracy: false })
   const [overrideId, setOverrideId] = useState('')
-  // Countdowns and "x min ago" labels need to keep moving without a refetch.
-  const [, setTick] = useState(0)
+  // Countdowns and "x min ago" labels need to keep moving without a refetch,
+  // and so does the tide itself: the sea state below turns over with it.
+  const [tick, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30000)
     return () => clearInterval(id)
@@ -182,10 +198,10 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   const searchingForGeo = !overrideMarina && geoPending
 
   const place = overrideMarina
-    ? { lat: overrideMarina.lat, lng: overrideMarina.lng, label: overrideMarina.name, source: 'picked' }
+    ? { lat: overrideMarina.lat, lng: overrideMarina.lng, water: overrideMarina.approach, label: overrideMarina.name, source: 'picked' }
     : geo.position
-      ? { lat: geo.position.lat, lng: geo.position.lng, label: 'your location', source: 'gps' }
-      : { lat: fallbackMarina.lat, lng: fallbackMarina.lng, label: fallbackMarina.name, source: 'fallback' }
+      ? { lat: geo.position.lat, lng: geo.position.lng, water: nearestApproach(geo.position.lat, geo.position.lng), label: 'your location', source: 'gps' }
+      : { lat: fallbackMarina.lat, lng: fallbackMarina.lng, water: fallbackMarina.approach, label: fallbackMarina.name, source: 'fallback' }
 
   // Holding off on the fetch until the locator answers avoids a double round of
   // requests, but a locator that has to escalate can take most of a minute, and
@@ -194,7 +210,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   // just moves the position and refetches.
   const waitingForGeo = searchingForGeo && !geoGraceOver
 
-  const conditions = useConditions({ lat: place.lat, lng: place.lng, enabled: !waitingForGeo })
+  const conditions = useConditions({ lat: place.lat, lng: place.lng, water: place.water, enabled: !waitingForGeo })
   const { tides, forecast, alerts, refresh, updatedAt, cachedAt, failedAt, loading } = conditions
 
   // Read the payload rather than the status: a section that failed to refresh
@@ -203,10 +219,13 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
   // old the panel is.
   const currentWeather = forecast.data?.current ?? null
   const tideData = tides.data ?? null
+  // At render, not at fetch: see tideStateAt.
+  const tideState = tideStateAt(tideData?.extremes)
 
   // Sea state is always computed from wind and tide — there is no live buoy
   // reader. estimateWindWaves folds in a wind-against-tide chop adjustment
   // whenever tide data is available; without it, this is a plain wind estimate.
+  // The tick is a dependency because the tide half of that moves with the clock.
   const seaState = useMemo(() => {
     if (currentWeather?.windKt == null) return null
     const estimate = estimateWindWaves(currentWeather.windKt, currentWeather.windDirDeg, tideData, place)
@@ -221,7 +240,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
       tideEffect: estimate.tideEffect,
       dirDeg: currentWeather.windDirDeg,
     }
-  }, [currentWeather, tideData, place.lat, place.lng])
+  }, [currentWeather, tideData, place.lat, place.lng, tick])
 
   // The multi-day outlook is wind-first: peak wind, gusts, dominant direction
   // and the seas that combination would build. `daily` is optional so a payload
@@ -260,7 +279,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
       <div className="cond-header">
         <div>
           <p className="brand-mark">SoundCaptain</p>
-          <h2>On-Water Conditions</h2>
+          <h1>On-Water Conditions</h1>
           <p className="cond-location">
             <span className="cond-location-icon">{ICONS.pin}</span>
             {waitingForGeo ? 'Finding your location…' : locationNote}
@@ -367,25 +386,25 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
             <div className="cond-metrics">
               <Metric
                 label="Next High"
-                value={tideData.nextHigh ? formatClock(tideData.nextHigh.at) : null}
+                value={tideState.nextHigh ? formatClock(tideState.nextHigh.at) : null}
                 sub={
-                  tideData.nextHigh
-                    ? `${tideData.nextHigh.heightFt.toFixed(1)} ft · ${formatCountdown(tideData.nextHigh.at)}`
+                  tideState.nextHigh
+                    ? `${tideState.nextHigh.heightFt.toFixed(1)} ft · ${formatCountdown(tideState.nextHigh.at)}`
                     : null
                 }
               />
               <Metric
                 label="Next Low"
-                value={tideData.nextLow ? formatClock(tideData.nextLow.at) : null}
+                value={tideState.nextLow ? formatClock(tideState.nextLow.at) : null}
                 sub={
-                  tideData.nextLow
-                    ? `${tideData.nextLow.heightFt.toFixed(1)} ft · ${formatCountdown(tideData.nextLow.at)}`
+                  tideState.nextLow
+                    ? `${tideState.nextLow.heightFt.toFixed(1)} ft · ${formatCountdown(tideState.nextLow.at)}`
                     : null
                 }
               />
               <Metric
                 label="Tide"
-                value={tideData.rising == null ? null : tideData.rising ? 'Rising' : 'Falling'}
+                value={tideState.rising == null ? null : tideState.rising ? 'Rising' : 'Falling'}
               />
               <Metric
                 label="Observed"
@@ -467,8 +486,10 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
             {forecast.data.hourly?.length > 0 && (
               <>
-                <h4 className="cond-subhead">Next 24 hours</h4>
-                <ul className="cond-hourly">
+                <h3 className="cond-subhead">Next 24 hours</h3>
+                {/* It scrolls sideways, so it takes focus: otherwise the hours
+                    past the edge are out of reach without a pointer. */}
+                <ul className="cond-hourly" tabIndex={0} aria-label="Hourly wind, next 24 hours">
                   {forecast.data.hourly.map((hour) => (
                     <li key={hour.at.getTime()} className={`cond-band-${windBand(hour.windKt)}`}>
                       <span className="cond-hour">
@@ -487,7 +508,7 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
             {dailyOutlook.length > 0 && (
               <>
-                <h4 className="cond-subhead">{dailyOutlook.length}-day wind outlook</h4>
+                <h3 className="cond-subhead">{dailyOutlook.length}-day wind outlook</h3>
                 <ul className="cond-daily">
                   {dailyOutlook.map((day) => (
                     <li key={day.at.getTime()}>
@@ -537,10 +558,10 @@ export default function ConditionsPanel({ fallbackMarinaId }) {
 
       <section className="cond-card">
         <header className="cond-card-head">
-          <h3>
+          <h2>
             <span className="cond-card-icon">{ICONS.wave}</span>
             UConn LISICOS
-          </h3>
+          </h2>
         </header>
         <p className="cond-note">
           The Long Island Sound Integrated Coastal Observing System runs a handful of buoys

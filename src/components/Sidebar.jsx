@@ -1,5 +1,6 @@
 import TripBriefing from './TripBriefing'
 import PlacePicker from './PlacePicker'
+import { BOAT_LIMITS, KEEL_CLEARANCE_FT } from '../utils'
 
 const START_ICON = (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg>
@@ -16,14 +17,33 @@ export default function Sidebar({
   cruisingSpeed, setCruisingSpeed,
   fuelBurn, setFuelBurn,
   draft, setDraft,
+  boatErrors = {},
   tripResult,
   onCalculate,
   onReset,
 }) {
-  const canCalculate = startId && destId && startId !== destId
+  const boatProblems = Object.values(boatErrors)
+  const canCalculate = startId && destId && startId !== destId && boatProblems.length === 0
+
+  // The four boat fields, each with the limits parseBoatInputs holds it to.
+  const boatField = (key, label, value, onChange, step) => (
+    <label>
+      {label}
+      <input
+        type="number"
+        inputMode="decimal"
+        value={value}
+        min={BOAT_LIMITS[key].min}
+        max={BOAT_LIMITS[key].max}
+        step={step}
+        aria-invalid={boatErrors[key] ? true : undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  )
 
   return (
-    <aside className="sidebar">
+    <section className="sidebar" aria-label="Trip planner">
       <div className="sidebar-header">
         <div className="header-icon">
           <svg viewBox="0 0 44 44" width="42" height="42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -70,44 +90,14 @@ export default function Sidebar({
         </div>
 
         <div className="input-row">
-          <label>
-            Tank (gal)
-            <input
-              type="number"
-              value={tankSize}
-              min={1}
-              onChange={(e) => setTankSize(Number(e.target.value))}
-            />
-          </label>
-          <label>
-            Speed (kts)
-            <input
-              type="number"
-              value={cruisingSpeed}
-              min={1}
-              onChange={(e) => setCruisingSpeed(Number(e.target.value))}
-            />
-          </label>
-          <label>
-            Burn (GPH)
-            <input
-              type="number"
-              value={fuelBurn}
-              min={1}
-              onChange={(e) => setFuelBurn(Number(e.target.value))}
-            />
-          </label>
-          <label>
-            Draft (ft)
-            <input
-              type="number"
-              value={draft}
-              min={0}
-              step={0.5}
-              onChange={(e) => setDraft(Number(e.target.value))}
-            />
-          </label>
+          {boatField('tankSize', 'Tank (gal)', tankSize, setTankSize)}
+          {boatField('cruisingSpeed', 'Speed (kts)', cruisingSpeed, setCruisingSpeed)}
+          {boatField('fuelBurn', 'Burn (GPH)', fuelBurn, setFuelBurn)}
+          {boatField('draft', 'Draft (ft)', draft, setDraft, 0.5)}
         </div>
+        {boatProblems.length > 0 && (
+          <p className="form-error" role="alert">{boatProblems.join('. ')}.</p>
+        )}
 
         <div className="button-row">
           <button className="btn-plan" onClick={onCalculate} disabled={!canCalculate}>
@@ -160,12 +150,32 @@ export default function Sidebar({
             <div className="draft-warning">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               <div>
-                <strong>Draft Warning</strong> — Your {tripResult.draft} ft draft may exceed available depth:
+                <strong>Draft Warning:</strong> your {tripResult.draft} ft draft against the charted
+                approach depth at MLW.
                 <ul className="draft-warning-list">
                   {tripResult.draftWarnings.map((w) => (
-                    <li key={w.marina}>{w.marina} — approach depth {w.depth} ft (MLW)</li>
+                    <li key={w.type}>
+                      {w.marina}: {w.depth} ft,{' '}
+                      {w.aground
+                        ? 'less than your draft. Go in on a rising tide with the height to cover it.'
+                        : `${w.underKeel} ft under the keel, short of the ${KEEL_CLEARANCE_FT} ft to keep.`}
+                    </li>
                   ))}
                 </ul>
+              </div>
+            </div>
+          )}
+
+          {/* The router found no way round these on the water. Rare, and the
+              boat is still being sent past them, so it is said out loud. */}
+          {tripResult.shoalsUnavoided && tripResult.shoalsUnavoided.length > 0 && (
+            <div className="draft-warning">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <strong>Shoal on the route:</strong> no way round was found for a{' '}
+                {tripResult.draft} ft draft past{' '}
+                {tripResult.shoalsUnavoided.map((s) => `${s.name} (${s.minDepthFt} ft)`).join(', ')}.
+                Check the chart before you go.
               </div>
             </div>
           )}
@@ -282,6 +292,6 @@ export default function Sidebar({
       <div className="sidebar-footer">
         SoundCaptain • Built by Charles Erickson
       </div>
-    </aside>
+    </section>
   )
 }

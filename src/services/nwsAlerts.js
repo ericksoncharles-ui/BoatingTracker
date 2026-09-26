@@ -32,12 +32,12 @@ function isMarine(event) {
 }
 
 /**
- * Marine-relevant active alerts, most severe first.
+ * Marine-relevant alerts in force at one point.
  *
  * api.weather.gov rejects coordinates with more than four decimal places, so
  * the position is rounded before it goes into the query.
  */
-export async function fetchMarineAlerts({ lat, lng, signal }) {
+async function alertsAt({ lat, lng }, signal) {
   const point = `${lat.toFixed(4)},${lng.toFixed(4)}`
   const res = await fetch(`${NWS_ALERTS}?point=${point}`, {
     signal,
@@ -58,5 +58,25 @@ export async function fetchMarineAlerts({ lat, lng, signal }) {
       description: p.description,
       endsAt: p.ends || p.expires || null,
     }))
+}
+
+/**
+ * Marine-relevant active alerts, most severe first.
+ *
+ * NWS issues the Small Craft Advisory for a marine zone, and a point query
+ * only returns the zones that point sits in. A marina's coordinates are at the
+ * dock, which can fall in the land forecast zone instead, so `water`, an open
+ * water point outside the harbor (the approach), is asked about as well and the
+ * two answers are merged. One of the two failing still leaves the other.
+ */
+export async function fetchMarineAlerts({ lat, lng, water, signal }) {
+  const points = [{ lat, lng }, ...(water ? [water] : [])]
+  const results = await Promise.allSettled(points.map((p) => alertsAt(p, signal)))
+  const answered = results.filter((r) => r.status === 'fulfilled')
+  if (answered.length === 0) throw results[0].reason
+
+  const byId = new Map()
+  for (const { value } of answered) for (const alert of value) byId.set(alert.id, alert)
+  return [...byId.values()]
     .sort((a, b) => (SEVERITY_RANK[a.severity] ?? 4) - (SEVERITY_RANK[b.severity] ?? 4))
 }

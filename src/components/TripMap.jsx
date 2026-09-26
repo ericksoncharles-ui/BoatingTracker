@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { calcDistanceNM } from '../utils'
+import { COASTLINE_ATTRIBUTION } from '../coastlineData'
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -201,9 +202,12 @@ function RouteLayer({ tripResult }) {
   return (
     <>
       {/* A dark casing under the gold dash line keeps the plotted course
-          readable over every base layer, including light street tiles. */}
+          readable over every base layer, including light street tiles. The
+          course is drawn against the GSHHG shoreline, which is credited
+          whenever one is on the chart. */}
       <Polyline
         positions={routeWaypoints}
+        attribution={COASTLINE_ATTRIBUTION}
         pathOptions={{ color: '#1B2A4A', weight: 6, opacity: 0.35, lineCap: 'round', lineJoin: 'round' }}
       />
       <Polyline

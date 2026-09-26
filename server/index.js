@@ -8,8 +8,35 @@ import { getFishingSummary } from './fishingSummary.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
 
+// Which X-Forwarded-For hops to believe when working out a caller's IP, and so
+// whose budget a request spends in the rate limit below. Behind one proxy that
+// appends the address it saw (most hosts) that is 1, the default. Exposed
+// directly, it has to be 0: otherwise the header is whatever the caller typed,
+// and a fresh one per request is a fresh budget. See .env.example.
+function trustProxySetting(value = '1') {
+  const setting = value.trim()
+  if (/^(false|no|off)$/i.test(setting)) return false
+  if (/^(true|yes|on)$/i.test(setting)) return true
+  if (/^\d+$/.test(setting)) return Number(setting)
+  return setting
+}
+
 const app = express()
-app.set('trust proxy', 1)
+app.set('trust proxy', trustProxySetting(process.env.TRUST_PROXY))
+app.disable('x-powered-by')
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    // Only what the page does not load: framing, plugins and <base>. The
+    // chart tiles, fonts and condition feeds come from half a dozen hosts, and
+    // a source list that misses one blanks a card rather than failing loudly.
+    'Content-Security-Policy': "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+    'X-Frame-Options': 'DENY',
+    'Permissions-Policy': 'geolocation=(self), camera=(), microphone=()',
+  })
+  next()
+})
 app.use(express.json({ limit: '8kb' }))
 
 // The SDK constructor throws when no key is configured, so build it lazily and
@@ -37,7 +64,10 @@ function rateLimit(req, res, next) {
     return next()
   }
   if (entry.count >= MAX_REQUESTS) {
-    return res.status(429).json({ error: 'Too many briefing requests. Try again shortly.' })
+    // Both endpoints share this budget, so the message names neither. The
+    // reason is the one the Fishing card already turns into "try again shortly".
+    res.set('Retry-After', String(Math.ceil((entry.resetAt - now) / 1000)))
+    return res.status(429).json({ error: 'Too many requests. Try again shortly.', reason: 'busy' })
   }
   entry.count += 1
   next()
@@ -153,9 +183,16 @@ app.get('/api/fishing-summary', rateLimit, async (req, res) => {
   }
 })
 
+// An /api path that isn't one of the above is a client bug or a probe. Without
+// this it fell through to the SPA below and came back as a 200 page of HTML.
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }))
+
 // Serve the built SPA when one exists, so a single process runs the whole app.
 const distDir = path.resolve(__dirname, '..', 'dist')
 if (fs.existsSync(distDir)) {
+  // Built files are named by content hash, so a phone can keep one for good
+  // instead of revalidating the bundle over a marine connection on every open.
+  app.use('/assets', express.static(path.join(distDir, 'assets'), { immutable: true, maxAge: '1y' }))
   app.use(express.static(distDir))
   app.get('*', (req, res) => res.sendFile(path.join(distDir, 'index.html')))
 }

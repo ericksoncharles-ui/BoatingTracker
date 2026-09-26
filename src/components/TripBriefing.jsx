@@ -103,7 +103,16 @@ export default function TripBriefing({ tripResult }) {
       {status === 'loading' ? (
         <p className="briefing-loading">Generating briefing...</p>
       ) : briefing ? (
-        <p className="briefing-text">{briefing}</p>
+        <>
+          <p className="briefing-text">{briefing}</p>
+          {/* Without this the stand-in reads as the answer to the button
+              that says AI. It is the trip's own numbers, restated. */}
+          {status === 'error' && (
+            <p className="briefing-placeholder">
+              The AI briefing could not be reached, so this is a plain summary of the trip figures.
+            </p>
+          )}
+        </>
       ) : (
         <p className="briefing-placeholder">Press "Generate AI briefing" for a written passage summary.</p>
       )}

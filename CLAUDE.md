@@ -31,13 +31,22 @@ npm run dev      # Vite dev server
 npm run build    # production build to dist/
 npm run preview  # serve the build
 
-npm run tides:probe    # which NOAA station each location resolves to
-npm run fishing:probe  # what each fishing source actually yields
-npm run route:probe    # graph health, keep-out clearances, and sample routes
+npm run tides:probe      # which NOAA station each location resolves to
+npm run fishing:probe    # what each fishing source actually yields
+npm run route:probe      # graph health, keep-out clearances, and sample routes
+npm run coastline:build  # regenerate src/coastlineData.js from GSHHG
 ```
 
 `route:probe` takes a pair (`npm run route:probe -- newport cuttyhunk`) to print
-one route leg by leg, or `-- --all` for every cross-region pair.
+one route leg by leg, or `-- --all` for every cross-region pair. `-- --land`
+plans every ordered pair of places (about 9,500, a couple of minutes) and fails
+any whose middle legs cross the shoreline or a shoal too shallow for the probe's
+draft, then names the slowest route to plan. The draft is 3 ft, at which 14 of
+the 25 shoals are too shallow to cross; add `--draft 6` for a keel boat, which
+brings in 22. Run both before committing a change to `data.js` or the router.
+The `harbor leg` warnings it prints are the dock ends of routes up inner harbors
+and rivers the 100 m shoreline doesn't resolve (Norwalk, Mystic, Point Judith
+Pond, Edgartown); they are expected.
 
 There are **no tests and no linter configured**. Verify changes by running
 `npm run dev` and exercising the UI. If you add tests, wire them into
@@ -55,9 +64,11 @@ file — no CSS framework, no TypeScript, no state library.
 index.html            PWA meta tags, manifest link
 src/main.jsx          React root
 src/App.jsx           Tab state + desktop/mobile layouts + bottom-sheet drag
-src/App.css           All styling (~1100 lines), CSS vars in :root
+src/App.css           All styling (~2500 lines), CSS vars in :root
 src/data.js           Places, navigation spine + branches, shoals, headlands, no-wake zones, POIs
 src/utils.js          Pure navigation/fuel math — no React
+src/coastline.js      Shoreline queries (isLand, crossesLand, shore distance), no React
+src/coastlineData.js  Generated GSHHG land polygons (LGPL-3.0); never edit by hand
 src/hooks/useTripCalculator.js   Owns all form state, orchestrates utils.js
 src/hooks/useConditions.js       Fetches every live conditions source for one position
 src/services/noaaTides.js        Tide predictions
@@ -71,13 +82,17 @@ src/components/FishingSummary.jsx  Aggregate summary of the linked fishing repor
 server/index.js       Express: /api/briefing, /api/fishing-summary, serves dist/
 server/fishingSummary.js  Fetches + summarizes the fishing report sources
 server/htmlText.js        HTML -> text pass for the fishing-summary page reader
+scripts/build-coastline.mjs  Fetches GSHHG, clips and thins it into coastlineData.js
+scripts/*-probe.mjs       The probes above
+public/sw.js              Service worker: offline app shell
 ```
 
 **Where to make a change:**
 
 - New marina / shoal / no-wake zone / POI → `src/data.js` only. A place in water
   the channel graph doesn't reach needs a branch there too — then
-  `npm run route:probe` to see what the router does with it.
+  `npm run route:probe` to see what the router does with it, and `-- --land`
+  (at both drafts) to see what it does to every other route.
 - Change how a number is computed → `src/utils.js` (keep functions pure).
 - New input or result field → `useTripCalculator.js` + `Sidebar.jsx`.
 - Map layers, markers, GPS behavior → `TripMap.jsx`.
@@ -100,7 +115,8 @@ Getting these wrong produces plausible-looking but wrong navigation output.
   Sound; it cannot express Narragansett Bay splitting around Conanicut Island, or
   Buzzards Bay reachable from Vineyard Sound only through a hole in the Elizabeth
   Islands. Branches with a `to` are what make Quicks Hole and Woods Hole
-  shortcuts rather than cul-de-sacs.
+  shortcuts rather than cul-de-sacs. Branches are joined up only after every
+  waypoint exists, so a `to` may name a branch declared further down.
 - **Corridor width is per-waypoint, not global.** `corridorNM` on a waypoint says
   how far off its legs is still open water a route may cut across; absent means
   6 NM, the open Sound. Vineyard Sound runs 0.8-1.2 because the Elizabeth Islands
@@ -109,29 +125,59 @@ Getting these wrong produces plausible-looking but wrong navigation output.
 - **A direct approach-to-approach line** wins when it beats the graph path and is
   either under `SHORT_HOP_NM` (10 NM) or inside a corridor — but never if it
   crosses land. The short-hop exemption skips the *graph*, never the land check:
-  Orient Point is six miles from Greenport with the North Fork in between.
-- **`headlands` is the land model**, and it does two jobs: rejecting a direct
-  chord that runs over land, and supplying a curated `bypass` for legs that pass
-  too close. `radiusNM` is a *detection* circle (land plus margin);
-  `applyLandAvoidance` adds 0.3 NM on top, and the hard rejection uses the core,
-  `radiusNM - 0.3`. Circles are drawn small and numerous along an island chain
-  because one big circle covers the channel either side of the land as well.
+  Orient Point is six miles from Greenport with the North Fork in between. When
+  land is all that blocks a line under `DETOUR_MAX_NM` (15 NM), `findWaterPath`
+  looks for the way through itself, A* on a local grid over the shoreline kept
+  0.1 NM off the beach and pulled tight, and takes it when it beats the graph.
+  That is what gets Norwalk to Westport through the islands rather than out to
+  mid-Sound and back.
+- **The shoreline in `coastline.js` is the land model.** GSHHG at full
+  resolution, good to about 100 m, clipped and thinned by `coastline:build`.
+  Every chord the router considers is tested with `crossesLand`: exact
+  segment-against-edge intersection, since the land a shortcut finds is often a
+  barrier beach narrower than any sampling step, with 0.1 NM of grace at each end
+  because an approach can sit inside the source's error of a breakwater. Rocks
+  and islets below that resolution are the shoal list's job. The shoreline has no
+  rivers, so a branch up one is marked `river: true` and route:probe leaves its
+  legs out of the land check (the Connecticut up to Essex).
+- **`headlands` is only for an offing the shoreline can't give**: Point Judith,
+  Sakonnet Point and Nashawena, each with a curated `bypass` point. `radiusNM` is
+  a detection circle; `applyLandAvoidance` adds 0.3 NM on top. Circles that only
+  restated the shoreline (Eatons Neck, Lloyd Neck, Orient Point, Shelter Island,
+  Conanicut, Cuttyhunk, Pasque, Naushon) were removed, because their bypasses
+  dragged routes that were already on the water into zigzags, and some sat
+  ashore. Don't add one back to stop a route crossing land; that is the
+  shoreline's job, and route:probe will say where it fails.
 - **Marinas have an `approach` waypoint** — an open-water point outside the
   harbor entrance. Routing runs between approach points; the marina coordinates
   are only the first and last legs. Any new marina needs a sane `approach`,
   a `region`, and `approachDepthFt` (controlling depth at MLW) *if* a published
   controlling depth exists — the draft check is skipped when it is absent, which
   is the honest outcome for an open roadstead. Put the approach outside any
-  headland or shoal circle unless the place *is* the hazard (a lighthouse).
+  headland or shoal circle unless the place *is* the hazard (a lighthouse), and
+  on the water: route:probe fails an approach more than the shoreline's error
+  inland.
 - **Two passages are deliberately not modelled**: the Sakonnet River and the Cape
   Cod Canal. Bristol to New Bedford and Marion to Hyannis therefore route the long
   way round, out of the bay and back up. That is the honest answer for a planner
   with no bridge clearances or canal traffic rules in it — don't "fix" it with a
   branch unless you add those.
 - **Shoal avoidance is draft-dependent.** `applyShoalAvoidance` only detours
-  around hazards where `minDepthFt < draft + clearance` (default 2 ft clearance),
-  and it deliberately leaves the first and last legs alone since those are
-  curated harbor approaches.
+  around hazards where `minDepthFt < draft + KEEL_CLEARANCE_FT` (2 ft), and it
+  deliberately leaves the first and last legs alone since those are curated
+  harbor approaches. Each hazard's keep-out zone is its radius plus the buffer,
+  drawn in just enough to leave both approach waypoints outside it. A leg is
+  judged by how close it passes beyond its own ends (`ENDPOINT_SLACK_NM`, 0.05
+  NM), never by a share of its length: 2% of a seventy-mile leg ran over Greens
+  Ledge. When a one-point detour would go aground, or the router has put a
+  waypoint inside a zone, `aroundHazard` replaces the stretch of route 3 to 6 NM
+  either side with a water path clear of the land and of every zone. When there
+  is no way round the hazard comes back in `unavoided` and the sidebar names it;
+  never let the detour fall back to a point on land, or drop the warning.
+- **The harbor draft warning uses the same 2 ft.** Under 2 ft to spare at the
+  approach is a caution; under the draft itself says wait for the tide. Boat
+  inputs reach the arithmetic only through `parseBoatInputs` and `BOAT_LIMITS`
+  in `utils.js`; the fields hold text so an emptied one isn't read as 0.
 - **No-wake zones cost time and save fuel.** Delay is the difference between
   transit at cruising speed and at the zone's `speedLimit`; fuel in a zone burns
   at 30% of cruise GPH (`calcTripDetails`).
@@ -152,7 +198,13 @@ Getting these wrong produces plausible-looking but wrong navigation output.
 - **Desktop and mobile are separate DOM trees**, both rendered, toggled by
   `.desktop-only` / `.mobile-only` at the 768px breakpoint in `App.css`. A change
   to the planner UI usually needs to be made for both — `Sidebar` is rendered
-  twice in `App.jsx` with identical props.
+  twice in `App.jsx` with identical props. What costs network (the Leaflet map
+  and its tiles, the conditions panels) is mounted only in the tree the
+  breakpoint shows, via `isMobileLayout`.
+- Each layout is a `<main>`, the tab bars are `<nav>`s with `aria-current` on
+  the current tab, every tab has an `h1`, and the bottom sheet is `inert` while
+  another tab hides it. axe was clean against those; keep it so. Pinch zoom is
+  on, so fields on mobile stay at 16px or iOS zooms into them.
 - Mobile puts the map full-screen with the sidebar in a **draggable bottom
   sheet** (touch handlers in `App.jsx`, snap threshold at 25% of viewport
   height) plus a bottom tab bar. Respect `viewport-fit=cover` / safe-area insets
@@ -175,6 +227,8 @@ Getting these wrong produces plausible-looking but wrong navigation output.
   `TripMap.jsx`; bundlers break them otherwise.
 - Map controls stop pointer/click propagation so map gestures don't swallow
   button presses.
+- The plotted route carries `COASTLINE_ATTRIBUTION`, since GSHHG (LGPL-3.0) is
+  what it was drawn against.
 
 ## AI briefing
 
@@ -189,9 +243,16 @@ The briefing and the fishing summary run `claude-haiku-4-5`. It rejects the
 call passes `output_config` or `thinking` — copying those in from newer-model
 examples returns a 400.
 
-When the key is absent or the request fails, it silently falls back to
-`generateFallbackBriefing`, a template-string summary. Keep that fallback
-working — the app must be fully usable with no API key.
+When the key is absent or the request fails, it falls back to
+`generateFallbackBriefing`, a template-string summary, with a line under it
+saying so. Keep that fallback working — the app must be fully usable with no API
+key.
+
+The rate limit keys on `req.ip`, so `TRUST_PROXY` (default 1) has to match the
+deployment: 1 behind one proxy, 0 exposed directly, or any caller picks their
+own IP and budget with `X-Forwarded-For`. A limited request gets 429 with
+`reason: 'busy'` and `Retry-After`. Unknown `/api` paths get a JSON 404 rather
+than the SPA's HTML.
 
 ## Fishing report summary
 
@@ -260,6 +321,12 @@ tides, which is worse than no tides.
   leaves a "next high" to show. That means the extremes list holds two of
   everything and needs its day headings, and `TideChart` windows to the day
   around now rather than squeezing 48 hours into 320px.
+- **Next high, next low and rising are read at render**, with
+  `tideStateAt(extremes)`, never stored in the payload. The panels stay open at
+  the helm for hours, and a "next high" worked out at fetch time was still
+  showing the morning's high in the afternoon. The same goes for the sea state's
+  wind-against-tide and the Fishing tab's bite window, which re-render on a
+  30 s tick; `useConditions` also refetches every ten minutes while visible.
 - Errors arrive as HTTP 200 with an `{ error: { message } }` body, which is why
   `coopsJson` checks the body and not just the status.
 - `npm run tides:probe` prints, per dropdown location, which station it resolves
@@ -280,6 +347,10 @@ relations, using an elliptical fetch model of the water it is standing in.
 
 - **Fetch geometry is per water body** (`WATER_BODIES` in `forecast.js`), picked
   from the position by bounding box, falling back to the nearest body's centre.
+  A body whose water sits inside an earlier one's box has an `outline` polygon,
+  checked before any box: Peconic and Gardiners Bay inside the Sound's, and
+  Buzzards Bay, whose box reached across the Elizabeth Islands and gave Woods
+  Hole and Tarpaulin Cove its flood rule.
   The Sound's 60 km of fetch cannot be reused off Nantucket, where a southerly
   has the whole Atlantic behind it; `estimateWindWaves` called without a position
   still answers for the Sound, which is what it always answered for.
@@ -314,6 +385,24 @@ wherever the water body declares a flood direction:
 Never present these numbers as a measurement — the card always labels them
 "Estimated," and `estimateWindWaves` returns `estimated: true` for exactly that
 reason.
+
+## Marine alerts
+
+NWS answers a point query with the zones that point sits in, and issues the
+Small Craft Advisory for a marine zone. A marina's coordinates are at the dock,
+which can fall in the land zone, so `fetchMarineAlerts` also asks about a `water`
+point, the harbor's approach, and merges the two. A GPS fix within 3 NM of a
+charted harbor borrows its approach.
+
+## Offline
+
+`public/sw.js` caches the app shell. The built JS and CSS have hashed names, so
+at install it reads them out of the cached `index.html` rather than a list;
+without that the first visit, whose files load before the worker is in control,
+left nothing to run offline. `/assets/` is served cache-first (a hashed file
+never changes), everything else network-first, `/api/` never cached. Caching a
+new page prunes `/assets/` files it no longer names. The shoreline is its own
+chunk (`manualChunks` in `vite.config.js`) so it keeps its name across deploys.
 
 ## Conventions
 

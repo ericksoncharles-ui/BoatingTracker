@@ -46,7 +46,8 @@ const BRAND_ICON = (
 // Both layouts stay in the DOM and are toggled with CSS, so anything rendered in
 // each one mounts twice. Harmless for the planner, but the conditions panel would
 // ask the locator for a fix twice and hit NOAA, open-meteo and the buoy feeds
-// twice on every load — so it is mounted only in the tree the breakpoint shows.
+// twice on every load, and a second chart would pull its own set of tiles over a
+// marine connection. So those are mounted only in the tree the breakpoint shows.
 const MOBILE_QUERY = '(max-width: 768px)'
 
 // The sheet rests at one of these heights, tallest last. A released drag used to
@@ -105,6 +106,7 @@ export default function App() {
   const isMobileLayout = useIsMobileLayout()
   const startMarina = marinas.find((m) => m.id === trip.startId)
   const [activeTab, setActiveTab] = useState('planner')
+  const sheetHidden = activeTab !== 'planner'
   const [sheetSnap, setSheetSnap] = useState('half')
   const [sheetDrag, setSheetDrag] = useState(null)
   const sheetRef = useRef(null)
@@ -160,14 +162,17 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Desktop tab bar */}
-      <div className="tab-bar desktop-only">
+      {/* Desktop tab bar. The tabs swap the whole view rather than a panel in
+          it, so they are navigation with the current one marked, not an ARIA
+          tablist. */}
+      <nav className="tab-bar desktop-only" aria-label="Sections">
         <div className="tab-bar-brand">
           {BRAND_ICON}
           <span>SoundCaptain</span>
         </div>
         <button
           className={`tab-btn ${activeTab === 'planner' ? 'tab-active' : ''}`}
+          aria-current={activeTab === 'planner' ? 'page' : undefined}
           onClick={() => setActiveTab('planner')}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
@@ -175,6 +180,7 @@ export default function App() {
         </button>
         <button
           className={`tab-btn ${activeTab === 'chart' ? 'tab-active' : ''}`}
+          aria-current={activeTab === 'chart' ? 'page' : undefined}
           onClick={() => setActiveTab('chart')}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
@@ -182,6 +188,7 @@ export default function App() {
         </button>
         <button
           className={`tab-btn ${activeTab === 'conditions' ? 'tab-active' : ''}`}
+          aria-current={activeTab === 'conditions' ? 'page' : undefined}
           onClick={() => setActiveTab('conditions')}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3"/><path d="M3 14c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3"/><path d="M3 20c0 0 2-3 5-3s5 3 5 3 2-3 5-3 5 3 5 3"/></svg>
@@ -189,18 +196,19 @@ export default function App() {
         </button>
         <button
           className={`tab-btn ${activeTab === 'fishing' ? 'tab-active' : ''}`}
+          aria-current={activeTab === 'fishing' ? 'page' : undefined}
           onClick={() => setActiveTab('fishing')}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 12c0-3.5 4-7 10-8-1 2-1.5 4-1.5 6s.5 4 1.5 6c-6-1-10-4.5-10-8z"/><path d="M6.5 12L2 9m4.5 3L2 15"/><circle cx="16" cy="10" r="0.5" fill="currentColor"/></svg>
           Fishing Reports
         </button>
-      </div>
+      </nav>
 
       {/* Desktop layout. Each tab gets its own boundary so a crash in one
           leaves the tab bar alive — switching away and back remounts it. */}
       {activeTab === 'planner' && (
         <ErrorBoundary>
-        <div className="planner-layout desktop-only">
+        <main className="planner-layout desktop-only">
           <Sidebar
             startId={trip.startId}
             setStartId={trip.setStartId}
@@ -214,44 +222,53 @@ export default function App() {
             setFuelBurn={trip.setFuelBurn}
             draft={trip.draft}
             setDraft={trip.setDraft}
+            boatErrors={trip.boatErrors}
             tripResult={trip.tripResult}
             onCalculate={trip.calculateTrip}
             onReset={trip.resetTrip}
           />
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
-        </div>
+          {/* Each Leaflet map fetches its own chart tiles, so only the layout
+              the breakpoint shows gets one. */}
+          {!isMobileLayout && (
+            <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
+          )}
+        </main>
         </ErrorBoundary>
       )}
 
       {activeTab === 'chart' && (
         <ErrorBoundary>
-        <div className="chart-layout desktop-only">
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
-        </div>
+        <main className="chart-layout desktop-only">
+          {!isMobileLayout && (
+            <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
+          )}
+        </main>
         </ErrorBoundary>
       )}
 
       {activeTab === 'conditions' && !isMobileLayout && (
         <ErrorBoundary>
-        <div className="conditions-layout desktop-only">
+        <main className="conditions-layout desktop-only">
           <ConditionsPanel fallbackMarinaId={trip.startId} />
-        </div>
+        </main>
         </ErrorBoundary>
       )}
 
       {activeTab === 'fishing' && !isMobileLayout && (
         <ErrorBoundary>
-        <div className="conditions-layout desktop-only">
+        <main className="conditions-layout desktop-only">
           <FishingReportPanel fallbackMarinaId={trip.startId} />
-        </div>
+        </main>
         </ErrorBoundary>
       )}
 
       {/* Mobile layout: map always visible, sidebar as bottom sheet */}
       <ErrorBoundary>
-      <div className="mobile-layout mobile-only">
+      <main className="mobile-layout mobile-only">
         <div className="mobile-map">
-          <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
+          {isMobileLayout && (
+            <TripMap marinas={marinas} shoalAreas={shoalAreas} focus={startMarina} tripResult={trip.tripResult} />
+          )}
         </div>
 
         <div className="mobile-brand">
@@ -261,8 +278,12 @@ export default function App() {
 
         <div
           ref={sheetRef}
-          className={`mobile-sheet sheet-${sheetSnap} ${activeTab === 'chart' || activeTab === 'conditions' || activeTab === 'fishing' ? 'sheet-hidden' : ''}`}
+          className={`mobile-sheet sheet-${sheetSnap} ${sheetHidden ? 'sheet-hidden' : ''}`}
           style={sheetDrag !== null ? { height: `${sheetDrag}px`, transition: 'none' } : undefined}
+          // Slid off the bottom, the sheet is still in the page, and a screen
+          // reader or a keyboard would walk straight into a planner nobody can
+          // see. Inert takes it out of both until it comes back.
+          inert={sheetHidden ? '' : undefined}
         >
           <div
             className="sheet-handle"
@@ -287,6 +308,7 @@ export default function App() {
               setFuelBurn={trip.setFuelBurn}
               draft={trip.draft}
               setDraft={trip.setDraft}
+              boatErrors={trip.boatErrors}
               tripResult={trip.tripResult}
               onCalculate={trip.calculateTrip}
               onReset={trip.resetTrip}
@@ -309,9 +331,10 @@ export default function App() {
         )}
 
         {/* Mobile bottom tab bar */}
-        <nav className="mobile-tab-bar">
+        <nav className="mobile-tab-bar" aria-label="Sections">
           <button
             className={`mobile-tab ${activeTab === 'planner' ? 'mobile-tab-active' : ''}`}
+            aria-current={activeTab === 'planner' ? 'page' : undefined}
             // Tapping Planner is also how a collapsed sheet comes back, so it
             // lifts the sheet off the floor without overriding a height the
             // skipper chose.
@@ -322,6 +345,7 @@ export default function App() {
           </button>
           <button
             className={`mobile-tab ${activeTab === 'chart' ? 'mobile-tab-active' : ''}`}
+            aria-current={activeTab === 'chart' ? 'page' : undefined}
             // The other tabs slide the sheet away with .sheet-hidden rather than
             // collapsing it, so coming back to the planner finds it where it was.
             onClick={() => setActiveTab('chart')}
@@ -331,6 +355,7 @@ export default function App() {
           </button>
           <button
             className={`mobile-tab ${activeTab === 'conditions' ? 'mobile-tab-active' : ''}`}
+            aria-current={activeTab === 'conditions' ? 'page' : undefined}
             onClick={() => setActiveTab('conditions')}
           >
             {CONDITIONS_ICON}
@@ -338,13 +363,14 @@ export default function App() {
           </button>
           <button
             className={`mobile-tab ${activeTab === 'fishing' ? 'mobile-tab-active' : ''}`}
+            aria-current={activeTab === 'fishing' ? 'page' : undefined}
             onClick={() => setActiveTab('fishing')}
           >
             {FISHING_ICON}
             <span>Fishing</span>
           </button>
         </nav>
-      </div>
+      </main>
       </ErrorBoundary>
     </div>
   )
