@@ -7,6 +7,7 @@ import {
   calcTripDetails, calcNoWakeDelay, calcRouteDistanceNM, buildRouteWaypoints,
   findNearbyPOIs, applyShoalAvoidance, applyLandAvoidance,
 } from '../utils'
+import { coastline } from '../coastline'
 
 export function useTripCalculator() {
   const [startId, setStartId] = useState('stamford')
@@ -22,9 +23,11 @@ export function useTripCalculator() {
     const dest = marinas.find((m) => m.id === destId)
     if (!start || !dest || start.id === dest.id) return null
 
-    const baseWaypoints = buildRouteWaypoints(start, dest, navigationSpine, navigationBranches, headlands)
+    const baseWaypoints = buildRouteWaypoints(start, dest, navigationSpine, navigationBranches, headlands, coastline)
     const { waypoints: landClearWaypoints } = applyLandAvoidance(baseWaypoints, headlands)
-    const { waypoints: routeWaypoints, avoided } = applyShoalAvoidance(landClearWaypoints, shoalAreas, draft)
+    const { waypoints: routeWaypoints, avoided, unavoided } = applyShoalAvoidance(
+      landClearWaypoints, shoalAreas, draft, { coast: coastline },
+    )
     const distanceNM = calcRouteDistanceNM(routeWaypoints)
     const noWakeResult = calcNoWakeDelay(routeWaypoints, noWakeZones, cruisingSpeed)
     const details = calcTripDetails(distanceNM, cruisingSpeed, fuelBurn, tankSize, noWakeResult.totalDelayHours)
@@ -51,6 +54,7 @@ export function useTripCalculator() {
       nearbyPOIs,
       draftWarnings,
       shoalsAvoided: avoided,
+      shoalsUnavoided: unavoided,
       routeWaypoints,
     }
 

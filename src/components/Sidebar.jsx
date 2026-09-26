@@ -170,6 +170,20 @@ export default function Sidebar({
             </div>
           )}
 
+          {/* The router found no way round these on the water. Rare, and the
+              boat is still being sent past them, so it is said out loud. */}
+          {tripResult.shoalsUnavoided && tripResult.shoalsUnavoided.length > 0 && (
+            <div className="draft-warning">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <strong>Shoal on the route:</strong> no way round was found for a{' '}
+                {tripResult.draft} ft draft past{' '}
+                {tripResult.shoalsUnavoided.map((s) => `${s.name} (${s.minDepthFt} ft)`).join(', ')}.
+                Check the chart before you go.
+              </div>
+            </div>
+          )}
+
           {[tripResult.start, tripResult.dest].some((p) => p.note) && (
             <div className="local-knowledge">
               <h3>
