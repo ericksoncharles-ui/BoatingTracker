@@ -248,9 +248,26 @@ function interpolateCurve(extremes) {
 }
 
 /**
+ * Where the tide stands at `now`: the next high and low ahead, and whether the
+ * water is rising. Read off the extremes whenever it is shown rather than once
+ * at fetch time, because the panel stays open at the helm: "next high 3:14 PM,
+ * rising" is wrong by four o'clock, and the extremes already hold the answer
+ * that replaces it.
+ */
+export function tideStateAt(extremes, now = Date.now()) {
+  const upcoming = (extremes || []).filter((p) => p.at.getTime() > now)
+  return {
+    nextHigh: upcoming.find((p) => p.kind === 'high') || null,
+    nextLow: upcoming.find((p) => p.kind === 'low') || null,
+    // Rising when the next extreme ahead is a high.
+    rising: upcoming.length > 0 ? upcoming[0].kind === 'high' : null,
+  }
+}
+
+/**
  * Tide picture for a position: nearest station, the highs and lows for today
- * and tomorrow, the next high and low ahead of now, a curve, and the observed
- * level if the station measures one.
+ * and tomorrow, a curve, and the observed level if the station measures one.
+ * The next high and low are tideStateAt's job, at the moment they are read.
  *
  * Predictions deliberately run through tomorrow — otherwise an evening high
  * would leave "next high" empty for the rest of the night.
@@ -278,9 +295,6 @@ export async function fetchTides({ lat, lng, signal }) {
   const curveInterpolated = !curveRows?.length
   const curve = curveInterpolated ? interpolateCurve(extremes) : curveRows
 
-  const now = Date.now()
-  const upcoming = extremes.filter((p) => p.at.getTime() > now)
-
   return {
     station,
     extremes,
@@ -289,9 +303,5 @@ export async function fetchTides({ lat, lng, signal }) {
     // read from NOAA's own hourly series, so the card can say so.
     curveInterpolated: curveInterpolated && curve.length > 0,
     observed,
-    nextHigh: upcoming.find((p) => p.kind === 'high') || null,
-    nextLow: upcoming.find((p) => p.kind === 'low') || null,
-    // Rising when the next extreme ahead of us is a high.
-    rising: upcoming.length > 0 ? upcoming[0].kind === 'high' : null,
   }
 }

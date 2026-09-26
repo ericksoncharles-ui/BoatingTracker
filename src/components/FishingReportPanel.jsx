@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { marinas, fishingLinks, soundSpecies } from '../data'
 import { degreesToCardinal } from '../utils'
 import { useConditions } from '../hooks/useConditions'
+import { tideStateAt } from '../services/noaaTides'
 import FishingSummary from './FishingSummary'
 
 const ICONS = {
@@ -58,25 +59,24 @@ function formatMinutes(minutes) {
 // the long stretch between changes are the quiet times.
 const PRIME_WINDOW_MINUTES = 90
 
-function useBiteWindow(tideData) {
-  return useMemo(() => {
-    const extremes = tideData?.extremes
-    if (!extremes?.length) return null
-    const now = Date.now()
-    let nearest = null
-    for (const e of extremes) {
-      const diff = Math.abs(e.at.getTime() - now)
-      if (!nearest || diff < nearest.diff) nearest = { ...e, diff }
-    }
-    if (!nearest) return null
-    const minutes = Math.round(nearest.diff / 60000)
-    return {
-      minutes,
-      prime: minutes <= PRIME_WINDOW_MINUTES,
-      past: nearest.at.getTime() < now,
-      kind: nearest.kind,
-    }
-  }, [tideData])
+// Worked out on every render rather than memoised on the tide payload: an
+// angler leaves this open, and a window that was prime at the dock has to say
+// so when it closes.
+function biteWindowAt(extremes, now = Date.now()) {
+  if (!extremes?.length) return null
+  let nearest = null
+  for (const e of extremes) {
+    const diff = Math.abs(e.at.getTime() - now)
+    if (!nearest || diff < nearest.diff) nearest = { ...e, diff }
+  }
+  if (!nearest) return null
+  const minutes = Math.round(nearest.diff / 60000)
+  return {
+    minutes,
+    prime: minutes <= PRIME_WINDOW_MINUTES,
+    past: nearest.at.getTime() < now,
+    kind: nearest.kind,
+  }
 }
 
 function Metric({ label, value, unit, sub }) {
@@ -99,11 +99,22 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
   const conditions = useConditions({ lat: marina.lat, lng: marina.lng, enabled: true })
   const { tides, forecast, loading } = conditions
 
-  const tideData = tides.status === 'ok' ? tides.data : null
-  const currentWeather = forecast.status === 'ok' ? forecast.data.current : null
-  const biteWindow = useBiteWindow(tideData)
+  // The bite window and the flood or ebb move with the clock, not the fetch.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30000)
+    return () => clearInterval(id)
+  }, [])
 
-  const nextChange = tideData?.rising ? tideData.nextHigh : tideData?.nextLow
+  // The payload, not the status, as on the Conditions tab: a refresh in
+  // flight or one that failed keeps the last numbers up rather than blanking
+  // the card back to a skeleton.
+  const tideData = tides.data ?? null
+  const currentWeather = forecast.data?.current ?? null
+  const biteWindow = biteWindowAt(tideData?.extremes)
+
+  const tideState = tideStateAt(tideData?.extremes)
+  const nextChange = tideState.rising ? tideState.nextHigh : tideState.nextLow
 
   const monthIdx = new Date().getMonth()
   const runningNow = soundSpecies.filter((s) => s.months.includes(monthIdx))
@@ -155,8 +166,8 @@ export default function FishingReportPanel({ fallbackMarinaId }) {
             <div className="cond-metrics">
               <Metric
                 label="Tide"
-                value={tideData?.rising == null ? null : tideData.rising ? 'Flooding' : 'Ebbing'}
-                sub={nextChange ? `${tideData.rising ? 'high' : 'low'} at ${formatClock(nextChange.at)}` : null}
+                value={tideState.rising == null ? null : tideState.rising ? 'Flooding' : 'Ebbing'}
+                sub={nextChange ? `${tideState.rising ? 'high' : 'low'} at ${formatClock(nextChange.at)}` : null}
               />
               <Metric
                 label="Wind"

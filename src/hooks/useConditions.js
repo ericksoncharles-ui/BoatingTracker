@@ -15,6 +15,8 @@ import { fetchMarineAlerts } from '../services/nwsAlerts'
 
 const CACHE_PREFIX = 'bt.conditions.v1.'
 const STALE_MS = 10 * 60 * 1000
+// How often an open, visible panel checks whether it is due a refresh.
+const POLL_MS = 60 * 1000
 
 const IDLE = { status: 'idle', data: null, error: null }
 const SECTION_KEYS = ['tides', 'forecast', 'alerts']
@@ -82,10 +84,12 @@ export function useConditions({ lat, lng, enabled = true }) {
   const abortRef = useRef(null)
   const sectionsRef = useRef(sections)
   sectionsRef.current = sections
+  const lastAttemptRef = useRef(0)
 
   const refresh = useCallback(async () => {
     if (!enabled || lat == null || lng == null) return
 
+    lastAttemptRef.current = Date.now()
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
@@ -187,6 +191,20 @@ export function useConditions({ lat, lng, enabled = true }) {
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [refresh, updatedAt])
+
+  // Nor is switching back the only way a panel gets old: left open on a phone
+  // at the helm it never stops being visible, and an afternoon's wind and alerts
+  // are not the evening's. Timed from the last attempt, not the last success,
+  // so a boat out of signal tries every ten minutes rather than every minute.
+  useEffect(() => {
+    if (!enabled) return
+    const id = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - lastAttemptRef.current < STALE_MS) return
+      refresh()
+    }, POLL_MS)
+    return () => clearInterval(id)
+  }, [enabled, refresh])
 
   const loading = SECTION_KEYS.some((key) => sections[key].status === 'loading')
 

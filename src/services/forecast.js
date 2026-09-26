@@ -6,6 +6,8 @@
 // ignored would silently produce wrong numbers, whereas the defaults cannot
 // change under us.
 
+import { tideStateAt } from './noaaTides'
+
 const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast'
 
 const KMH_TO_KT = 1 / 1.852
@@ -194,19 +196,21 @@ function currentPhaseStrength(extremes, now = Date.now()) {
 
 /**
  * Height and period multipliers from wind running with or against the tidal
- * current. `tide` is the payload from fetchTides (`{ rising, extremes }`);
- * pass null/undefined to skip the adjustment entirely — the daily outlook does
+ * current. `tide` is the payload from fetchTides, read for its extremes against
+ * the clock now, so the flood and ebb turn over while the card is open; pass
+ * null/undefined to skip the adjustment entirely — the daily outlook does
  * this since NOAA's predictions only reach a day or two ahead, not the full
  * week it shows.
  */
-function windTideMultipliers(windDirDeg, tide, water) {
-  if (windDirDeg == null || tide?.rising == null || water.floodSetDeg == null) {
+function windTideMultipliers(windDirDeg, tide, water, now = Date.now()) {
+  const { rising } = tideStateAt(tide?.extremes, now)
+  if (windDirDeg == null || rising == null || water.floodSetDeg == null) {
     return { heightMult: 1, periodMult: 1 }
   }
-  const phase = currentPhaseStrength(tide.extremes)
+  const phase = currentPhaseStrength(tide.extremes, now)
   if (phase === 0) return { heightMult: 1, periodMult: 1 }
 
-  const currentSetDeg = tide.rising ? water.floodSetDeg : (water.floodSetDeg + 180) % 360
+  const currentSetDeg = rising ? water.floodSetDeg : (water.floodSetDeg + 180) % 360
   const windTowardDeg = (windDirDeg + 180) % 360
   // 0 when the wind blows the same way the current is setting (with the
   // tide), 1 when it blows squarely into it (against the tide).
