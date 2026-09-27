@@ -139,7 +139,7 @@ Getting these wrong produces plausible-looking but wrong navigation output.
   can't tell anything past 25 ft, so `BOAT_LIMITS.draft` has to stay at or under
   23 ft.
 - **Water is priced by the mile** (the `_COST` constants in `router.js`): deep
-  enough 1; too shallow 26, plus 25 for every foot short, so a foot short is 51;
+  enough 1 (see the standoff below); too shallow 26, plus 25 for every foot short, so a foot short is 51;
   dry 500; closed not at all. Shallow water is allowed only within 3 NM of
   either end and dry cells within 0.25 NM (`REACH`). That is for harbors: a
   marina is often shallower than the boat wants, which is the harbor draft
@@ -152,6 +152,23 @@ Getting these wrong produces plausible-looking but wrong navigation output.
   reads dry all the way across), then shallow to 6 NM. An 8 NM rung opened the
   North Fork's marsh creeks to routes into Greenport; don't widen the ladder
   for one harbor.
+- **Routes stand off shallow water where they can.** The survey has the
+  soundings but not the rocks the chart draws between them, nor the buoys set
+  to keep boats wide of a ledge: east of Greens Ledge Light it has 5 ft in a
+  150 m gap between two rock patches, and routes to Norwalk threaded it. So
+  each cell also carries the least depth within `CLEARANCE_M` (91 m, about a
+  hundred yards) of it, in the high four bits of its byte (grid format 2), and
+  deep water with anything too shallow for the boat that close costs
+  `NEAR_COST` (2) a mile plus `CLOSE_IN_TOLL` (1 NM) per visit, half going in
+  and half coming out. At 1.5 a mile Stamford's routes east still went inside
+  The Cows past Shippan Point. The toll is per visit, not per mile, because a dredged
+  channel is all close water: charged only by the mile, a dart through a gap
+  between two islands was cheaper than the length of Norwalk's channel and the
+  route left the channel for it. A block or square of cells all deep enough
+  counts as close in if any cell of it is (`viewFor`, `squareAround`): merged
+  only when clear all round, the band along every shore went cell by cell and
+  planning took twice as long. A format 1 grid still loads, read as clear
+  everywhere.
 - **A course can't slip diagonally between two worse cells** (`squeeze` in
   `walk`, the corner rule in `stepCost`): that is how a jetty drawn corner to
   corner would otherwise let a route through.
@@ -424,7 +441,7 @@ left nothing to run offline. `/assets/` is served cache-first (a hashed file
 never changes), everything else network-first, `/api/` never cached. Caching a
 new page prunes `/assets/` files it no longer names.
 
-The depth grid (`/depth-grid.bin`, a megabyte of gzip) is in the shell list,
+The depth grid (`/depth-grid.bin`, a megabyte and a half of gzip) is in the shell list,
 since a planner that opens with no signal but can't plan is no use at the helm.
 The page fetches it when a destination is picked, not on load, and
 `loadDepthGrid` unpacks the gzip itself with `DecompressionStream`, unless a

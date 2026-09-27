@@ -4,7 +4,10 @@
 //
 // Water is priced by the mile:
 //
-//   - deep enough for the boat: a mile is a mile;
+//   - deep enough for the boat: a mile is a mile where it is clear of
+//     anything shallower for about a hundred yards, two where it isn't, and a
+//     mile more for going in close at all, half charged going in and half
+//     coming out;
 //   - too shallow for it, but water: fifty-one miles a mile where it is a foot
 //     short, and twenty-five more for every foot shorter than that, and only
 //     within a few miles of either end of the route;
@@ -23,6 +26,16 @@
 // channel and often shorter. Out in the Sound a shoal is never "worth it" to
 // save a few miles: it is simply not water the route can use.
 //
+// Nor is the gap between two: the survey has five feet between the ledges
+// east of Greens Ledge Light, but not the rocks the chart marks between its
+// soundings or the nun set to keep boats wide of them. A route with the
+// choice stands off anything too shallow for the boat by a hundred yards, and
+// threads a gap only to save a mile. Out of Stamford that is round The Cows,
+// not inside them past Shippan Point. The toll for going in close is by the
+// visit rather than the mile because a dredged channel is all close water:
+// by the mile alone, a dart through a gap between two islands was cheaper
+// than the length of Norwalk's channel, and the route left the channel for it.
+//
 // The search is Lazy Theta* over the grid's leaves (the squares of one depth
 // depthGrid.js describes): A* whose steps may run in any direction, so a
 // course across open water is one straight line rather than a staircase of
@@ -36,6 +49,8 @@ const SHALLOW = 1
 const DRY = 2
 
 const DEEP_COST = 1
+const NEAR_COST = 2
+const CLOSE_IN_TOLL = 1
 const SHALLOW_COST = 25
 const SHALLOW_COST_PER_FT = 25
 const DRY_COST = 500
@@ -155,7 +170,7 @@ function costModel(grid, from, to, { need, reachA, reachB, closed, rough = false
   const view = rough
     ? grid.roughViewFor(need)
     : grid.viewFor(need, (r0, c0, size, deepest) => !allowed(r0, c0, size, deepest >= 1 ? SHALLOW : DRY))
-  const { leafAt, leafValue } = view
+  const { leafAt, leafValue, leafAround } = view
 
   const leafA = leafAt(Math.floor(a.y), Math.floor(a.x))
   const leafB = leafAt(Math.floor(b.y), Math.floor(b.x))
@@ -178,7 +193,7 @@ function costModel(grid, from, to, { need, reachA, reachB, closed, rough = false
     if (id < 0) return 0
     leafRect(id, sq)
     if (shutSupers.size > 0 && isShut(sq[0], sq[1], sq[2])) return 0
-    if (value >= need) return DEEP_COST
+    if (value >= need) return rough || leafAround(id) >= need ? DEEP_COST : NEAR_COST
     // Near the ends a rough model takes only the blocks the way out of each
     // harbor runs through (see harborToll), at a mile a mile: allowed every
     // block with water in it, it found its way into Greenport through the
@@ -196,6 +211,7 @@ function costModel(grid, from, to, { need, reachA, reachB, closed, rough = false
   function lineCost(p, q, limit = Infinity) {
     let cost = 0
     let prevClass = -1
+    let prevOpen = null
     grid.walk(p.y, p.x, q.y, q.x, (id, value, lengthNM, squeeze) => {
       const cls = classOfValue(value)
       const m = price(id, value)
@@ -203,8 +219,11 @@ function costModel(grid, from, to, { need, reachA, reachB, closed, rough = false
         cost = Infinity
         return false
       }
+      const open = m === DEEP_COST
+      if (prevOpen !== null && open !== prevOpen) cost += CLOSE_IN_TOLL / 2
       cost += lengthNM * m
       prevClass = cls
+      prevOpen = open
       return cost <= limit
     }, view)
     return cost
@@ -438,7 +457,8 @@ function graphOf(model) {
       const better = Math.min(o1 < 0 ? DRY : classOf(o1), o2 < 0 ? DRY : classOf(o2))
       if (better > worst) return Infinity
     }
-    return between(u, v) * (pu + pv) / 2
+    const toll = (pu === DEEP_COST) !== (pv === DEEP_COST) ? CLOSE_IN_TOLL / 2 : 0
+    return between(u, v) * (pu + pv) / 2 + toll
   }
 
   return { pointOf, between, eachNeighbor, stepCost }

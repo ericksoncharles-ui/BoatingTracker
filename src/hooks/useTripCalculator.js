@@ -51,8 +51,8 @@ export function useTripCalculator() {
 
   const boat = parseBoatInputs({ tankSize, cruisingSpeed, fuelBurn, draft })
 
-  // The depth grid is a megabyte. Fetch it once a destination is picked, so it
-  // is usually in hand by the time Plan Trip is pressed.
+  // The depth grid is a megabyte and a half. Fetch it once a destination is
+  // picked, so it is usually in hand by the time Plan Trip is pressed.
   useEffect(() => {
     if (destId) loadDepthGrid().catch(() => {})
   }, [destId])

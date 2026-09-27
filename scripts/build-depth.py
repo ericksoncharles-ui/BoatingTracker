@@ -92,9 +92,18 @@ SPLIT = 255
 # block size, as their shallowest cell (see the docstring).
 NEAR_LAND_BLOCKS = 2
 
+# How far a route keeps from water too shallow for the boat when it has the
+# choice: about a hundred yards. The survey has the depths but not the rocks
+# the chart marks between its soundings, nor where a buoy sits off a ledge to
+# keep boats wide of it, so a gap of five feet between two ledges looks as good
+# as open water. A cell also carries the least depth within this distance of
+# it, and the router charges extra for water whose surroundings are too
+# shallow (see NEAR_COST in src/router.js).
+CLEARANCE_M = 91
+
 FT_PER_M = 3.28084
 MAGIC = b'DGRD'
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public', 'depth-grid.bin')
 
@@ -200,19 +209,44 @@ def mosaic(tiles, paths):
     return grid, d_lat, d_lng
 
 
-def encode(values):
+def clearance(values, d_lat, d_lng):
+    """The least step within CLEARANCE_M of each cell, the cell's own included."""
+    mid_lat = (BBOX['minLat'] + BBOX['maxLat']) / 2
+    m_row = d_lat * 111_320
+    m_col = d_lng * 111_320 * np.cos(np.radians(mid_lat))
+    reach = int(CLEARANCE_M // min(m_row, m_col))
+    # Past the edge of the grid is open water as much as the edge is.
+    padded = np.pad(values, reach, mode='edge')
+    rows, cols = values.shape
+    least = values.copy()
+    for i in range(-reach, reach + 1):
+        for j in range(-reach, reach + 1):
+            if (i * m_row) ** 2 + (j * m_col) ** 2 <= CLEARANCE_M ** 2:
+                np.minimum(least, padded[reach + i:reach + i + rows, reach + j:reach + j + cols], out=least)
+    return least
+
+
+def encode(values, clear):
     rows, cols = values.shape
     brows, bcols = -(-rows // BLOCK), -(-cols // BLOCK)
     srows, scols = -(-brows // SUPER), -(-bcols // SUPER)
-    # Pad to whole super-blocks with dry cells: off the edge is nowhere to go.
-    padded = np.zeros((srows * SUPER * BLOCK, scols * SUPER * BLOCK), dtype=np.uint8)
-    padded[:rows, :cols] = values
-    cells = padded.reshape(srows * SUPER, BLOCK, scols * SUPER, BLOCK).transpose(0, 2, 1, 3)
-    bmin = cells.min(axis=(2, 3))
-    bmax = cells.max(axis=(2, 3))
-    mixed = bmin != bmax
 
-    dry = cells.min(axis=(2, 3)) == 0
+    # Pad to whole super-blocks with dry cells: off the edge is nowhere to go.
+    def blocks_of(a):
+        padded = np.zeros((srows * SUPER * BLOCK, scols * SUPER * BLOCK), dtype=np.uint8)
+        padded[:rows, :cols] = a
+        return padded.reshape(srows * SUPER, BLOCK, scols * SUPER, BLOCK).transpose(0, 2, 1, 3)
+
+    # A cell's byte is its depth step in the low four bits and the least step
+    # around it in the high four. 255 can't occur: steps stop at 12.
+    depth = blocks_of(values)
+    around = blocks_of(clear)
+    cells = depth | (around << 4)
+    # Offshore, a coarsened block keeps the least of each separately.
+    bmin = depth.min(axis=(2, 3)) | (around.min(axis=(2, 3)) << 4)
+    mixed = cells.min(axis=(2, 3)) != cells.max(axis=(2, 3))
+
+    dry = depth.min(axis=(2, 3)) == 0
     near = dry.copy()
     for _ in range(NEAR_LAND_BLOCKS):
         grown = near.copy()
@@ -270,8 +304,13 @@ def main():
     # Not surveyed by any tile: land, a structure, or water nobody sounded.
     depth_ft[np.isnan(depth_ft)] = -1
     values = np.searchsorted(np.array(DEPTH_STEPS_FT, dtype=np.float32), depth_ft, side='right').astype(np.uint8)
+    del elevation, depth_ft
 
-    super_code, block_codes, fine_values, (srows, scols), stats = encode(values)
+    t0 = time.time()
+    clear = clearance(values, d_lat, d_lng)
+    print(f'  least depth within {CLEARANCE_M} m of every cell in {time.time() - t0:.0f} s')
+
+    super_code, block_codes, fine_values, (srows, scols), stats = encode(values, clear)
     header = dict(
         source='NOAA Office of Coast Survey, National Bathymetric Source navigation surfaces (BAG, MLLW)',
         scheme=os.path.basename(scheme),
@@ -281,6 +320,7 @@ def main():
         dLat=d_lat, dLng=d_lng, rows=int(values.shape[0]), cols=int(values.shape[1]),
         block=BLOCK, super=SUPER, superRows=srows, superCols=scols,
         stepsFt=DEPTH_STEPS_FT,
+        clearanceM=CLEARANCE_M,
         counts=dict(blockCodes=int(block_codes.size), fineValues=int(fine_values.size)),
     )
     head = json.dumps(header, separators=(',', ':')).encode()

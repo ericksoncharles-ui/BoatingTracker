@@ -186,6 +186,9 @@ function main() {
   console.log(`  ${header.tiles} survey tiles (${header.scheme}), built ${header.built}`)
   console.log(`  ${header.rows} x ${header.cols} cells of ${(header.dLat * 60 * 1852).toFixed(0)} m, ` +
     `${(fs.statSync(GRID_FILE).size / 1024).toFixed(0)} KB, steps ${header.stepsFt.join(' ')} ft`)
+  console.log(header.clearanceM
+    ? `  routes stand off water too shallow for the boat by ${header.clearanceM} m where they can`
+    : '  no clearance layer (format 1): routes pass as close to shallows as they like')
 
   // ── 2. places ────────────────────────────────────────────────────────────
   // A harbor on a dry cell is let off by the router's dry allowance, but that

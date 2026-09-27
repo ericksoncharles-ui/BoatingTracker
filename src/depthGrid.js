@@ -9,6 +9,13 @@
 // (0 is dry at low water, land, or not surveyed; see stepsFt in the header),
 // which is all a go/no-go question for a keel needs.
 //
+// Each cell also carries the least depth within about a hundred yards of it
+// (header.clearanceM), in the high four bits of its byte: the survey has the
+// soundings but not the rocks drawn between them or the buoys set off a ledge,
+// and a route that keeps that far from anything too shallow for the boat stays
+// outside them. The router charges for water whose surroundings are shallow;
+// a narrow channel is all such water, and still the way in.
+//
 // Most of the region is one value over wide areas: the middle of the Sound,
 // the interior of Long Island. So cells are grouped 8 x 8 into blocks and blocks
 // 8 x 8 into super-blocks (about 1.2 km square), and a group that is one value
@@ -20,6 +27,7 @@
 //   super-block codes      one byte each, row-major; 255 = split into blocks
 //   block codes            64 per split super-block, in order; 255 = split
 //   cell values            64 per split block, in order
+// where a code or value is depth | around << 4 (version 1 had depth only).
 //
 // Plain functions over plain data and no React, like utils.js.
 
@@ -27,7 +35,7 @@ export const DEPTH_GRID_URL = '/depth-grid.bin'
 export const DEPTH_ATTRIBUTION = 'Depths: NOAA National Bathymetric Source'
 
 const MAGIC = 'DGRD'
-const FORMAT_VERSION = 1
+const FORMAT_VERSION = 2
 const SPLIT = 255
 const B = 8 // cells per block side
 const S = 64 // cells per super-block side
@@ -40,7 +48,7 @@ export function decodeDepthGrid(bytes) {
   const magic = String.fromCharCode(...bytes.subarray(0, 4))
   if (magic !== MAGIC) throw new Error('Not a depth grid')
   const version = view.getUint16(4, true)
-  if (version !== FORMAT_VERSION) throw new Error(`Depth grid format ${version} is not supported`)
+  if (version !== FORMAT_VERSION && version !== 1) throw new Error(`Depth grid format ${version} is not supported`)
   const headLength = view.getUint32(6, true)
   const header = JSON.parse(new TextDecoder().decode(bytes.subarray(10, 10 + headLength)))
   if (header.block !== B || header.block * header.super !== S) throw new Error('Unexpected depth grid layout')
@@ -50,13 +58,28 @@ export function decodeDepthGrid(bytes) {
   const blockCodes = bytes.subarray(at, (at += header.counts.blockCodes))
   const cellValues = bytes.subarray(at, (at += header.counts.fineValues))
   if (cellValues.length !== header.counts.fineValues) throw new Error('Depth grid is truncated')
-  return createDepthGrid({ header, superCodes, blockCodes, cellValues })
+  // A version 1 grid, kept by a service worker from before, knows nothing of
+  // the water around a cell: read it as clear all round, as it was planned.
+  const upgrade = (codes) => (version === 1 ? codes.map((v) => (v === SPLIT ? v : v | (v << 4))) : codes)
+  return createDepthGrid({
+    header, superCodes: upgrade(superCodes), blockCodes: upgrade(blockCodes), cellValues: upgrade(cellValues),
+  })
 }
 
-export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) {
+export function createDepthGrid({ header, superCodes: superRaw, blockCodes: blockRaw, cellValues: cellRaw }) {
   const { minLat, maxLat, minLng, dLat, dLng, superRows, superCols, stepsFt } = header
-  const superCount = superCodes.length
-  const blockCount = blockCodes.length
+  const superCount = superRaw.length
+  const blockCount = blockRaw.length
+
+  // Each byte split in two: its depth, and the least depth around it.
+  const depthOf = (raw) => raw.map((v) => (v === SPLIT ? SPLIT : v & 15))
+  const aroundOf = (raw) => raw.map((v) => (v === SPLIT ? SPLIT : v >> 4))
+  const superCodes = depthOf(superRaw)
+  const blockCodes = depthOf(blockRaw)
+  const cellValues = depthOf(cellRaw)
+  const superAround = aroundOf(superRaw)
+  const blockAround = aroundOf(blockRaw)
+  const cellAround = aroundOf(cellRaw)
 
   // Where each split super-block's codes start, and whose each run of 64 codes
   // is; the same one level down for split blocks.
@@ -80,8 +103,11 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
   // Inside a split block, a 4 x 4 or 2 x 2 square of one depth is a leaf of
   // its own too: a block with a corner of beach in it is otherwise sixty-four
   // leaves for the router to step through, most of them the same water.
-  // Recorded per cell as the side of the square it belongs to.
+  // Recorded per cell as the side of the square it belongs to. A square is
+  // close to shallows if any cell of it is: split on that too, the band along
+  // every shore went cell by cell, and routes took twice as long to plan.
   const cellSize = new Uint8Array(cellValues.length).fill(1)
+  const squareAround = cellAround.slice()
   const uniform = (base, r, c, n) => {
     const v = cellValues[base + r * 8 + c]
     for (let i = r; i < r + n; i++) {
@@ -90,7 +116,12 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
     return true
   }
   const mark = (base, r, c, n) => {
-    for (let i = r; i < r + n; i++) cellSize.fill(n, base + i * 8 + c, base + i * 8 + c + n)
+    let lo = 255
+    for (let i = r; i < r + n; i++) {
+      cellSize.fill(n, base + i * 8 + c, base + i * 8 + c + n)
+      for (let j = c; j < c + n; j++) lo = Math.min(lo, cellAround[base + i * 8 + j])
+    }
+    squareAround[base + r * 8 + c] = lo
   }
   for (let base = 0; base < cellValues.length; base += 64) {
     for (let qr = 0; qr < 8; qr += 4) {
@@ -163,8 +194,15 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
     return out
   }
 
+  function leafAroundOf(id) {
+    if (id < 0) return 0
+    if (id < superCount) return superAround[id]
+    if (id < superCount + blockCount) return blockAround[id - superCount]
+    return squareAround[id - superCount - blockCount]
+  }
+
   const valueAtCellOf = (r, c) => leafValueOf(leafAtCell(r, c))
-  const cellView = { leafAt: leafAtCell, leafValue: leafValueOf }
+  const cellView = { leafAt: leafAtCell, leafValue: leafValueOf, leafAround: leafAroundOf }
 
   // The shallowest and deepest step in each block and super-block. A route
   // needing 5 ft sees a block whose cells run 8 to 25 ft as one square of
@@ -200,6 +238,28 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
     }
     superMin[s] = lo
     superMax[s] = hi
+  }
+
+  // The least depth around any cell of each block and super-block.
+  const blockAroundMin = new Uint8Array(blockCount)
+  for (let b = 0; b < blockCount; b++) {
+    if (blockCodes[b] !== SPLIT) {
+      blockAroundMin[b] = blockAround[b]
+      continue
+    }
+    let lo = 255
+    for (let f = blockFirst[b]; f < blockFirst[b] + 64; f++) if (cellAround[f] < lo) lo = cellAround[f]
+    blockAroundMin[b] = lo
+  }
+  const superAroundMin = new Uint8Array(superCount)
+  for (let s = 0; s < superCount; s++) {
+    if (superCodes[s] !== SPLIT) {
+      superAroundMin[s] = superAround[s]
+      continue
+    }
+    let lo = 255
+    for (let b = superFirst[s]; b < superFirst[s] + 64; b++) if (blockAroundMin[b] < lo) lo = blockAroundMin[b]
+    superAroundMin[s] = lo
   }
 
   // The least, over each super-block's blocks, of the deepest cell in each.
@@ -241,7 +301,10 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
   /**
    * The leaves as one route sees them. A block or super-block is a single
    * leaf when every cell in it is deep enough for the boat (`need` or more),
-   * or when none of it is water the route may use: all of it too shallow, and
+   * and a super-block only when clear of anything shallower all round too,
+   * since a route charged for going close in across all of it for one rock at
+   * its edge would steer round a mile of open water; or when none of it is
+   * water the route may use: all of it too shallow, and
    * `unusable(r0, c0, size, deepest)` says that square is too far from either
    * end for shallow or dry water to be allowed there. Most of the cells along
    * a shore are one or the other for any one boat, and the router steps
@@ -252,7 +315,7 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
       if (r < 0 || c < 0 || r >= rows || c >= cols) return -1
       const s = (r >> 6) * superCols + (c >> 6)
       if (superCodes[s] !== SPLIT) return s
-      if (superMin[s] >= need || (superMax[s] < need && unusable(r & -S, c & -S, S, superMax[s]))) return s
+      if (superAroundMin[s] >= need || (superMax[s] < need && unusable(r & -S, c & -S, S, superMax[s]))) return s
       const b = superFirst[s] + ((r >> 3) & 7) * 8 + ((c >> 3) & 7)
       if (blockCodes[b] !== SPLIT) return superCount + b
       if (blockMin[b] >= need || (blockMax[b] < need && unusable(r & -B, c & -B, B, blockMax[b]))) return superCount + b
@@ -264,7 +327,7 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
       if (id < 0) return 0
       if (id < superCount) {
         if (superCodes[id] !== SPLIT) return superCodes[id]
-        return superMin[id] >= need ? superMin[id] : superMax[id]
+        return superAroundMin[id] >= need ? superMin[id] : superMax[id]
       }
       if (id < superCount + blockCount) {
         const b = id - superCount
@@ -273,7 +336,15 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
       }
       return cellValues[id - superCount - blockCount]
     }
-    return { leafAt, leafValue }
+    // Only ever asked of a leaf deep enough for the boat, which is one depth
+    // and one depth around it unless it is clear all round.
+    const leafAround = (id) => {
+      if (id < 0) return 0
+      if (id < superCount) return superAroundMin[id]
+      if (id < superCount + blockCount) return blockAroundMin[id - superCount]
+      return squareAround[id - superCount - blockCount]
+    }
+    return { leafAt, leafValue, leafAround }
   }
 
   // Positions are carried as fractional cells: y down from the north edge, x
@@ -376,7 +447,8 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
   return {
     header, stepsFt, rows, cols, superRows, superCols, superCount, blockCount,
     nmPerRow, nmPerCol, cellOf, latLngOf, distanceNM,
-    leafAt: leafAtCell, leafValue: leafValueOf, leafRect, valueAtCell: valueAtCellOf, valueAt, depthRange, walk,
+    leafAt: leafAtCell, leafValue: leafValueOf, leafAround: leafAroundOf, leafRect,
+    valueAtCell: valueAtCellOf, valueAt, depthRange, walk,
     viewFor, roughViewFor,
   }
 }
@@ -384,9 +456,10 @@ export function createDepthGrid({ header, superCodes, blockCodes, cellValues }) 
 let loading = null
 
 /**
- * The grid, fetched and decoded once per page. It is a megabyte, so the planner
- * starts on it as soon as a destination is picked rather than when Plan Trip
- * is pressed, and the service worker keeps it for use with no signal.
+ * The grid, fetched and decoded once per page. It is a megabyte and a half, so
+ * the planner starts on it as soon as a destination is picked rather than
+ * when Plan Trip is pressed, and the service worker keeps it for use with no
+ * signal.
  */
 export function loadDepthGrid() {
   if (!loading) {
