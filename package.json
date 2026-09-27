@@ -11,7 +11,7 @@
     "fishing:probe": "node scripts/fishing-probe.mjs",
     "tides:probe": "node scripts/tides-probe.mjs",
     "route:probe": "node scripts/route-probe.mjs",
-    "coastline:build": "node scripts/build-coastline.mjs",
+    "depth:build": "python3 scripts/build-depth.py",
     "start": "node --env-file-if-exists=.env server/index.js"
   },
   "dependencies": {

@@ -10,6 +10,43 @@ const DEST_ICON = (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
 )
 
+// A charted depth range from the router: "8–10 ft", or "25 ft+" for the
+// deepest step.
+const feet = (range) => (range.maxFt ? `${range.minFt}–${range.maxFt} ft` : `${range.minFt} ft+`)
+
+// What the route keeps to, and where near either end it can't: the depth
+// grid's account of the trip, in place of the list of named shoals the old
+// router used to detour round.
+function DepthSummary({ tripResult }) {
+  const { depth, draft, minDepthFt, start, dest } = tripResult
+  const ends = [['start', `Leaving ${start.name}`], ['dest', `Arriving at ${dest.name}`]]
+    .filter(([end]) => depth.ends[end])
+  return (
+    <div className="depth-info">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6c2 0 3-2 5-2s3 2 5 2 3-2 5-2 3 2 5 2"/><path d="M12 10v10"/><path d="M8 16l4 4 4-4"/></svg>
+      <div>
+        <p>
+          Keeps to water charted <strong>{depth.heldToFt} ft</strong> or deeper at low water: your{' '}
+          {draft} ft draft and {KEEL_CLEARANCE_FT} ft under the keel
+          {depth.heldToFt > minDepthFt ? ", up to the chart's next depth" : ''}.
+          {depth.leastDepth && <> Shallowest on the way: {feet(depth.leastDepth)}.</>}
+        </p>
+        {ends.map(([end, label]) => {
+          const { shallowNM, dryNM, least } = depth.ends[end]
+          return (
+            <p key={end}>
+              <strong>{label}:</strong>{' '}
+              {shallowNM > 0 && <>{shallowNM} NM where the survey shows less than {depth.heldToFt} ft{least ? ` (${feet(least)})` : ''}. </>}
+              {dryNM > 0 && <>{dryNM} NM the survey shows dry at low water: the berth itself, or a dredged cut narrower than its 20 m cells. </>}
+              Keep to the marked channel.
+            </p>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function Sidebar({
   startId, setStartId,
   destId, setDestId,
@@ -19,6 +56,8 @@ export default function Sidebar({
   draft, setDraft,
   boatErrors = {},
   tripResult,
+  planning = false,
+  planError = null,
   onCalculate,
   onReset,
 }) {
@@ -100,9 +139,9 @@ export default function Sidebar({
         )}
 
         <div className="button-row">
-          <button className="btn-plan" onClick={onCalculate} disabled={!canCalculate}>
+          <button className="btn-plan" onClick={onCalculate} disabled={!canCalculate || planning} aria-busy={planning}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-            Plan Trip
+            {planning ? 'Planning…' : 'Plan Trip'}
           </button>
           {tripResult && (
             <button className="btn-reset" onClick={onReset}>Clear</button>
@@ -111,6 +150,7 @@ export default function Sidebar({
         {startId && destId && startId === destId && (
           <p className="form-error">Start and destination must be different.</p>
         )}
+        {planError && <p className="form-error" role="alert">{planError}</p>}
       </div>
 
       {tripResult && (
@@ -166,20 +206,6 @@ export default function Sidebar({
             </div>
           )}
 
-          {/* The router found no way round these on the water. Rare, and the
-              boat is still being sent past them, so it is said out loud. */}
-          {tripResult.shoalsUnavoided && tripResult.shoalsUnavoided.length > 0 && (
-            <div className="draft-warning">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <div>
-                <strong>Shoal on the route:</strong> no way round was found for a{' '}
-                {tripResult.draft} ft draft past{' '}
-                {tripResult.shoalsUnavoided.map((s) => `${s.name} (${s.minDepthFt} ft)`).join(', ')}.
-                Check the chart before you go.
-              </div>
-            </div>
-          )}
-
           {[tripResult.start, tripResult.dest].some((p) => p.note) && (
             <div className="local-knowledge">
               <h3>
@@ -199,13 +225,7 @@ export default function Sidebar({
             </div>
           )}
 
-          {tripResult.shoalsAvoided && tripResult.shoalsAvoided.length > 0 && (
-            <div className="shoal-avoided-info">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-              Route adjusted for your {tripResult.draft} ft draft to stay clear of:{' '}
-              {tripResult.shoalsAvoided.map((s) => s.name).join(', ')}
-            </div>
-          )}
+          {tripResult.depth && <DepthSummary tripResult={tripResult} />}
 
           {tripResult.noWakeZones && tripResult.noWakeZones.length > 0 && (
             <div className="no-wake-info">

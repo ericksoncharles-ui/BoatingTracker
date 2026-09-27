@@ -224,6 +224,8 @@ export default function App() {
             setDraft={trip.setDraft}
             boatErrors={trip.boatErrors}
             tripResult={trip.tripResult}
+            planning={trip.planning}
+            planError={trip.planError}
             onCalculate={trip.calculateTrip}
             onReset={trip.resetTrip}
           />
@@ -310,6 +312,8 @@ export default function App() {
               setDraft={trip.setDraft}
               boatErrors={trip.boatErrors}
               tripResult={trip.tripResult}
+              planning={trip.planning}
+              planError={trip.planError}
               onCalculate={trip.calculateTrip}
               onReset={trip.resetTrip}
             />
